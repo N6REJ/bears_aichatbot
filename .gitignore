@@ -1,0 +1,11 @@
+# Jetbrains
+/*.iml
+/.idea
+
+# Visual Studio
+.vscode/
+.vs/
+.vsc/
+
+# Qodo
+.godo

@@ -1,0 +1,5 @@
+## Joomla Extension Summary (2 paragraphs, ready to paste)
+
+Bears AI Chatbot is a Joomla 5 module that adds an AI-powered knowledgebase assistant to your site using the IONOS AI Model Hub and its OpenAI-compatible API. The chatbot is grounded in your content by summarizing selected article categories, optional Kunena posts, and additional URLs you provide, delivering answers that are contextually relevant to your documentation. It includes a dynamic model selector, configurable endpoint and credentials, and returns detailed diagnostics for faster troubleshooting.
+
+The floating UI supports bottom or side placement (with a vertical labeled toggle), opens into a resizable window, and can be customized for width, height, and button label. The widget hides automatically on phones, auto-scrolls to the latest message, and is easy to configure via the module settings. Whether you’re powering a docs portal or a support site, Bears AI Chatbot helps users get precise answers from your knowledge base, quickly and intuitively.

@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<extension type="plugin" group="content" version="5.0" method="upgrade">
+  <name>plg_content_aichatbot</name>
+  <author>N6REJ</author>
+  <creationDate>2025-09-06</creationDate>
+  <version>2025.09.06.8</version>
+  <license>GNU General Public License version 3 or later; see License.txt</license>
+  <description>Content plugin to enqueue document collection updates on article changes.</description>
+  <files>
+    <folder>services</folder>
+    <folder>src</folder>
+    <folder>forms</folder>
+    <folder>language</folder>
+  </files>
+  <languages>
+    <language tag="en-GB">language/en-GB/en-GB.plg_content_aichatbot.ini</language>
+    <language tag="en-GB">language/en-GB/en-GB.plg_content_aichatbot.sys.ini</language>
+  </languages>
+
+  <config>forms/config.xml</config>
+</extension>

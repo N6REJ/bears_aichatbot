@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Bears AI Chatbot for Joomla 5 – Installation, Configuration, and Usage</title>
+  <style>
+    body { font-family: Arial, Helvetica, sans-serif; line-height: 1.6; color: #222; }
+    h1, h2, h3 { line-height: 1.25; }
+    h1 { font-size: 1.8rem; margin: 0 0 0.5rem; }
+    h2 { font-size: 1.5rem; margin: 1.25rem 0 0.5rem; }
+    h3 { font-size: 1.25rem; margin: 1rem 0 0.5rem; }
+    p { margin: 0.5rem 0; }
+    ul, ol { margin: 0.5rem 0 0.75rem 1.25rem; }
+    code { background: #f5f5f5; padding: 0 0.25rem; border-radius: 3px; }
+    a { color: #0b74de; text-decoration: none; }
+    a:hover { text-decoration: underline; }
+  </style>
+</head>
+<body>
+  <h1>Bears AI Chatbot for Joomla 5 – Installation, Configuration, and Usage</h1>
+
+  <h2>Overview</h2>
+  <p>
+    Bears AI Chatbot is a Joomla 5 module that embeds an AI-powered knowledgebase assistant into your site.
+    It uses the IONOS AI Model Hub via its OpenAI-compatible API. The assistant is grounded in your site content
+    by summarizing selected Joomla articles (and optionally Kunena forum posts) and any additional URLs you specify,
+    then sending that context to the AI model to produce accurate, site-specific answers.
+  </p>
+
+  <h2>Requirements</h2>
+  <ul>
+    <li>Joomla 5.x</li>
+    <li>PHP 8.x</li>
+    <li>IONOS AI Model Hub account with a valid API token</li>
+    <li>Outbound HTTPS access to IONOS OpenAI-compatible endpoint</li>
+  </ul>
+
+  <h2>Installation</h2>
+  <ol>
+    <li>Install the module (<code>mod_bears_aichatbot</code>) via Extensions &gt; Manage &gt; Install.</li>
+    <li>Go to Content &gt; Site Modules and locate “Bears AI Chatbot”.</li>
+    <li>Publish the module, assign menu items, and select a module position.</li>
+  </ol>
+
+  <h2>Configuration</h2>
+  <h3>1) Knowledge sources</h3>
+  <ul>
+    <li>
+      <strong>Article Categories:</strong> Choose one or more categories containing published articles to use as the
+      knowledge base. Descendant categories are supported.
+    </li>
+    <li>
+      <strong>Use Kunena:</strong> Enable to include recent posts from Kunena (if installed). Only published
+      categories/posts are used.
+    </li>
+    <li>
+      <strong>Additional Knowledge URLs:</strong> Add one URL per line to include the HTML-stripped content of those
+      pages in the knowledge context (useful for key docs not stored in Joomla articles).
+    </li>
+  </ul>
+
+  <h3>2) IONOS AI settings</h3>
+  <ul>
+    <li>
+      <strong>IONOS Endpoint:</strong> Use the region-appropriate endpoint (e.g.,
+      <a href="https://openai.inference.de-txl.ionos.com/v1/chat/completions" target="_blank" rel="noopener">https://openai.inference.de-txl.ionos.com/v1/chat/completions</a>).
+      Ensure the region matches your API token.
+    </li>
+    <li>
+      <strong>IONOS Token:</strong> Paste your Bearer token (the secret string). Leave “Token ID” empty for Bearer flow.
+    </li>
+    <li>
+      <strong>Model:</strong> After saving token/endpoint, select a model from the dropdown. This dropdown loads from
+      <code>/v1/models</code> using your token; a safe fallback list is provided.
+    </li>
+  </ul>
+
+  <h3>3) Chat placement and appearance</h3>
+  <ul>
+    <li>
+      <strong>Chat Position:</strong> bottom-left | bottom-right | middle-left | middle-right (side). Side positions
+      display a vertical toggle button.
+    </li>
+    <li><strong>Offsets:</strong> Bottom and side offsets in pixels.</li>
+    <li>
+      <strong>Button label:</strong> Text to display on the vertical toggle button (e.g., “Knowledgebase”, “Help”).
+    </li>
+    <li>
+      <strong>Open size:</strong> Width (px), Height (px), and Height (%) of the opened chat. The window is resizable by
+      the user.
+    </li>
+    <li>
+      <strong>Mobile:</strong> The chat widget is hidden automatically on phones (≤ 767px).
+    </li>
+  </ul>
+
+  <h3>4) Performance and caching</h3>
+  <ul>
+    <li>Set module “Caching” to “No caching” to ensure the latest settings/credentials are used.</li>
+  </ul>
+
+  <h2>Usage</h2>
+  <ul>
+    <li>The module loads as a closed bubble (bottom) or a vertical button (side). Clicking it opens the chat.</li>
+    <li>Ask a question; the bot responds using your site’s content as a knowledge base.</li>
+    <li>The chat auto-scrolls to show the latest message. The open window is resizable.</li>
+  </ul>
+
+  <h2>Troubleshooting</h2>
+  <ul>
+    <li>
+      If you see “Invalid model name” or 400 errors: the model ID may not exist for your token/region. Verify using
+      <code>/v1/models</code> and adjust the model or endpoint.
+    </li>
+    <li>If you see 401/403: token is invalid or not authorized for the selected model.</li>
+    <li>
+      If answers are vague: verify your selected categories contain relevant published content. Consider using
+      “Additional Knowledge URLs” for critical pages (e.g., Getting Started).
+    </li>
+    <li>
+      DevTools Network &gt; <code>com_ajax</code> shows detailed error messages and knowledge stats (article counts and
+      sample titles).
+    </li>
+  </ul>
+
+  <h2>Security notes</h2>
+  <ul>
+    <li>The module sends your Bearer token only server-side. No credentials are exposed client-side.</li>
+    <li>Use a token with appropriate scope and rotate it according to your security policy.</li>
+  </ul>
+
+  <h2>Support</h2>
+  <p>
+    For issues, review the console/network diagnostics first, confirm endpoint/region/model, and verify published
+    content in selected categories. Then file an issue with logs and module settings (mask secrets).
+  </p>
+</body>
+</html>

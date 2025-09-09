@@ -1,0 +1,154 @@
+Bears AI Chatbot package – Implementation Guide
+
+Objective
+Provide a clear roadmap of what is already implemented, what must be completed to make the system production-ready, and what should be done for robustness, cost-efficiency, and maintainability. Includes prompts you can use to continue from where we left off.
+
+1) Current state (in this repo)
+- Packaging
+  - A Joomla package structure exists to deliver:
+    - Site module (mod_bears_aichatbot)
+    - Task Scheduler plugin (plg_task_aichatbot)
+    - Optional Content plugin (plg_content_aichatbot)
+- Database schema
+  - #__aichatbot_docs: maps article -> remote document, stores content_hash, last_synced, state
+  - #__aichatbot_jobs: queue for upsert/delete jobs with attempts and last_error
+- Content plugin
+  - Listens to article save/delete/state change
+  - Computes normalized hash (title + intro + fulltext + state)
+  - Upserts mapping row and enqueues upsert/delete jobs
+- Task plugin (Scheduler)
+  - Registers tasks:
+    - aichatbot.queue: processes job queue, calls handleUpsert/handleDelete
+    - aichatbot.reconcile: scans selected categories, recomputes hashes, upserts changes, deletes out-of-scope
+  - API calls are stubbed (apiUpsert/apiDelete)
+  - Manifest wired to install SQL, show params, uninstall SQL
+
+2) What needs to be done (required to be functional)
+A. Implement IONOS Document Collection API calls (critical)
+- In task plugin:
+  - apiUpsert(remoteId, text, metadata)
+  - apiDelete(remoteId)
+- Use plugin params:
+  - ionos_token_id, ionos_token, ionos_endpoint (base), collection_id
+- Define exact HTTP behavior:
+  - Endpoints and verbs for upsert (create/update by remoteId) and delete
+  - Request structure: text body (normalized/optionally chunked) and metadata (content_id, title, URL, category, language, modified)
+  - Headers/authentication; timeouts; error parsing
+  - Response handling and retry policies
+
+B. Configure Scheduler in Joomla
+- Create and enable tasks:
+  - aichatbot.queue: every 2–5 minutes
+  - aichatbot.reconcile: nightly (and run once for initial seed)
+- Ensure task plugin enabled (optionally auto-enable via package script)
+
+C. Retrieval path for the module (decision required)
+- Option 1: Keep current inline context (existing helper builds <kb> from Joomla DB)
+- Option 2 (recommended): Switch to retrieval from IONOS document collection
+  - Update helper.php askAjax flow to call retrieval and include only top-k chunks in <kb>
+  - If no chunks or below threshold: reply “I don’t know based on the provided dataset.”
+  - Add params: top_k, score_threshold, retrieval filters; optionally reuse collection_id
+
+D. Verify Joomla 5 service provider loading
+- Confirm plugins load; adjust services/provider.php registration strings to match class namespaces if needed
+
+E. End-to-end validation
+- Install package; confirm DB tables created and plugins enabled
+- Change content; verify jobs enqueued
+- Run queue task; verify mapping updates and jobs done
+- Run reconcile; verify seeding and drift repair
+- If adopting retrieval, test helper.php query path with retrieval
+
+3) What should be done (recommended enhancements)
+A. Chunking and metadata (ingestion quality)
+- Chunk size: 500–800 tokens with 100–150 overlap
+- Multiple chunks per article (remote ID per chunk if provider requires), with metadata:
+  - content_id, title, URL, category id/name, language, modified date
+- Mapping strategy:
+  - One row per article (and let API manage chunks), or
+  - Add a #__aichatbot_doc_chunks table to track per-chunk remote IDs
+
+B. Retrieval tuning
+- top_k: 6–10
+- score_threshold: 0.2–0.4 (depends on embeddings)
+- Metadata filters: category, language, state
+- Optional reranker on top 50–200 candidates -> best 6–10
+
+C. Robustness and rate limiting
+- Exponential backoff on API errors; cap attempts (e.g., 5)
+- Circuit breaker on repeated failures; defer remaining jobs
+- Coalesce duplicate jobs by (content_id, action)
+- Continue past partial failures and log last_error
+
+D. Admin and observability
+- CLI or admin view to:
+  - Inspect mapping rows, queue, errors
+  - Trigger on-demand reconcile
+- Logging of successes/failures; optionally record token usage
+
+E. Security and config
+- Store ionos_token securely; avoid logging secrets
+- Validate collection_id/endpoint
+- Optionally centralize creds in a component if shared across extensions
+
+F. Content plugin improvements
+- Category scope check on enqueue to avoid irrelevant jobs
+- Concurrency guards to avoid duplicate enqueues under load
+
+G. Module helper fallback
+- If retrieval fails, embed live article content inline (for that request only) and enqueue a retry ingestion job; keep strict mode
+
+4) Operational guidance
+Rollout plan
+- Stage environment: configure plugin params and categories
+- Run reconcile once to seed collection
+- Enable queue task; observe for 24h
+- If adopting retrieval: switch module to retrieval mode and test queries
+
+Runbooks
+- Recovery: requeue failed jobs (status=error and attempts<max); run queue task
+- Drift: run reconcile manually
+- Rotate credentials: update plugin params; verify by upserting a small batch
+
+Monitoring
+- Track queued jobs, error rate, time to sync, retrieval hit rate, and token spend if available
+
+5) Decision points for you
+- Retrieval now or later? (Module keeps inline context vs move to document-collection retrieval)
+- Chunking ID strategy (per-article vs per-chunk IDs)
+- Initial top_k and score_threshold values
+- Whether to add a package installer script to auto-enable plugins and create Scheduler tasks
+
+6) Minimal checklist to go live
+- Implement apiUpsert/apiDelete with proper error handling
+- Configure and enable Scheduler tasks
+- Decide module retrieval strategy and implement it
+- Validate end-to-end on staging (ingestion + query)
+- Document setup and runbooks
+
+7) Ready-to-use prompts to continue work
+- “Implement the IONOS document upsert and delete HTTP calls in the scheduler plugin (apiUpsert/apiDelete). Use the plugin params for credentials and collection details. Handle non-2xx responses with retry/backoff.”
+- “Update the module helper to use retrieval from the document collection: add params for top_k and score_threshold, call retrieval, and build <kb> from top-k chunks only.”
+- “Add chunking to ingestion: split article text into ~700 token chunks with 120 token overlap; include metadata (content_id, title, URL, category, language, modified). Decide on per-chunk remote IDs and update mapping accordingly.”
+- “Add a package installer script that enables the plugins post-install and creates Scheduler tasks for aichatbot.queue (every 5 minutes) and aichatbot.reconcile (nightly).”
+- “Add a CLI command to inspect the queue and mapping tables and trigger an on-demand reconcile.”
+- “Harden error handling in queue processing: add exponential backoff, circuit breaker, and job coalescing.”
+- “Extend the content plugin to only enqueue jobs for selected categories and add basic duplicate-enqueue prevention.”
+- “Implement retrieval in helper.php with metadata filters (category, language) and a fallback path that embeds live content if retrieval fails for critical queries.”
+
+Where to find things in this repo
+- Package manifest: package/pkg_bears_aichatbot.xml
+- Module: package/mod_bears_aichatbot/
+- Task plugin: package/plugins/task/aichatbot/
+  - Manifest: aichatbot.xml (includes config + SQL hooks)
+  - Task logic: src/Extension/AichatbotTask.php
+  - Config: forms/config.xml
+  - SQL: sql/install.mysql.utf8.sql, sql/uninstall.mysql.utf8.sql
+- Content plugin: package/plugins/content/aichatbot/
+  - Manifest: aichatbot.xml (includes config)
+  - Logic: src/Plugin/Content/Aichatbot.php
+  - Config: forms/config.xml
+
+Notes
+- Strict dataset-only behavior remains enforced in module helper. If you switch to retrieval, keep strict mode and only include retrieved chunks in <kb>.
+- Ensure service providers load classes correctly in Joomla 5; adjust services/provider.php if class names move.

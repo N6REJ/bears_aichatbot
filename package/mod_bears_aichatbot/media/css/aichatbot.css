@@ -1,0 +1,651 @@
+/* Bears AI Chatbot Styles */
+:root {
+  /* Default values for CSS custom properties - can be overridden via JavaScript */
+  --bears-offset-side: 20px;
+  --bears-offset-bottom: 20px;
+  --bears-open-width: min(400px, 90vw);
+  --bears-open-height: 70vh;
+  
+  /* Template color fallbacks - these will be overridden by template's actual values */
+  /* Bootstrap 5 variables (if template doesn't define them) */
+  --bs-primary: #0d6efd;
+  --bs-primary-text: #fff;
+  --bs-link-color: #0d6efd;
+}
+
+.bears-aichatbot {
+  position: fixed;
+  z-index: 9999;
+}
+
+.bears-aichatbot[data-position="bottom-right"] {
+  right: var(--bears-offset-side, 20px);
+  bottom: var(--bears-offset-bottom, 20px);
+}
+
+.bears-aichatbot[data-position="bottom-left"] {
+  left: var(--bears-offset-side, 20px);
+  bottom: var(--bears-offset-bottom, 20px);
+}
+
+.bears-aichatbot-window {
+  width: min(420px, 90vw);
+  max-height: 70vh; /* container height, messages area flexes inside */
+  display: flex;
+  flex-direction: column;
+  background: #fff;
+  border: 1px solid #ddd;
+  border-radius: 10px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.15);
+  overflow: hidden;
+  /* Performance: Use GPU acceleration for animations */
+  will-change: transform, opacity;
+  /* Smooth transitions when opening/closing */
+  transition: opacity 0.3s ease, transform 0.3s ease;
+  position: relative;
+}
+
+/* Custom resize handle for better visibility */
+.bears-aichatbot--open .bears-aichatbot-window::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  right: 0;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+  background: linear-gradient(135deg, transparent 50%, #d0d7de 50%);
+  border-bottom-right-radius: 10px;
+  opacity: 0.6;
+  transition: opacity 0.2s ease;
+  pointer-events: auto;
+  z-index: 10;
+}
+
+.bears-aichatbot--open .bears-aichatbot-window:hover::after {
+  opacity: 1;
+  background: linear-gradient(135deg, transparent 50%, var(--bs-primary, #4078C0) 50%);
+}
+
+/* Add resize grip lines for better visibility */
+.bears-aichatbot--open .bears-aichatbot-window::before {
+  content: '';
+  position: absolute;
+  bottom: 3px;
+  right: 3px;
+  width: 12px;
+  height: 12px;
+  background-image: 
+    linear-gradient(135deg, transparent 2px, #999 2px, #999 3px, transparent 3px),
+    linear-gradient(135deg, transparent 6px, #999 6px, #999 7px, transparent 7px),
+    linear-gradient(135deg, transparent 10px, #999 10px, #999 11px, transparent 11px);
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 11;
+  transition: opacity 0.2s ease;
+}
+
+.bears-aichatbot--open .bears-aichatbot-window:hover::before {
+  opacity: 0.8;
+}
+
+/* Animate chat window appearance */
+.bears-aichatbot--closed .bears-aichatbot-window {
+  opacity: 0;
+  transform: translateY(20px);
+  pointer-events: none;
+}
+
+.bears-aichatbot--open .bears-aichatbot-window {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.bears-aichatbot-header {
+  /* Use template's primary color or fallback to a neutral blue */
+  background: var(--bs-primary, #4078C0);
+  color: var(--bs-primary-text, #fff);
+  padding: 10px 12px;
+}
+
+.bears-aichatbot-title {
+  font-weight: 600;
+}
+
+.bears-aichatbot-messages {
+  padding: 12px;
+  overflow-y: auto;
+  flex: 1 1 auto; /* expands to fit answers within window */
+  /* Smooth scrolling for better UX */
+  scroll-behavior: smooth;
+  /* Better scrollbar styling for webkit browsers */
+  scrollbar-width: thin;
+  scrollbar-color: #d0d7de transparent;
+}
+
+/* Custom scrollbar for webkit browsers */
+.bears-aichatbot-messages::-webkit-scrollbar {
+  width: 6px;
+}
+
+.bears-aichatbot-messages::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.bears-aichatbot-messages::-webkit-scrollbar-thumb {
+  background: #d0d7de;
+  border-radius: 3px;
+}
+
+.bears-aichatbot-messages::-webkit-scrollbar-thumb:hover {
+  background: #a0a7ae;
+}
+
+.message {
+  display: flex;
+  margin-bottom: 10px;
+  /* Animate message appearance */
+  animation: bears-message-appear 0.3s ease-out;
+}
+
+@keyframes bears-message-appear {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+.message.user { justify-content: flex-end; }
+.message.bot { justify-content: flex-start; }
+
+.bubble {
+  max-width: 85%;
+  padding: 10px 12px;
+  border-radius: 14px;
+  line-height: 1.4;
+  word-wrap: break-word;
+  white-space: normal; /* avoid extra gaps around block elements in bot messages */
+}
+/* Preserve user-entered line breaks only for user messages */
+.message.user .bubble { white-space: pre-wrap; }
+.message.bot .bubble { white-space: normal; max-width: 100%; }
+
+/* Tighter default spacing for formatted content */
+.bears-aichatbot .bubble p { margin: 0.35em 0; }
+.bears-aichatbot .bubble ul,
+.bears-aichatbot .bubble ol {
+  padding-left: 0.5em;
+}
+/* Continuous numbering across separate step lists using a shared counter */
+.bears-aichatbot .bubble { counter-reset: bears-step; }
+/* Only affect top-level ordered lists in the bubble */
+.bears-aichatbot .bubble > ol { list-style: none; padding-left: 1.6em; margin: 0.25em 0 0.35em; }
+.bears-aichatbot .bubble > ol > li { position: relative; margin: 0.25em 0; }
+.bears-aichatbot .bubble > ol > li::before {
+  content: counter(bears-step) '. ';
+  counter-increment: bears-step;
+  position: absolute;
+  left: -1.6em;
+}
+.bears-aichatbot .bubble pre { margin: 0.25em 0; }
+.message.user .bubble {
+  /* Use template's primary color for user messages */
+  background: var(--bs-primary, #4078C0);
+  color: var(--bs-primary-text, #fff);
+  border-bottom-right-radius: 4px;
+}
+.message.bot .bubble {
+  background: #f2f5f8;
+  border-radius: 4px;
+}
+
+.bears-aichatbot-input {
+  border-top: 1px solid #eee;
+  padding: 10px;
+  display: flex;
+  gap: 8px;
+}
+
+.bears-aichatbot-text {
+  flex: 1;
+  padding: 8px 10px;
+  border: 1px solid #ccc;
+  border-radius: 8px;
+  transition: border-color 0.2s ease;
+  resize: none; /* Prevent manual resizing */
+  font-family: inherit; /* Use template's font */
+}
+
+.bears-aichatbot-text:focus {
+  outline: none;
+  border-color: var(--bs-primary, #0d6efd);
+  box-shadow: 0 0 0 0.2rem rgba(13, 110, 253, 0.25);
+}
+
+/* Auto-resize textarea based on content */
+.bears-aichatbot-text {
+  min-height: 38px;
+  max-height: 120px;
+  overflow-y: auto;
+}
+
+/* Send button loading state */
+.bears-aichatbot-send {
+  position: relative;
+  min-width: 80px;
+  overflow: hidden;
+  transition: opacity 0.2s ease, transform 0.1s ease;
+}
+
+.bears-aichatbot-send:active:not(:disabled) {
+  transform: scale(0.95);
+}
+
+.bears-aichatbot-send:disabled { 
+  opacity: 0.9; 
+  cursor: not-allowed; 
+}
+
+/* Loading animation for send button */
+.bears-aichatbot-send.loading::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: -100%;
+  width: 100%;
+  height: 100%;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(255, 255, 255, 0.3),
+    transparent
+  );
+  animation: bears-loading-sweep 1.5s infinite;
+}
+
+@keyframes bears-loading-sweep {
+  0% { left: -100%; }
+  100% { left: 100%; }
+}
+
+/* Thinking indicator in messages */
+.bears-thinking-indicator {
+  display: flex;
+  align-items: center;
+  padding: 12px;
+  background: #f2f5f8;
+  border-radius: 14px;
+  margin: 10px 0;
+  max-width: 200px;
+  animation: bears-message-appear 0.3s ease-out;
+}
+
+.bears-thinking-text {
+  margin-right: 10px;
+  color: var(--bs-primary, #4078C0);
+  font-weight: 500;
+  animation: bears-typing 0.8s infinite alternate;
+}
+
+/* Animated dots */
+.bears-thinking-dots {
+  display: flex;
+  gap: 4px;
+}
+
+.bears-thinking-dots span {
+  width: 8px;
+  height: 8px;
+  background: var(--bs-primary, #4078C0);
+  border-radius: 50%;
+  animation: bears-dot-pulse 1.4s infinite ease-in-out;
+}
+
+.bears-thinking-dots span:nth-child(1) {
+  animation-delay: -0.32s;
+}
+
+.bears-thinking-dots span:nth-child(2) {
+  animation-delay: -0.16s;
+}
+
+.bears-thinking-dots span:nth-child(3) {
+  animation-delay: 0s;
+}
+
+@keyframes bears-dot-pulse {
+  0%, 80%, 100% {
+    transform: scale(0.8);
+    opacity: 0.5;
+  }
+  40% {
+    transform: scale(1.2);
+    opacity: 1;
+  }
+}
+
+/* Typing animation for the thinking text */
+@keyframes bears-typing {
+  from { opacity: 0.6; }
+  to { opacity: 1; }
+}
+
+/* Extended Markdown formatting */
+/* Headings - minimal overrides, mostly inherit from template */
+.bears-aichatbot .bubble h1,
+.bears-aichatbot .bubble h2,
+.bears-aichatbot .bubble h3,
+.bears-aichatbot .bubble h4,
+.bears-aichatbot .bubble h5,
+.bears-aichatbot .bubble h6 {
+    /* Only adjust margins for chat bubble context */
+    margin-top: 0.5em;
+    margin-bottom: 0.35em;
+    /* Everything else (font-size, font-weight, line-height, color) inherits from template */
+}
+
+/* Blockquotes */
+.bears-aichatbot .bubble blockquote {
+    margin: 0.5em 0;
+    padding: 0.5em 1em;
+    border-left: 3px solid #d0d7de;
+    color: #656d76;
+    background: #f6f8fa;
+}
+
+/* Horizontal rules */
+.bears-aichatbot .bubble hr {
+    margin: 1em 0;
+    border: none;
+    border-top: 1px solid #d0d7de;
+}
+
+/* Emphasis */
+.bears-aichatbot .bubble strong {
+    font-weight: 600;
+}
+
+.bears-aichatbot .bubble em {
+    font-style: italic;
+}
+
+.bears-aichatbot .bubble del {
+    text-decoration: line-through;
+    opacity: 0.7;
+}
+
+/* Images */
+.bears-aichatbot .bubble img {
+    max-width: 100%;
+    height: auto;
+    display: block;
+    margin: 0.5em 0;
+}
+
+/* Links */
+.bears-aichatbot .bubble a {
+    /* Use template's link color or fallback */
+    color: var(--bs-link-color, #0b74de);
+    text-decoration: underline;
+    word-break: break-all;
+}
+
+/* Code blocks */
+.bears-aichatbot .bubble pre {
+    background: #f6f8fa;
+    padding: 8px;
+    border-radius: 6px;
+    overflow: auto;
+}
+
+/* Inline code */
+.bears-aichatbot .bubble code {
+    background: #f2f4f7;
+    padding: 2px 4px;
+    border-radius: 4px;
+    font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+}
+
+/* Lists */
+.bears-aichatbot .bubble li {
+    margin: 0.25em 0;
+}
+
+/* Accessibility improvements */
+.bears-aichatbot-toggle:focus,
+.bears-aichatbot-close:focus,
+.bears-aichatbot-send:focus {
+  outline: 2px solid var(--bs-primary, #0d6efd);
+  outline-offset: 2px;
+}
+
+/* Error state for messages */
+.message.error .bubble {
+  background: #fee;
+  border: 1px solid #fcc;
+  color: #c00;
+}
+
+/* Copy button for code blocks */
+.bears-aichatbot .bubble pre {
+  position: relative;
+}
+
+.bears-aichatbot .bubble pre:hover .bears-copy-btn {
+  opacity: 1;
+}
+
+.bears-copy-btn {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  padding: 4px 8px;
+  background: #fff;
+  border: 1px solid #d0d7de;
+  border-radius: 4px;
+  font-size: 12px;
+  cursor: pointer;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.bears-copy-btn:hover {
+  background: #f0f0f0;
+}
+
+.bears-copy-btn.copied {
+  background: #28a745;
+  color: #fff;
+  border-color: #28a745;
+}
+
+/* Mobile optimizations */
+@media (max-width: 480px) {
+  .bears-aichatbot-window {
+    width: 100vw;
+    max-height: 100vh;
+    border-radius: 0;
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+  
+  .bears-aichatbot--open {
+    position: fixed;
+    top: 0;
+    left: 0;
+    right: 0;
+    bottom: 0;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+  .bears-aichatbot-window,
+  .message,
+  .bears-thinking-indicator,
+  .bears-aichatbot-send,
+  .bears-aichatbot-text {
+    animation: none !important;
+    transition: none !important;
+  }
+  
+  .bears-aichatbot-messages {
+    scroll-behavior: auto;
+  }
+}
+
+/* High contrast mode support - using more compatible syntax */
+@media screen and (-ms-high-contrast: active), screen and (-ms-high-contrast: black-on-white), screen and (-ms-high-contrast: white-on-black) {
+  .bears-aichatbot-window {
+    border: 2px solid;
+  }
+  
+  .bubble {
+    border: 1px solid;
+  }
+}
+
+/* Modern high contrast support for newer browsers */
+@supports (prefers-contrast: high) {
+  @media (prefers-contrast: high) {
+    .bears-aichatbot-window {
+      border: 2px solid;
+    }
+    
+    .bubble {
+      border: 1px solid;
+    }
+  }
+}
+
+/* Dark mode styles - only apply when explicitly enabled */
+.bears-dark-mode .bears-aichatbot-window {
+  background: #1a1a1a;
+  border-color: #333;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-aichatbot-header {
+  background: #2a5599;
+  color: #fff;
+}
+
+.bears-dark-mode .bears-aichatbot-messages {
+  scrollbar-color: #555 #1a1a1a;
+}
+
+.bears-dark-mode .bears-aichatbot-messages::-webkit-scrollbar-thumb {
+  background: #555;
+}
+
+.bears-dark-mode .bears-aichatbot-messages::-webkit-scrollbar-thumb:hover {
+  background: #666;
+}
+
+.bears-dark-mode .message.bot .bubble {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .message.user .bubble {
+  background: #2a5599;
+  color: #fff;
+}
+
+.bears-dark-mode .bears-aichatbot-input {
+  border-top-color: #333;
+}
+
+.bears-dark-mode .bears-aichatbot-text {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-aichatbot-text:focus {
+  border-color: #4d94ff;
+  box-shadow: 0 0 0 0.2rem rgba(77, 148, 255, 0.25);
+}
+
+.bears-dark-mode .bears-thinking-indicator {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-thinking-text {
+  color: #4d94ff;
+}
+
+.bears-dark-mode .bears-thinking-dots span {
+  background: #4d94ff;
+}
+
+.bears-dark-mode .bears-aichatbot .bubble blockquote {
+  background: #2a2a2a;
+  border-left-color: #444;
+  color: #b0b0b0;
+}
+
+.bears-dark-mode .bears-aichatbot .bubble hr {
+  border-top-color: #444;
+}
+
+.bears-dark-mode .bears-aichatbot .bubble a {
+  color: #6cb2ff;
+}
+
+.bears-dark-mode .bears-aichatbot .bubble pre {
+  background: #1a1a1a;
+  border: 1px solid #333;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-aichatbot .bubble code {
+  background: #2a2a2a;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-copy-btn {
+  background: #2a2a2a;
+  border-color: #444;
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-copy-btn:hover {
+  background: #333;
+}
+
+.bears-dark-mode .bears-copy-btn.copied {
+  background: #28a745;
+  color: #fff;
+  border-color: #28a745;
+}
+
+.bears-dark-mode .message.error .bubble {
+  background: #3a1a1a;
+  border-color: #633;
+  color: #faa;
+}
+
+/* Dark mode resize handle */
+.bears-dark-mode.bears-aichatbot--open .bears-aichatbot-window::after {
+  background: linear-gradient(135deg, transparent 50%, #555 50%);
+}
+
+.bears-dark-mode.bears-aichatbot--open .bears-aichatbot-window:hover::after {
+  background: linear-gradient(135deg, transparent 50%, #4d94ff 50%);
+}
+
+.bears-dark-mode.bears-aichatbot--open .bears-aichatbot-window::before {
+  background-image: 
+    linear-gradient(135deg, transparent 2px, #aaa 2px, #aaa 3px, transparent 3px),
+    linear-gradient(135deg, transparent 6px, #aaa 6px, #aaa 7px, transparent 7px),
+    linear-gradient(135deg, transparent 10px, #aaa 10px, #aaa 11px, transparent 11px);
+}
