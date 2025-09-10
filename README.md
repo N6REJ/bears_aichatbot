@@ -112,11 +112,9 @@ Normally you don’t need to enter credentials in the Task plugin. It reads the 
 
 ## Document Collections: Auto-Create and Retrieval
 
-- First chat request (module): If Collection ID is empty and valid token is set, the module creates a Document Collection via IONOS and saves the ID into:
-  - Module params (ionos_collection_id)
-  - Task plugin params (collection_id)
+- First chat request (module): If Collection ID is empty and valid token is set, the module creates a Document Collection via IONOS and stores the new Collection ID in a centralized state table (#__aichatbot_state). It does not mutate module/plugin params at runtime.
 
-- First scheduler run (task plugin): If collection_id is empty and credentials are available (from Module), the task plugin creates the collection and saves the ID.
+- First scheduler run (task plugin): If no Collection ID is present in the state table and credentials are available (from Module), the task plugin creates the collection and saves the ID into the same centralized state table.
 
 - Retrieval: If Collection ID and Token are set, the module will query the collection for top-k snippets that meet the minimum score threshold and include them in <kb> context for the model. If retrieval fails, the module falls back to local knowledge building from selected sources.
 

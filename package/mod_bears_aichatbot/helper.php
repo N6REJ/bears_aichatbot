@@ -48,6 +48,20 @@ class ModBearsAichatbotHelper
         $kbStats = [];
         $context = '';
         $collectionId = trim((string)$params->get('ionos_collection_id', ''));
+        if ($collectionId === '') {
+            // Read from centralized state table
+            try {
+                $db = Factory::getContainer()->get('DatabaseDriver');
+                $q  = $db->getQuery(true)
+                    ->select($db->quoteName('collection_id'))
+                    ->from($db->quoteName('#__aichatbot_state'))
+                    ->where($db->quoteName('id') . ' = 1')
+                    ->setLimit(1);
+                $db->setQuery($q);
+                $cid = (string)($db->loadResult() ?? '');
+                if ($cid !== '') { $collectionId = $cid; }
+            } catch (\Throwable $e) { /* ignore */ }
+        }
         $topK = (int)$params->get('retrieval_top_k', 6);
         $minScore = (float)$params->get('retrieval_min_score', 0.2);
         if ($topK < 1) { $topK = 6; }
@@ -121,50 +135,16 @@ class ModBearsAichatbotHelper
                     $data = json_decode((string)$resp->body, true);
                     $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
                     if ($newId !== '') {
-                        // Persist to the module params (#__modules)
+                        // Persist operational state to centralized table only
                         try {
                             $db = Factory::getContainer()->get('DatabaseDriver');
-                            $q  = $db->getQuery(true)
-                                ->select($db->quoteName('params'))
-                                ->from($db->quoteName('#__modules'))
-                                ->where($db->quoteName('id') . ' = ' . (int) $moduleId)
-                                ->setLimit(1);
-                            $db->setQuery($q);
-                            $rawParams = (string) $db->loadResult();
-                            $reg = new Registry($rawParams);
-                            $reg->set('ionos_collection_id', $newId);
                             $upd = $db->getQuery(true)
-                                ->update($db->quoteName('#__modules'))
-                                ->set($db->quoteName('params') . ' = ' . $db->quote((string)$reg))
-                                ->where($db->quoteName('id') . ' = ' . (int)$moduleId);
+                                ->update($db->quoteName('#__aichatbot_state'))
+                                ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
+                                ->where($db->quoteName('id') . ' = 1');
                             $db->setQuery($upd)->execute();
-                            // update in-memory
-                            $params->set('ionos_collection_id', $newId);
-                        } catch (\Throwable $e) { /* ignore module save error */ }
-
-                        // Persist to the task plugin params (#__extensions)
-                        try {
-                            $db = Factory::getContainer()->get('DatabaseDriver');
-                            $sel = $db->getQuery(true)
-                                ->select($db->quoteName(['extension_id','params']))
-                                ->from($db->quoteName('#__extensions'))
-                                ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-                                ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
-                                ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
-                                ->setLimit(1);
-                            $db->setQuery($sel);
-                            $row = $db->loadAssoc();
-                            if ($row) {
-                                $preg = new Registry((string)($row['params'] ?? ''));
-                                $preg->set('collection_id', $newId);
-                                $upd2 = $db->getQuery(true)
-                                    ->update($db->quoteName('#__extensions'))
-                                    ->set($db->quoteName('params') . ' = ' . $db->quote((string)$preg))
-                                    ->where($db->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
-                                $db->setQuery($upd2)->execute();
-                            }
-                        } catch (\Throwable $e) { /* ignore plugin save error */ }
-
+                        } catch (\Throwable $e) { /* ignore state save error */ }
+                        // Use in this request
                         $collectionId = $newId;
                     }
                 }
@@ -180,35 +160,93 @@ class ModBearsAichatbotHelper
             try {
                 $http = HttpFactory::getHttp();
                 $url = rtrim($apiBase, '/') . '/document-collections/' . rawurlencode($collectionId) . '/query';
-                $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore ];
+                $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore, 'topK' => $topK, 'scoreThreshold' => $minScore ];
                 $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
                 if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
                 $resp = $http->post($url, json_encode($payload), $headers, 30);
                 if ($resp->code >= 200 && $resp->code < 300) {
                     $data = json_decode((string)$resp->body, true);
-                    $chunks = (array)($data['results'] ?? $data['documents'] ?? []);
-                    $parts = [];
-                    $added = 0;
-                    foreach ($chunks as $c) {
-                        $text = (string)($c['text'] ?? ($c['content'] ?? ''));
-                        if ($text === '') continue;
-                        $meta  = (array)($c['metadata'] ?? []);
-                        $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
-                        $label = $source !== '' ? ('Source: ' . $source) : '';
-                        $snippet = mb_substr($text, 0, 1500);
-                        $ctx = ($label !== '' ? ($label . "\n") : '') . $snippet;
-                        $parts[] = $ctx;
-                        $added++;
-                        if ($added >= $topK) break;
-                    }
-                    if (!empty($parts)) {
-                        $docCtx = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
-                        if ($context !== '') {
-                            $context .= "\n\n---\n\n" . $docCtx;
-                        } else {
-                            $context = $docCtx;
+
+                    // Collect possible result arrays from different schemas
+                    $candidates = [];
+                    if (isset($data['results']) && is_array($data['results'])) $candidates = $data['results'];
+                    elseif (isset($data['documents']) && is_array($data['documents'])) $candidates = $data['documents'];
+                    elseif (isset($data['data']) && is_array($data['data'])) $candidates = $data['data'];
+                    elseif (isset($data['hits']) && is_array($data['hits'])) $candidates = $data['hits'];
+                    elseif (isset($data['matches']) && is_array($data['matches'])) $candidates = $data['matches'];
+                    elseif (isset($data['items']) && is_array($data['items'])) $candidates = $data['items'];
+
+                    // Handle vector DB shape: documents (array of strings) + metadatas (array)
+                    if (empty($candidates) && isset($data['documents']) && is_array($data['documents'])) {
+                        $docsArr = $data['documents'];
+                        $metasArr = isset($data['metadatas']) && is_array($data['metadatas']) ? $data['metadatas'] : [];
+                        $scoresArr = isset($data['scores']) && is_array($data['scores']) ? $data['scores'] : [];
+                        $tmp = [];
+                        foreach ($docsArr as $i => $docVal) {
+                            $tmp[] = [
+                                'text' => is_string($docVal) ? $docVal : (string)($docVal['text'] ?? $docVal['content'] ?? ''),
+                                'metadata' => isset($metasArr[$i]) && is_array($metasArr[$i]) ? $metasArr[$i] : [],
+                                'score' => isset($scoresArr[$i]) ? (float)$scoresArr[$i] : null,
+                            ];
                         }
-                        $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added ]);
+                        $candidates = $tmp;
+                    }
+
+                    // Normalize candidates to {text, metadata, score}
+                    $normalized = [];
+                    foreach ((array)$candidates as $c) {
+                        $text = '';
+                        if (is_string($c)) { $text = $c; $meta = []; $score = null; }
+                        else {
+                            $meta = (array)($c['metadata'] ?? $c['meta'] ?? $c['attrs'] ?? ($c['document']['metadata'] ?? []));
+                            $score = $c['score'] ?? $c['similarity'] ?? $c['relevance'] ?? null;
+                            if ($score === null && isset($c['distance'])) {
+                                // Convert distance (0=identical, 1=far) to similarity if plausible
+                                $d = (float)$c['distance'];
+                                if ($d >= 0 && $d <= 1) { $score = 1.0 - $d; }
+                            }
+                            // Extract text from common paths
+                            $text = (string)($c['text']
+                                ?? ($c['content'] ?? null)
+                                ?? ($c['chunk'] ?? null)
+                                ?? ($c['page_content'] ?? null)
+                                ?? ($c['document']['text'] ?? null)
+                                ?? ($c['document']['content'] ?? ''));
+                        }
+                        $text = (string)$text;
+                        if ($text === '') { continue; }
+                        $normalized[] = [ 'text' => $text, 'metadata' => $meta ?? [], 'score' => is_numeric($score) ? (float)$score : null ];
+                    }
+
+                    // Client-side filter/sort according to minScore and topK if score is available
+                    if (!empty($normalized)) {
+                        // Filter by score if present
+                        $hasScores = array_reduce($normalized, function($carry, $it){ return $carry || ($it['score'] !== null); }, false);
+                        if ($hasScores) {
+                            $normalized = array_values(array_filter($normalized, function($it) use ($minScore){ return $it['score'] === null ? true : ($it['score'] >= $minScore); }));
+                            usort($normalized, function($a, $b){ return ($b['score'] <=> $a['score']); });
+                        }
+                        // Trim to topK
+                        if (count($normalized) > $topK) { $normalized = array_slice($normalized, 0, $topK); }
+
+                        $parts = [];
+                        foreach ($normalized as $it) {
+                            $meta = (array)$it['metadata'];
+                            $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
+                            $label = $source !== '' ? ('Source: ' . $source) : '';
+                            $snippet = mb_substr((string)$it['text'], 0, 1500);
+                            $parts[] = ($label !== '' ? ($label . "\n") : '') . $snippet;
+                        }
+                        $added = count($parts);
+                        if (!empty($parts)) {
+                            $docCtx = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
+                            if ($context !== '') {
+                                $context .= "\n\n---\n\n" . $docCtx;
+                            } else {
+                                $context = $docCtx;
+                            }
+                            $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added ]);
+                        }
                     }
                 }
             } catch (\Throwable $e) {

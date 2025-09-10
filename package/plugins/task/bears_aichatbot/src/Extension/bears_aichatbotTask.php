@@ -51,6 +51,8 @@ class AichatbotTask extends CMSPlugin
             $this->loadCredentialsFromModule();
             // Ensure document collection exists before running tasks
             $this->ensureCollectionExists();
+            // Load collection id from centralized state for this run
+            $this->loadCollectionFromState();
 
             if ($name === 'aichatbot.queue') {
                 [$ok, $info] = $this->processQueue();
@@ -118,29 +120,14 @@ class AichatbotTask extends CMSPlugin
             $processed += (int) $ok; $failed += (int) (!$ok);
         }
 
-        // Mark last successful queue run
+        // Mark last successful queue run in centralized state table
         try {
-            $this->params->set('last_run_queue', $startedAt);
-            // Persist to extensions table
             $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
-            $sel = $dbExt->getQuery(true)
-                ->select($dbExt->quoteName(['extension_id','params']))
-                ->from($dbExt->quoteName('#__extensions'))
-                ->where($dbExt->quoteName('type') . ' = ' . $dbExt->quote('plugin'))
-                ->where($dbExt->quoteName('element') . ' = ' . $dbExt->quote('bears_aichatbot'))
-                ->where($dbExt->quoteName('folder') . ' = ' . $dbExt->quote('task'))
-                ->setLimit(1);
-            $dbExt->setQuery($sel);
-            $row = $dbExt->loadAssoc();
-            if ($row) {
-                $reg = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
-                $reg->set('last_run_queue', $startedAt);
-                $upd = $dbExt->getQuery(true)
-                    ->update($dbExt->quoteName('#__extensions'))
-                    ->set($dbExt->quoteName('params') . ' = ' . $dbExt->quote((string)$reg))
-                    ->where($dbExt->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
-                $dbExt->setQuery($upd)->execute();
-            }
+            $upd = $dbExt->getQuery(true)
+                ->update($dbExt->quoteName('#__aichatbot_state'))
+                ->set($dbExt->quoteName('last_run_queue') . ' = ' . $dbExt->quote($startedAt))
+                ->where($dbExt->quoteName('id') . ' = 1');
+            $dbExt->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
         return [true, sprintf('Queue processed: %d ok, %d failed', $processed, $failed)];
     }
@@ -189,9 +176,19 @@ class AichatbotTask extends CMSPlugin
         if (empty($allCatIds)) { $allCatIds = $catIds; }
 
         // Determine incremental window
-        $lastRun = trim((string)$this->params->get('last_run_reconcile', ''));
+        // Load last run from centralized state table
+        $lastRun = '';
+        try {
+            $qState = $db->getQuery(true)
+                ->select($db->quoteName('last_run_reconcile'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($qState);
+            $lastRun = (string)($db->loadResult() ?? '');
+        } catch (\Throwable $ignore) {}
         if ($lastRun === '') {
-            // Optionally bootstrap from scheduler last_execution for this task type
+            // Bootstrap from scheduler last_execution for this task type if available
             try {
                 $qLast = $db->getQuery(true)
                     ->select($db->quoteName('last_execution'))
@@ -258,28 +255,14 @@ class AichatbotTask extends CMSPlugin
             }
         }
 
-        // Mark last successful reconcile run
+        // Mark last successful reconcile run in centralized state table
         try {
-            $this->params->set('last_run_reconcile', $startedAt);
             $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
-            $sel = $dbExt->getQuery(true)
-                ->select($dbExt->quoteName(['extension_id','params']))
-                ->from($dbExt->quoteName('#__extensions'))
-                ->where($dbExt->quoteName('type') . ' = ' . $dbExt->quote('plugin'))
-                ->where($dbExt->quoteName('element') . ' = ' . $dbExt->quote('bears_aichatbot'))
-                ->where($dbExt->quoteName('folder') . ' = ' . $dbExt->quote('task'))
-                ->setLimit(1);
-            $dbExt->setQuery($sel);
-            $row = $dbExt->loadAssoc();
-            if ($row) {
-                $reg = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
-                $reg->set('last_run_reconcile', $startedAt);
-                $upd = $dbExt->getQuery(true)
-                    ->update($dbExt->quoteName('#__extensions'))
-                    ->set($dbExt->quoteName('params') . ' = ' . $dbExt->quote((string)$reg))
-                    ->where($dbExt->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
-                $dbExt->setQuery($upd)->execute();
-            }
+            $upd = $dbExt->getQuery(true)
+                ->update($dbExt->quoteName('#__aichatbot_state'))
+                ->set($dbExt->quoteName('last_run_reconcile') . ' = ' . $dbExt->quote($startedAt))
+                ->where($dbExt->quoteName('id') . ' = 1');
+            $dbExt->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
         return [true, sprintf('Reconcile: %d upserts, %d deletes', $processed, $deleted)];
     }
@@ -439,14 +422,40 @@ class AichatbotTask extends CMSPlugin
         }
     }
 
+    protected function loadCollectionFromState(): void
+    {
+        try {
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $q = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($q);
+            $cid = (string)($db->loadResult() ?? '');
+            if ($cid !== '') {
+                $this->params->set('collection_id', $cid);
+            }
+        } catch (\Throwable $e) {}
+    }
+
     protected function ensureCollectionExists(): void
     {
         try {
-            $collectionId = trim((string)$this->params->get('collection_id', ''));
+            // Attempt to read existing collection from centralized state
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $qState = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($qState);
+            $existing = (string)($db->loadResult() ?? '');
+
             $token = trim((string)$this->params->get('ionos_token', ''));
             $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
             $base = trim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'));
-            if ($collectionId !== '' || $token === '') {
+            if ($existing !== '' || $token === '') {
                 return;
             }
             if ($base === '') { $base = 'https://api.inference.ionos.com/v1'; }
@@ -465,32 +474,16 @@ class AichatbotTask extends CMSPlugin
                 $data = json_decode((string)$resp->body, true);
                 $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
                 if ($newId !== '') {
-                    // Persist into plugin params in extensions table
-                    $db = Factory::getContainer()->get(DatabaseInterface::class);
-                    $sel = $db->getQuery(true)
-                        ->select($db->quoteName(['extension_id','params']))
-                        ->from($db->quoteName('#__extensions'))
-                        ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-                        ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
-                        ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
-                        ->setLimit(1);
-                    $db->setQuery($sel);
-                    $row = $db->loadAssoc();
-                    if ($row) {
-                        $registry = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
-                        $registry->set('collection_id', $newId);
-                        $upd = $db->getQuery(true)
-                            ->update($db->quoteName('#__extensions'))
-                            ->set($db->quoteName('params') . ' = ' . $db->quote((string)$registry))
-                            ->where($db->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
-                        $db->setQuery($upd)->execute();
-                        // also update in-memory params
-                        $this->params->set('collection_id', $newId);
-                        // Enqueue backend notice for admins
-                        try {
-                            \Joomla\CMS\Factory::getApplication()->enqueueMessage('AI Chatbot: Created IONOS document collection (ID: ' . $newId . ').', 'message');
-                        } catch (\Throwable $ignore) {}
-                    }
+                    // Persist into centralized state table only
+                    $upd = $db->getQuery(true)
+                        ->update($db->quoteName('#__aichatbot_state'))
+                        ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
+                        ->where($db->quoteName('id') . ' = 1');
+                    $db->setQuery($upd)->execute();
+                    // Enqueue backend notice for admins
+                    try {
+                        \Joomla\CMS\Factory::getApplication()->enqueueMessage('AI Chatbot: Created IONOS document collection (ID: ' . $newId . ').', 'message');
+                    } catch (\Throwable $ignore) {}
                 }
             }
         } catch (\Throwable $e) {

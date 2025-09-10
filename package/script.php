@@ -130,30 +130,43 @@ class Pkg_Bears_AichatbotInstallerScript
     protected function ensureDocumentCollection(DatabaseInterface $db): void
     {
         try {
-            // Load task plugin params
-            $q = $db->getQuery(true)
-                ->select($db->quoteName(['extension_id','params']))
-                ->from($db->quoteName('#__extensions'))
-                ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-                ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
-                ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
-                ->setLimit(1);
-            $db->setQuery($q);
-            $ext = $db->loadAssoc();
-            if (!$ext) { return; }
-            $extId = (int) $ext['extension_id'];
-            $paramsRaw = (string) ($ext['params'] ?? '');
-            $params = new \Joomla\Registry\Registry($paramsRaw);
-
-            $token = trim((string) $params->get('ionos_token', ''));
-            $tokenId = trim((string) $params->get('ionos_token_id', ''));
-            $base = trim((string) $params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'));
-            $collectionId = trim((string) $params->get('collection_id', ''));
-            if ($collectionId !== '' || $token === '') {
-                return; // either already set or no credentials yet
+            // Load module or plugin params to get credentials (best-effort)
+            $token = '';
+            $tokenId = '';
+            $base = 'https://api.inference.ionos.com/v1';
+            try {
+                $q = $db->getQuery(true)
+                    ->select($db->quoteName(['params']))
+                    ->from($db->quoteName('#__modules'))
+                    ->where($db->quoteName('module') . ' = ' . $db->quote('mod_bears_aichatbot'))
+                    ->where($db->quoteName('published') . ' = 1')
+                    ->setLimit(1);
+                $db->setQuery($q);
+                $modParams = (string)($db->loadResult() ?? '');
+                if ($modParams !== '') {
+                    $reg = new \Joomla\Registry\Registry($modParams);
+                    $token = trim((string)$reg->get('ionos_token', ''));
+                    $tokenId = trim((string)$reg->get('ionos_token_id', ''));
+                    $chatEndpoint = trim((string)$reg->get('ionos_endpoint', ''));
+                    if ($chatEndpoint !== '') {
+                        $b = preg_replace('#/v1/.*$#', '/v1', $chatEndpoint);
+                        if ($b) { $base = rtrim($b, '/'); }
+                    }
+                }
+            } catch (\Throwable $ignore) {}
+            if ($token === '') {
+                return; // no credentials yet
             }
-            if ($base === '') { $base = 'https://api.inference.ionos.com/v1'; }
-            $base = rtrim($base, '/');
+
+            // avoid duplicate creation if state already has id
+            $qState = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($qState);
+            $existing = (string)($db->loadResult() ?? '');
+            if ($existing !== '') { return; }
 
             // Prepare collection create payload
             $site = \Joomla\CMS\Factory::getApplication()->get('sitename') ?: 'Joomla Site';
@@ -178,12 +191,11 @@ class Pkg_Bears_AichatbotInstallerScript
                 $data = json_decode((string)$resp->body, true);
                 $newId = (string) ($data['id'] ?? $data['collection_id'] ?? '');
                 if ($newId !== '') {
-                    // Save back to plugin params
-                    $params->set('collection_id', $newId);
+                    // Save into centralized state table
                     $upd = $db->getQuery(true)
-                        ->update($db->quoteName('#__extensions'))
-                        ->set($db->quoteName('params') . ' = ' . $db->quote((string)$params))
-                        ->where($db->quoteName('extension_id') . ' = ' . (int)$extId);
+                        ->update($db->quoteName('#__aichatbot_state'))
+                        ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
+                        ->where($db->quoteName('id') . ' = 1');
                     $db->setQuery($upd)->execute();
                 }
             }
