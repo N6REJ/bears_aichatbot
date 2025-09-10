@@ -4,12 +4,14 @@
  * Helper functions
  */
 
-defined('_JEXEC') or die;
-
 use Joomla\CMS\Factory;
 use Joomla\CMS\Helper\ModuleHelper;
 use Joomla\Registry\Registry;
 use Joomla\CMS\Http\HttpFactory;
+
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects
 
 class ModBearsAichatbotHelper
 {

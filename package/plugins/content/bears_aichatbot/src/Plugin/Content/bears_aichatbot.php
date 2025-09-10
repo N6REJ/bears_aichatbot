@@ -3,13 +3,15 @@
  * Joomla 5 Content plugin: Enqueue document collection updates on article changes
  */
 
-defined('_JEXEC') or die;
-
-namespace PlgContentAichatbot\Plugin\Content;
+namespace PlgContentAichatbot\Plugin\Content {
 
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
 use Joomla\Database\DatabaseInterface;
+
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects
 
 class Aichatbot extends CMSPlugin
 {
@@ -194,4 +196,5 @@ class Aichatbot extends CMSPlugin
             ->values(implode(',', [ (int)$contentId, $db->quote($action), $db->quote('queued'), 0 ]));
         $db->setQuery($ins)->execute();
     }
+}
 }

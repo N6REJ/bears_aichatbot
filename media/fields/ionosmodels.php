@@ -3,11 +3,13 @@
  * Custom Joomla Form Field: IONOS Models dropdown
  */
 
-defined('_JEXEC') or die;
-
 use Joomla\CMS\Form\FormField;
 use Joomla\CMS\Http\HttpFactory;
 use Joomla\CMS\Language\Text;
+
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects
 
 class JFormFieldIonosmodels extends FormField
 {

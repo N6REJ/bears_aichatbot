@@ -2,4 +2,6 @@
 /**
  * Entry file for plg_task_aichatbot. Bootstrap is handled via services/provider and namespaced classes.
  */
-defined('_JEXEC') or die;
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects

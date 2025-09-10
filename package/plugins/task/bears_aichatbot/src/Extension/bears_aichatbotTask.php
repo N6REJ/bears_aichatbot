@@ -3,9 +3,7 @@
  * Joomla 5 Task plugin: processes AI Chatbot document collection sync.
  */
 
-defined('_JEXEC') or die;
-
-namespace PlgTaskAichatbot\Extension;
+namespace PlgTaskAichatbot\Extension { 
 
 use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\CMS\Factory;
@@ -16,6 +14,10 @@ use Joomla\CMS\Scheduler\TaskInterface;
 use Joomla\CMS\Scheduler\TaskResult;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Utilities\ArrayHelper;
+
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects
 
 class AichatbotTask extends CMSPlugin
 {
@@ -113,7 +115,7 @@ class AichatbotTask extends CMSPlugin
                 ->update($db->quoteName('#__aichatbot_jobs'))
                 ->set($db->quoteName('attempts') . ' = ' . ((int)$job['attempts'] + 1))
                 ->set($db->quoteName('status')   . ' = ' . $db->quote($ok ? 'done' : 'error'))
-                ->set($db->quoteName('last_error') . ' = ' . $db->quote($ok ? null : mb_substr($err, 0, 500)))
+                ->set($db->quoteName('last_error') . ' = ' . ($ok ? 'NULL' : $db->quote(mb_substr($err, 0, 500))))
                 ->where($db->quoteName('id') . ' = ' . (int)$id);
             $db->setQuery($upd)->execute();
 
@@ -564,4 +566,6 @@ class AichatbotTask extends CMSPlugin
         }
         throw new \RuntimeException('IONOS delete failed: HTTP ' . $resp->code . ' ' . mb_substr((string)$resp->body, 0, 500));
     }
+}
+
 }
