@@ -3,17 +3,17 @@
  * Joomla 5 Task plugin: processes AI Chatbot document collection sync.
  */
 
-namespace PlgTaskBearsAichatbot\Extension { 
+namespace plugins\task\bears_aichatbot\src\Extension {
 
-use Joomla\CMS\Application\CMSApplicationInterface;
-use Joomla\CMS\Factory;
-use Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\CMS\Scheduler\Task\TaskOption;
-use Joomla\CMS\Scheduler\Task\TaskStatus;
-use Joomla\CMS\Scheduler\TaskInterface;
-use Joomla\CMS\Scheduler\TaskResult;
-use Joomla\Database\DatabaseInterface;
-use Joomla\Utilities\ArrayHelper;
+    use Joomla\CMS\Application\CMSApplicationInterface;
+    use Joomla\CMS\Factory;
+    use Joomla\CMS\Plugin\CMSPlugin;
+    use Joomla\CMS\Scheduler\Task\TaskOption;
+    use Joomla\CMS\Scheduler\Task\TaskStatus;
+    use Joomla\CMS\Scheduler\TaskInterface;
+    use Joomla\CMS\Scheduler\TaskResult;
+    use Joomla\Database\DatabaseInterface;
+    use Joomla\Utilities\ArrayHelper;
 
 // phpcs:disable PSR1.Files.SideEffects
 \defined('_JEXEC') or die;
@@ -40,8 +40,8 @@ class BearsAichatbotTask extends CMSPlugin
     public function onRegisterTasks(): array
     {
         return [
-            TaskOption::create('bears_aichatbot.queue', 'Process AI Chatbot job queue', '\\PlgTaskBearsAichatbot\\Extension\\BearsAichatbotTask'),
-            TaskOption::create('bears_aichatbot.reconcile', 'Reconcile AI Chatbot collection', '\\PlgTaskBearsAichatbot\\Extension\\BearsAichatbotTask'),
+            TaskOption::create('bears_aichatbot.queue', 'Process AI Chatbot job queue', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
+            TaskOption::create('bears_aichatbot.reconcile', 'Reconcile AI Chatbot collection', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
         ];
     }
 
