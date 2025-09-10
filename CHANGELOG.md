@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.10.7] - 2025-09-10
+## [2025.09.10.8] - 2025-09-10
 
 ### Added
 
@@ -13,12 +13,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Update version to 2025.09.10.5 [skip ci] ([c92b5d0](https://github.com/N6REJ/bears_aichatbot/commit/c92b5d0))
-* Merge remote-tracking branch 'origin/main' ([2d973bf](https://github.com/N6REJ/bears_aichatbot/commit/2d973bf))
 * Update version to 2025.09.10.6 [skip ci] ([0292ffa](https://github.com/N6REJ/bears_aichatbot/commit/0292ffa))
 * Merge remote-tracking branch 'origin/main' ([5a384ee](https://github.com/N6REJ/bears_aichatbot/commit/5a384ee))
+* Update version to 2025.09.10.7 [skip ci] ([f4303b2](https://github.com/N6REJ/bears_aichatbot/commit/f4303b2))
+* Merge remote-tracking branch 'origin/main' ([81a152f](https://github.com/N6REJ/bears_aichatbot/commit/81a152f))
 
 ### Fixed
 
-* Fix service provider interface import to use correct DI namespace ([92b8d43](https://github.com/N6REJ/bears_aichatbot/commit/92b8d43))
+* Fix plugin registration to use group/element parameters instead of class name ([d56791d](https://github.com/N6REJ/bears_aichatbot/commit/d56791d))
 
