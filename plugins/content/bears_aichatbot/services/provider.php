@@ -20,7 +20,7 @@ return new class implements ServiceProviderInterface {
             throw new \RuntimeException('Joomla Plugin service provider class not found.');
         }
 
-        // Register by group and element (correct signature for Joomla 4.3+/5)
-        $container->registerServiceProvider(new $providerClass('content', 'bears_aichatbot'));
+        // Register by group, element, and plugin root path (per Joomla manual)
+        $container->registerServiceProvider(new $providerClass('content', 'bears_aichatbot', dirname(__DIR__)));
     }
 };
