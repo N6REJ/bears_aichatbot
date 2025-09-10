@@ -232,12 +232,17 @@ class ModBearsAichatbotHelper
                         if (count($normalized) > $topK) { $normalized = array_slice($normalized, 0, $topK); }
 
                         $parts = [];
+                        $retrievedTopScore = null;
                         foreach ($normalized as $it) {
                             $meta = (array)$it['metadata'];
                             $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
                             $label = $source !== '' ? ('Source: ' . $source) : '';
                             $snippet = mb_substr((string)$it['text'], 0, 1500);
                             $parts[] = ($label !== '' ? ($label . "\n") : '') . $snippet;
+                            if (isset($it['score']) && is_numeric($it['score'])) {
+                                $s = (float)$it['score'];
+                                if ($retrievedTopScore === null || $s > $retrievedTopScore) { $retrievedTopScore = $s; }
+                            }
                         }
                         $added = count($parts);
                         if (!empty($parts)) {
@@ -247,7 +252,7 @@ class ModBearsAichatbotHelper
                             } else {
                                 $context = $docCtx;
                             }
-                            $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added ]);
+                            $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added, 'retrieved_top_score' => $retrievedTopScore ]);
                         }
                     }
                 }
@@ -328,7 +333,12 @@ class ModBearsAichatbotHelper
                 'Accept'        => 'application/json',
             ];
 
-            $response = $http->post($url, json_encode($payload), $headers);
+            $requestBody = json_encode($payload);
+            $t0 = microtime(true);
+            $response = $http->post($url, $requestBody, $headers);
+            $durationMs = (int) round((microtime(true) - $t0) * 1000);
+            $reqBytes = strlen($requestBody ?? '');
+            $resBytes = strlen($response->body ?? '');
 
             if ($response->code < 200 || $response->code >= 300) {
                 $respBody = '';
@@ -377,6 +387,37 @@ class ModBearsAichatbotHelper
             }
 
             $answer = trim((string) $body['choices'][0]['message']['content']);
+
+            // Log token usage metrics if available
+            try {
+                $usage = is_array($body['usage'] ?? null) ? $body['usage'] : [];
+                // Detect outcome: answered/refused
+                $ansLower = mb_strtolower($answer);
+                $outcome = (strpos($ansLower, "i don't know based on the provided dataset") !== false) ? 'refused' : 'answered';
+                // If status >= 400 treat as error
+                if ((int)$response->code >= 400) { $outcome = 'error'; }
+
+                $topScore = null;
+                if (isset($kbStats['retrieved_top_score']) && is_numeric($kbStats['retrieved_top_score'])) {
+                    $topScore = (float)$kbStats['retrieved_top_score'];
+                }
+                self::logUsageExtended(
+                    (int)$moduleId,
+                    (string)$model,
+                    (string)$endpoint,
+                    (string)$collectionId,
+                    (string)$message,
+                    (string)$answer,
+                    (array)$usage,
+                    (array)$kbStats,
+                    (int)$response->code,
+                    (int)$durationMs,
+                    (int)$reqBytes,
+                    (int)$resBytes,
+                    (string)$outcome,
+                    $topScore
+                );
+            } catch (\Throwable $ignore) {}
 
             return [
                 'success' => true,
@@ -998,6 +1039,125 @@ class ModBearsAichatbotHelper
             
         } catch (\Throwable $e) {
             return '';
+        }
+    }
+
+    // Extended logging with latency, sizes, outcome and optional retrieved top score
+    protected static function logUsageExtended(int $moduleId, string $model, string $endpoint, string $collectionId, string $message, string $answer, array $usage, array $kbStats, int $statusCode = 0, ?int $durationMs = null, ?int $requestBytes = null, ?int $responseBytes = null, ?string $outcome = null, ?float $retrievedTopScore = null): void
+    {
+        try {
+            $db = Factory::getContainer()->get('DatabaseDriver');
+
+            // Ensure table exists
+            $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_usage` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `module_id` INT DEFAULT NULL,
+  `collection_id` VARCHAR(191) DEFAULT NULL,
+  `model` VARCHAR(191) DEFAULT NULL,
+  `endpoint` VARCHAR(255) DEFAULT NULL,
+  `prompt_tokens` INT DEFAULT 0,
+  `completion_tokens` INT DEFAULT 0,
+  `total_tokens` INT DEFAULT 0,
+  `retrieved` INT DEFAULT NULL,
+  `article_count` INT DEFAULT 0,
+  `kunena_count` INT DEFAULT 0,
+  `url_count` INT DEFAULT 0,
+  `message_len` INT DEFAULT 0,
+  `answer_len` INT DEFAULT 0,
+  `status_code` INT DEFAULT NULL,
+  `price_prompt` DECIMAL(10,6) DEFAULT NULL,
+  `price_completion` DECIMAL(10,6) DEFAULT NULL,
+  `currency` VARCHAR(8) DEFAULT NULL,
+  `estimated_cost` DECIMAL(12,6) DEFAULT 0,
+  PRIMARY KEY (`id`),
+  KEY `idx_created_at` (`created_at`),
+  KEY `idx_module_id` (`module_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+            $db->setQuery($ddl)->execute();
+
+            $prompt = (int)($usage['prompt_tokens'] ?? $usage['promptTokens'] ?? 0);
+            $completion = (int)($usage['completion_tokens'] ?? $usage['completionTokens'] ?? 0);
+            $total = (int)($usage['total_tokens'] ?? $usage['totalTokens'] ?? ($prompt + $completion));
+
+            $retrieved = isset($kbStats['retrieved']) ? (int)$kbStats['retrieved'] : null;
+            $articleCount = (int)($kbStats['article_count'] ?? 0);
+            $kunenaCount = (int)($kbStats['kunena_count'] ?? 0);
+            $urlCount = (int)($kbStats['url_count'] ?? 0);
+
+            $msgLen = mb_strlen($message ?? '', 'UTF-8');
+            $ansLen = mb_strlen($answer ?? '', 'UTF-8');
+
+            // Pricing for IONOS Model Hub "standard" package (per 1K tokens)
+            // Reference: https://cloud.ionos.com/managed/ai-model-hub#prices
+            // Defaults; can be overridden by component params later if needed
+            $pp = 0.0004; // prompt $/1K
+            $pc = 0.0006; // completion $/1K
+            $cur = 'USD';
+            try {
+                // If component params exist, allow override via component configuration later
+                $compParams = \Joomla\CMS\Component\ComponentHelper::getParams('com_bears_aichatbot');
+                $pp = (float)($compParams->get('price_prompt_standard', $pp));
+                $pc = (float)($compParams->get('price_completion_standard', $pc));
+                $cur = (string)($compParams->get('price_currency', $cur));
+            } catch (\Throwable $ignore) {}
+            $est = (($prompt / 1000.0) * $pp) + (($completion / 1000.0) * $pc);
+
+            $q = $db->getQuery(true)
+                ->insert($db->quoteName('#__aichatbot_usage'))
+                ->columns([
+                    $db->quoteName('module_id'),
+                    $db->quoteName('collection_id'),
+                    $db->quoteName('model'),
+                    $db->quoteName('endpoint'),
+                    $db->quoteName('prompt_tokens'),
+                    $db->quoteName('completion_tokens'),
+                    $db->quoteName('total_tokens'),
+                    $db->quoteName('retrieved'),
+                    $db->quoteName('article_count'),
+                    $db->quoteName('kunena_count'),
+                    $db->quoteName('url_count'),
+                    $db->quoteName('message_len'),
+                    $db->quoteName('answer_len'),
+                    $db->quoteName('status_code'),
+                    $db->quoteName('duration_ms'),
+                    $db->quoteName('request_bytes'),
+                    $db->quoteName('response_bytes'),
+                    $db->quoteName('outcome'),
+                    $db->quoteName('retrieved_top_score'),
+                    $db->quoteName('price_prompt'),
+                    $db->quoteName('price_completion'),
+                    $db->quoteName('currency'),
+                    $db->quoteName('estimated_cost'),
+                ])
+                ->values(implode(',', [
+                    (int)$moduleId,
+                    $db->quote($collectionId !== '' ? $collectionId : null),
+                    $db->quote($model),
+                    $db->quote($endpoint),
+                    (int)$prompt,
+                    (int)$completion,
+                    (int)$total,
+                    $retrieved === null ? 'NULL' : (string)(int)$retrieved,
+                    (int)$articleCount,
+                    (int)$kunenaCount,
+                    (int)$urlCount,
+                    (int)$msgLen,
+                    (int)$ansLen,
+                    (int)$statusCode,
+                    $durationMs === null ? 'NULL' : (string)(int)$durationMs,
+                    $requestBytes === null ? 'NULL' : (string)(int)$requestBytes,
+                    $responseBytes === null ? 'NULL' : (string)(int)$responseBytes,
+                    $outcome === null ? 'NULL' : $db->quote($outcome),
+                    $retrievedTopScore === null ? 'NULL' : (string)number_format($retrievedTopScore,4,'.',''),
+                    (string)$pp,
+                    (string)$pc,
+                    $db->quote($cur),
+                    (string)$est,
+                ]));
+            $db->setQuery($q)->execute();
+        } catch (\Throwable $e) {
+            // swallow logging errors
         }
     }
 }

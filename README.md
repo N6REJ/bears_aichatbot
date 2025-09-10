@@ -1,188 +1,202 @@
 # Bears AI Chatbot for Joomla 5
 
-An AI knowledgebase chatbot module for Joomla 5 with optional Retrieval-Augmented Generation (RAG) backed by the IONOS AI Model Hub Document Collections. The package includes:
+An AI knowledgebase chatbot solution for Joomla 5 with Retrieval-Augmented Generation (RAG) powered by IONOS AI Model Hub Document Collections, plus an Administrator Component for analytics, cost tracking, and collection operations.
 
+Package contents
 - Site module: mod_bears_aichatbot (frontend chat UI and chat flow)
-- Task Scheduler plugin: plg_task_bears_aichatbot (ingestion queue and reconcile jobs)
-- Content plugin: plg_content_bears_aichatbot (enqueues ingestion jobs upon content changes)
+- Task plugin: plg_task_bears_aichatbot (ingestion queue and reconcile jobs)
+- Content plugin: plg_content_bears_aichatbot (enqueues ingestion jobs on content changes)
+- Admin component: com_bears_aichatbot (dashboard, usage analytics, cost tracking, collection tools)
 
-This README consolidates the upstream module README and the recent enhancements in this repository.
 
-
-## Features
-
-- OpenAI-compatible Chat Completions via IONOS AI Model Hub
-- Optional RAG via IONOS Document Collections:
+Features
+- Chat (OpenAI-compatible) via IONOS AI Model Hub
+- Optional RAG via IONOS Document Collections
   - Auto-create collection on first use
-  - Background ingestion of Joomla Articles (and Kunena forum posts optionally)
-  - Retrieval settings (Top-K, minimum score)
-- Strict dataset-only answering (won’t hallucinate or invent links)
-- Sitemap context support:
-  - Prefer an external HTML/XML sitemap URL (e.g., OSMap)
-  - Fallback to menu-based sitemap when no valid external sitemap is provided
-- Automatic Joomla Scheduler integration:
-  - Reconcile task daily at midnight
-  - Queue processor task (manual by default)
-- Centralized IONOS credentials: set Token and Token ID in the Module; the Task plugin reads them at runtime
+  - Background ingestion of Joomla Articles (and optional Kunena forum posts)
+  - Retrieval controls: top_k and min score
+- Strict dataset-only answering mode
+- Sitemap context support (external HTML/XML sitemap preferred, menu-based fallback)
+- Automatic Scheduler integration (reconcile and queue tasks)
+- Centralized IONOS credential source (module)
+- Administrator analytics (new)
+  - Requests, errors, token usage, spend, and KPIs
+  - Charts: tokens over time, requests/errors, spend (USD), latency, token histogram, outcomes (answered/refused/error), collection size history
+  - Collection Info (metadata fetched from IONOS Document Collections API)
+  - Rebuild Document Collection tool with confirmation prompt
+  - CSV export (filters respected)
 
 
-## Requirements
-
+Requirements
 - Joomla 5.x
 - PHP 8.1+
 - IONOS AI Model Hub account and API token
-- Optional: Kunena forum if you want forum posts included in the knowledge base
+- Optional: Kunena forum if you want forum posts included
 
 
-## What’s in the package
-
-- package/mod_bears_aichatbot: Site module (UI and chat logic)
-- package/plugins/task/bears_aichatbot: Task plugin (ingestion + reconcile)
-- package/plugins/content/bears_aichatbot: Content plugin (enqueue jobs on article changes)
-- package/script.php: Installer script to auto-enable plugins and create Scheduler tasks
-- docs/: Additional implementation notes
-
-
-## Installation
-
-1. Build or download the package (pkg_bears_aichatbot). Install via Joomla Extensions Installer.
-2. The installer will:
-   - Enable both Task and Content plugins
-   - Create Scheduler tasks:
-     - "AI Chatbot: Reconcile collection (daily)" with cron 0 0 * * *
-     - "AI Chatbot: Process queue (manual)"
-3. Publish a module instance of "Bears AI Chatbot" (mod_bears_aichatbot) to a site position.
+What’s in the package and where
+- modules/mod_bears_aichatbot: Site module (UI and chat logic)
+- plugins/task/bears_aichatbot: Task plugin (ingestion + reconcile)
+- plugins/content/bears_aichatbot: Content plugin (enqueue jobs on article changes)
+- administrator/components/com_bears_aichatbot (packaged folder name: com_bears_aichatbot): Admin component
+- script.php: Package installer script (enables plugins, registers scheduler tasks)
+- docs/: Additional notes
 
 
-## Configuration (Module)
+Installation
+1) Install the package (pkg_bears_aichatbot) via Joomla Extensions Installer.
+2) Installer actions:
+   - Enables the Task and Content plugins
+   - Creates Scheduler tasks (if missing):
+     - Reconcile (daily at midnight)
+     - Queue processor (manual; you can enable/schedule it)
+3) Publish a "Bears AI Chatbot" module instance to a site position and configure it (Token, Model, Endpoint, etc.).
 
-Open the module settings (Extensions -> Modules -> Bears AI Chatbot) and configure:
 
-- Configuration
-  - IONOS Token ID (optional)
-  - IONOS Token (required for chat/RAG)
-  - IONOS Endpoint (chat): e.g. https://openai.inference.de-txl.ionos.com/v1/chat/completions
-  - Model: select from IONOS models (auto-fetched when possible, otherwise a static list)
-  - Collection ID: leave empty to auto-create on first chat request
-  - Retrieval: Top K (default 6)
-  - Retrieval: Min score (default 0.2)
-
-  ### What do Top K and Min score mean?
-  - Top K: When the chatbot queries your Document Collection for relevant passages, it ranks all candidate snippets by similarity to the user’s question and then keeps only the top K highest‑scoring ones. K is simply “how many snippets to include.” Larger K gives the model more context but also uses more tokens; smaller K is cheaper and tighter. Typical values: 4–10. Default here: 6.
-  - Min score: Each candidate snippet has a similarity score between 0.0 and 1.0 (higher is more related). Min score is the cutoff. Any snippet scoring below this threshold is ignored, even if it would have been in the Top K. This helps filter weakly related content. Typical ranges: 0.2–0.4. Default here: 0.2.
-
-  How they work together:
-  - The system first filters out candidates below Min score, then selects up to Top K from what remains.
-  - If not enough candidates pass the threshold, fewer than K snippets may be used (or none). In strict mode, if nothing relevant is found, the bot will answer: “I don't know based on the provided dataset.”
-
-  Tuning tips:
-  - If answers feel too sparse or miss relevant info, try increasing Top K (e.g., 8–10) or lowering Min score slightly (e.g., 0.15–0.2).
-  - If answers seem noisy or off-topic, lower Top K (e.g., 4–5) and/or raise Min score (e.g., 0.3–0.4) to enforce stricter relevance.
-  - Changes affect token usage: higher Top K increases context size and can increase cost/latency.
-
+Module configuration (frontend chat)
+- IONOS Token ID (optional)
+- IONOS Token (required)
+- IONOS Endpoint (chat): e.g. https://openai.inference.de-txl.ionos.com/v1/chat/completions
+- Model: any supported by your IONOS account
+- Collection ID: leave empty to auto-create
+- Retrieval
+  - Top K (default 6)
+  - Min score (default 0.2)
 - Knowledge sources
-  - Article Categories: choose content scope
-  - Article limit: default 500
-  - Additional Knowledge URLs: one per line (optional)
-  - Use Kunena Forum as Knowledge Source: Yes/No
-
+  - Article Categories (scope)
+  - Article limit (default 500)
+  - Additional Knowledge URLs (one per line, optional)
+  - Use Kunena forum content: Yes/No
 - Sitemap
   - Include Sitemap: Yes/No
-  - Sitemap URL (optional): If provided, the module will try to fetch and parse it (HTML or XML). If it fails, or if no URL is provided, a menu-based sitemap is used.
+  - Sitemap URL (optional)
+- UI and positioning
+  - Position, width/height, offsets, label, dark mode
 
-- UI/Positioning
-  - Chat Position: bottom-right/left or side positions
-  - Width/Height and offsets
-  - Button label (for side positions)
-  - Dark Mode
-
-Notes:
-- The module enforces strict dataset-only answering. If no relevant knowledge is available from the selected sources and retrieval, it responds: "I don't know based on the provided dataset."
+Notes on retrieval
+- Top K controls the number of highest‑scoring snippets included.
+- Min score filters out weakly related snippets before the top K cut.
+- Strict mode returns "I don't know based on the provided dataset." if nothing relevant exists.
 
 
-## Configuration (Task plugin)
-
-Normally you don’t need to enter credentials in the Task plugin. It reads the token, token ID, and API base from the Module at runtime. The Task plugin parameters still exist for backward compatibility but are optional:
-
-- IONOS API Base URL
-- Collection ID (auto-created on first run if empty and credentials available)
-- Batch size, Max attempts
-- Categories (restrict reconcile scope)
+Task plugin configuration
+- Normally no credentials required; it reads the module configuration at runtime.
+- Parameters remain for compatibility (API base, batch size, max attempts, categories), but can usually be left untouched.
 
 
-## Document Collections: Auto-Create and Retrieval
-
-- First chat request (module): If Collection ID is empty and valid token is set, the module creates a Document Collection via IONOS and stores the new Collection ID in a centralized state table (#__aichatbot_state). It does not mutate module/plugin params at runtime.
-
-- First scheduler run (task plugin): If no Collection ID is present in the state table and credentials are available (from Module), the task plugin creates the collection and saves the ID into the same centralized state table.
-
-- Retrieval: If Collection ID and Token are set, the module will query the collection for top-k snippets that meet the minimum score threshold and include them in <kb> context for the model. If retrieval fails, the module falls back to local knowledge building from selected sources.
-
-
-## Ingestion and Sync
-
-- Content plugin enqueues jobs (upsert/delete) when articles are created/updated/deleted or state changes.
-- Task plugin processes the job queue (aichatbot.queue) and performs reconcile (aichatbot.reconcile):
-  - Upsert changed/new content to the document collection
-  - Delete out-of-scope or unpublished content from the collection
-
-Run the reconcile task after initial configuration to seed the collection quickly.
+Document Collections: create, retrieve, ingest
+- Collection auto-create
+  - Module: on first chat if collection_id empty and token present
+  - Task plugin: on first run if collection_id empty and token present
+  - Persisted to #__aichatbot_state.collection_id (not to module params)
+- Retrieval
+  - Queries /document-collections/{collection_id}/query with top_k and score threshold
+  - Normalizes common result shapes and includes top snippets in <kb> context
 
 
-## Scheduler Tasks
+Ingestion and synchronization
+- Content plugin enqueues upsert/delete jobs on article save/delete/state changes
+- Task plugin
+  - Queue task processes #__aichatbot_jobs
+  - Reconcile task ensures #__aichatbot_docs matches the selected content scope
 
+
+Administrator component (com_bears_aichatbot)
+- Access under Components → Bears AI Chatbot
+- Menu entries (submenu)
+  - Dashboard: charts and KPIs, collection tools
+  - Usage: table of individual usage rows with CSV export
+- Dashboard filters: date range, group by (day/week/month), module_id, model, collection_id
+- KPIs: requests, total tokens, prompt tokens, completion tokens, retrieved snippets, docs in collection, total cost (USD)
+- Charts:
+  - Tokens Over Time (stacked prompt/completion)
+  - Requests and Errors
+  - Spend Over Time (USD)
+  - Latency (Avg/Max)
+  - Token Distribution (histogram)
+  - Outcomes (answered/refused/error)
+  - Collection Size (history)
+- Collection Info
+  - Calls IONOS API: GET /document-collections/{collection_id}
+  - Displays metadata: name, description, created/updated, documentsCount (if available)
+- Rebuild Document Collection
+  - Button with confirmation prompt
+  - Creates a new collection, updates centralized state, clears mapping, enqueues upserts for all published content
+  - Safe: does not delete the old collection; scheduler repopulates the new one from Joomla content
+
+
+Usage logging and analytics
+- The module logs each chat request to #__aichatbot_usage with:
+  - created_at, module_id, collection_id, model, endpoint
+  - prompt_tokens, completion_tokens, total_tokens
+  - retrieved (count of collection snippets), article_count, kunena_count, url_count
+  - message_len, answer_len
+  - status_code
+  - duration_ms (request time), request_bytes, response_bytes
+  - outcome: answered | refused | error
+  - retrieved_top_score (max similarity from retrieval)
+  - price_prompt, price_completion, currency, estimated_cost
+- Cost computation
+  - Defaults to IONOS “standard” package pricing (per 1K tokens):
+    - price_prompt = 0.0004 USD
+    - price_completion = 0.0006 USD
+  - estimated_cost = (prompt/1000)*price_prompt + (completion/1000)*price_completion
+  - Can be overridden via component parameters in the future
+
+
+Database schema
+- #__aichatbot_usage: usage log with metrics and costs
+- #__aichatbot_docs: mapping of Joomla content to remote document IDs with hashes
+- #__aichatbot_jobs: ingestion queue (upsert/delete)
+- #__aichatbot_state: centralized operational state (collection_id, last run timestamps)
+- #__aichatbot_collection_stats: daily snapshot of docs_count for collection size chart
+
+
+Upgrades and data migration
+- Installer (new installs) creates all required tables with latest columns
+- Component upgrades include SQL updates:
+  - 1.0.1: add cost columns and backfill estimated_cost for existing rows using standard pricing
+  - 1.0.2: add latency, payload sizes, outcome, retrieved_top_score and initialize outcome for error rows
+- The module also performs a lazy CREATE TABLE IF NOT EXISTS for #__aichatbot_usage to avoid failures when the admin component isn’t installed yet.
+
+
+Scheduler tasks
 - AI Chatbot: Reconcile collection (daily)
-  - Type: aichatbot.reconcile
-  - Default schedule: daily at 00:00 (cron: 0 0 * * *)
-
+  - Type: aichatbot.reconcile, default cron 0 0 * * *
 - AI Chatbot: Process queue (manual)
-  - Type: aichatbot.queue
-  - Default schedule: manual (you can change to run frequently, e.g., every 5 minutes)
-
-Note on installer updates: When the package installer runs on update, it will create these tasks if missing. If tasks already exist, it will not overwrite your custom title, schedule (execution rules), or enabled/disabled state unless those fields are empty. You can safely adjust schedules in Joomla without them being reset on future updates.
-
-You can adjust schedules in System -> Scheduler -> Tasks.
+  - Type: aichatbot.queue (enable/schedule as desired)
 
 
-## Sitemap Behavior
-
-- If Include Sitemap = Yes and a Sitemap URL is provided, the module attempts to fetch and parse it (supports common HTML and XML sitemap formats, including OSMap). If it fails, it falls back to the menu-based sitemap.
-- If no URL is provided, it uses the menu-based sitemap automatically.
-- The sitemap helps the model produce correct site URLs in answers.
+Sitemap behavior
+- If Include Sitemap = Yes and a Sitemap URL is provided, the module fetches and parses it (HTML/XML). If unavailable, it falls back to menu-based site map.
 
 
-## Security and Credentials
-
-- Store the IONOS token in the Module configuration.
-- The Task plugin reads the credentials from the Module at runtime, centralizing configuration.
-- Token ID is optional; include it only if your IONOS setup requires it.
-
-
-## Troubleshooting
-
-- Missing credentials or model: The chat endpoint returns a clear error if Token or Model is missing.
-- Retrieval returns nothing: Check that the collection is created and ingestion has run. Run the reconcile task to seed the collection.
-- Sitemap empty: Verify the sitemap URL is reachable; otherwise, the module will use the menu-based sitemap.
-- Scheduler not running: Ensure the Joomla Scheduler is enabled and the tasks exist and are enabled. Run tasks manually to test.
+Security
+- Admin-only access to analytics endpoints (core.manage)
+- Rebuild action is CSRF-protected and requires confirmation
+- Credentials are read from the module at runtime by the task plugin
 
 
-## Changelog
-
-See CHANGELOG.md for a high-level list of changes. Notable recent enhancements:
-- Implemented IONOS Document Collections (create/query/upsert/delete)
-- Auto-create collection on first chat or first scheduler run
-- Centralized credentials in Module
-- Installer auto-enables plugins and creates Scheduler tasks
-- Retrieval settings (Top-K, Min score)
-- Improved sitemap handling with external URL preference and safe fallback
+Troubleshooting
+- Missing credentials/model: the chat endpoint returns a clear error
+- Retrieval returns nothing: ensure the collection exists and ingestion has queued/processed; run reconcile
+- Empty sitemap: validate the sitemap URL; a menu-based fallback is used
+- Scheduler inactive: enable Joomla Scheduler and tasks; try manual run to test
 
 
-## License
+Changelog
+See CHANGELOG.md for the detailed list of changes. Notable recent additions:
+- Admin component with analytics and cost tracking
+- Spend and latency charts; outcome and histogram analytics
+- Collection Info (metadata) and Collection Size history
+- Rebuild Document Collection tool with confirmation
+- Logging of extended metrics and cost estimation
 
+
+License
 GPLv3 or later. See LICENSE.
 
 
-## Credits
-
+Credits
 - Original module by N6REJ
-- Enhancements and packaging for Joomla 5 with IONOS RAG integration
+- Enhancements for Joomla 5 and IONOS RAG integration with analytics

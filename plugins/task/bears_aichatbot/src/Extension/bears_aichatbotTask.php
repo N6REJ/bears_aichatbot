@@ -131,6 +131,10 @@ class BearsAichatbotTask extends CMSPlugin
                 ->where($dbExt->quoteName('id') . ' = 1');
             $dbExt->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
+
+        // Upsert a daily snapshot of current docs_count
+        $this->snapshotCollectionCount();
+
         return [true, sprintf('Queue processed: %d ok, %d failed', $processed, $failed)];
     }
 
@@ -266,6 +270,10 @@ class BearsAichatbotTask extends CMSPlugin
                 ->where($dbExt->quoteName('id') . ' = 1');
             $dbExt->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
+
+        // Upsert a daily snapshot of current docs_count
+        $this->snapshotCollectionCount();
+
         return [true, sprintf('Reconcile: %d upserts, %d deletes', $processed, $deleted)];
     }
 
@@ -565,6 +573,48 @@ class BearsAichatbotTask extends CMSPlugin
             return true;
         }
         throw new \RuntimeException('IONOS delete failed: HTTP ' . $resp->code . ' ' . mb_substr((string)$resp->body, 0, 500));
+    }
+    protected function snapshotCollectionCount(): void
+    {
+        try {
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            $today = (new \DateTimeImmutable('today'))->format('Y-m-d');
+            $qCount = $db->getQuery(true)
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__aichatbot_docs'));
+            $db->setQuery($qCount);
+            $count = (int)$db->loadResult();
+
+            $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_collection_stats` (
+  `stat_date` DATE NOT NULL,
+  `docs_count` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`stat_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+            $db->setQuery($ddl)->execute();
+
+            $q = $db->getQuery(true)
+                ->insert($db->quoteName('#__aichatbot_collection_stats'))
+                ->columns([$db->quoteName('stat_date'), $db->quoteName('docs_count')])
+                ->values($db->quote($today) . ',' . (int)$count)
+                ->onDuplicate($db->quoteName('docs_count') . ' = VALUES(' . $db->quoteName('docs_count') . ')');
+            // If onDuplicate is unavailable, fallback to update
+            try {
+                $db->setQuery($q)->execute();
+            } catch (\Throwable $e) {
+                $upd = $db->getQuery(true)
+                    ->update($db->quoteName('#__aichatbot_collection_stats'))
+                    ->set($db->quoteName('docs_count') . ' = ' . (int)$count)
+                    ->where($db->quoteName('stat_date') . ' = ' . $db->quote($today));
+                $db->setQuery($upd)->execute();
+                if ($db->getAffectedRows() === 0) {
+                    $ins = $db->getQuery(true)
+                        ->insert($db->quoteName('#__aichatbot_collection_stats'))
+                        ->columns([$db->quoteName('stat_date'), $db->quoteName('docs_count')])
+                        ->values($db->quote($today) . ',' . (int)$count);
+                    $db->setQuery($ins)->execute();
+                }
+            }
+        } catch (\Throwable $ignore) {}
     }
 }
 
