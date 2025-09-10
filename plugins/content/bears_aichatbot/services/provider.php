@@ -11,6 +11,7 @@ use Joomla\DI\Container;
 return new class implements ServiceProviderInterface {
     public function register(Container $container): void
     {
-        $container->registerServiceProvider(new PluginProvider('\\PlgContentBearsAichatbot'));
+        // Fully-qualified class per Joomla 5 PSR-4 autoloading for plugins
+        $container->registerServiceProvider(new PluginProvider('\\Joomla\\Plugin\\Content\\Bears_aichatbot\\BearsAichatbot'));
     }
 };

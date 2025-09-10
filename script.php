@@ -9,7 +9,14 @@
 use Joomla\CMS\Factory;
 use Joomla\Database\DatabaseInterface;
 
-class pkg_bears_aichatbotInstallerScript
+/**
+ * Primary installer script class keyed to how Joomla may compute the class name
+ * for a package with packagename="pkg_bears_aichatbot".
+ * Many Joomla versions build the class name as: type prefix + '_' + element + 'InstallerScript'
+ * where element for packages equals the <packagename>.
+ * Result => 'pkg_' + 'pkg_bears_aichatbot' + 'InstallerScript'
+ */
+class pkg_pkg_bears_aichatbotInstallerScript
 {
     public function postflight($type, $parent)
     {
@@ -105,4 +112,15 @@ class pkg_bears_aichatbotInstallerScript
             // ignore
         }
     }
+}
+
+// Compatibility shims for other Joomla naming expectations
+if (!class_exists('pkg_bears_aichatbotInstallerScript')) {
+    class pkg_bears_aichatbotInstallerScript extends pkg_pkg_bears_aichatbotInstallerScript {}
+}
+if (!class_exists('Pkg_bears_aichatbotInstallerScript')) {
+    class Pkg_bears_aichatbotInstallerScript extends pkg_pkg_bears_aichatbotInstallerScript {}
+}
+if (!class_exists('Pkg_Bears_AichatbotInstallerScript')) {
+    class Pkg_Bears_AichatbotInstallerScript extends pkg_pkg_bears_aichatbotInstallerScript {}
 }
