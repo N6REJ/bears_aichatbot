@@ -5,7 +5,7 @@
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Extension\Service\Provider\Plugin as PluginProvider;
-use Joomla\CMS\Extension\ServiceProviderInterface;
+use Joomla\DI\ServiceProviderInterface;
 use Joomla\DI\Container;
 
 return new class implements ServiceProviderInterface {
