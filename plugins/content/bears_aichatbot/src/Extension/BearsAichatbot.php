@@ -3,7 +3,7 @@
  * Joomla 5 Content plugin: Enqueue document collection updates on article changes
  */
 
-namespace Joomla\Plugin\Content\Bears_aichatbot;
+namespace Joomla\Plugin\Content\BearsAichatbot\Extension;
 
 use Joomla\CMS\Factory;
 use Joomla\CMS\Plugin\CMSPlugin;
