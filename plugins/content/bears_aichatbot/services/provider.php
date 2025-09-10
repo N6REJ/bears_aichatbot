@@ -4,14 +4,22 @@
  */
 \defined('_JEXEC') or die;
 
-use Joomla\CMS\Extension\Service\Provider\Plugin as PluginProvider;
 use Joomla\DI\ServiceProviderInterface;
 use Joomla\DI\Container;
 
 return new class implements ServiceProviderInterface {
     public function register(Container $container): void
     {
-        // Fully-qualified class per Joomla 5 PSR-4 autoloading for plugins
-        $container->registerServiceProvider(new PluginProvider('\\Joomla\\Plugin\\Content\\Bears_aichatbot\\BearsAichatbot'));
+        // Support both Joomla 4.3+/5 namespaces for the Plugin provider
+        $providerClass = null;
+        if (class_exists('\\Joomla\\Extension\\Service\\Provider\\Plugin')) {
+            $providerClass = '\\Joomla\\Extension\\Service\\Provider\\Plugin';
+        } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin')) {
+            $providerClass = '\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin';
+        } else {
+            throw new \RuntimeException('Joomla Plugin service provider class not found.');
+        }
+
+        $container->registerServiceProvider(new $providerClass('\\Joomla\\Plugin\\Content\\Bears_aichatbot\\BearsAichatbot'));
     }
 };
