@@ -4,7 +4,7 @@
   <packagename>pkg_bears_aichatbot</packagename>
   <author>N6REJ</author>
   <creationDate>2025 September 10</creationDate>
-  <version>2025.09.10.9</version>
+  <version>2025.09.10.10</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Package containing the Bears AI Chatbot site module and associated plugins (task scheduler and optional content event plugin).</description>
 
