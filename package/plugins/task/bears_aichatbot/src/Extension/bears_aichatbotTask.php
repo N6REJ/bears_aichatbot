@@ -325,19 +325,42 @@ class AichatbotTask extends CMSPlugin
         $ok = $this->apiUpsert($remoteId, $text, [ 'content_id' => $contentId, 'title' => $title ]);
         if (!$ok) { return false; }
 
-        // Update mapping row
+        // Update mapping row (portable upsert without MySQL-specific onDuplicate)
         $now = (new \DateTime())->format('Y-m-d H:i:s');
-        $ins = $db->getQuery(true)
-            ->insert($db->quoteName('#__aichatbot_docs'))
-            ->columns($db->quoteName(['content_id','remote_id','content_hash','last_synced','state']))
-            ->values(implode(',', [ (int)$contentId, $db->quote($remoteId), $db->quote($hash), $db->quote($now), 1 ]))
-            ->onDuplicate(
-                $db->quoteName('remote_id') . ' = VALUES(' . $db->quoteName('remote_id') . '), '
-                . $db->quoteName('content_hash') . ' = VALUES(' . $db->quoteName('content_hash') . '), '
-                . $db->quoteName('last_synced') . ' = VALUES(' . $db->quoteName('last_synced') . '), '
-                . $db->quoteName('state') . ' = VALUES(' . $db->quoteName('state') . ')'
-            );
-        $db->setQuery($ins)->execute();
+        $db->transactionStart();
+        try {
+            // Check if a row already exists for this content_id
+            $chk = $db->getQuery(true)
+                ->select($db->quoteName('content_id'))
+                ->from($db->quoteName('#__aichatbot_docs'))
+                ->where($db->quoteName('content_id') . ' = ' . (int)$contentId)
+                ->setLimit(1);
+            $db->setQuery($chk);
+            $exists = (int) ($db->loadResult() ?? 0) > 0;
+
+            if (!$exists) {
+                // Insert new mapping row
+                $ins = $db->getQuery(true)
+                    ->insert($db->quoteName('#__aichatbot_docs'))
+                    ->columns($db->quoteName(['content_id','remote_id','content_hash','last_synced','state']))
+                    ->values(implode(',', [ (int)$contentId, $db->quote($remoteId), $db->quote($hash), $db->quote($now), 1 ]));
+                $db->setQuery($ins)->execute();
+            } else {
+                // Update existing mapping row
+                $upd = $db->getQuery(true)
+                    ->update($db->quoteName('#__aichatbot_docs'))
+                    ->set($db->quoteName('remote_id') . ' = ' . $db->quote($remoteId))
+                    ->set($db->quoteName('content_hash') . ' = ' . $db->quote($hash))
+                    ->set($db->quoteName('last_synced') . ' = ' . $db->quote($now))
+                    ->set($db->quoteName('state') . ' = 1')
+                    ->where($db->quoteName('content_id') . ' = ' . (int)$contentId);
+                $db->setQuery($upd)->execute();
+            }
+            $db->transactionCommit();
+        } catch (\Throwable $e) {
+            $db->transactionRollback();
+            throw $e;
+        }
         return true;
     }
 

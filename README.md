@@ -141,6 +141,8 @@ Run the reconcile task after initial configuration to seed the collection quickl
   - Type: aichatbot.queue
   - Default schedule: manual (you can change to run frequently, e.g., every 5 minutes)
 
+Note on installer updates: When the package installer runs on update, it will create these tasks if missing. If tasks already exist, it will not overwrite your custom title, schedule (execution rules), or enabled/disabled state unless those fields are empty. You can safely adjust schedules in Joomla without them being reset on future updates.
+
 You can adjust schedules in System -> Scheduler -> Tasks.
 
 

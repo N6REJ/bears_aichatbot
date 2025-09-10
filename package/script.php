@@ -78,26 +78,41 @@ class Pkg_Bears_AichatbotInstallerScript
     {
         // Check existing by type
         $sel = $db->getQuery(true)
-            ->select($db->quoteName(['id','type']))
+            ->select($db->quoteName(['id','title','execution_rules','state']))
             ->from($db->quoteName('#__scheduler_tasks'))
             ->where($db->quoteName('type') . ' = ' . $db->quote($type))
             ->setLimit(1);
         $db->setQuery($sel);
-        $existingId = (int) ($db->loadResult() ?? 0);
-
-        $now = (new DateTime())->format('Y-m-d H:i:s');
+        $row = $db->loadAssoc();
+        $existingId = (int) ($row['id'] ?? 0);
 
         if ($existingId > 0) {
-            // Update title and rules but do not override user customizations too much; only set if empty
-            $upd = $db->getQuery(true)
-                ->update($db->quoteName('#__scheduler_tasks'))
-                ->set($db->quoteName('title') . ' = ' . $db->quote($title))
-                ->set($db->quoteName('execution_rules') . ' = ' . $db->quote($rulesJson))
-                ->set($db->quoteName('state') . ' = ' . (int)$enabled)
-                ->where($db->quoteName('id') . ' = ' . (int)$existingId);
-            $db->setQuery($upd)->execute();
+            // Respect admin customizations: only fill fields that are empty/null
+            $sets = [];
+            $currentTitle = (string)($row['title'] ?? '');
+            $currentRules = (string)($row['execution_rules'] ?? '');
+            $currentState = $row['state'] ?? null; // int or null
+
+            if ($currentTitle === '') {
+                $sets[] = $db->quoteName('title') . ' = ' . $db->quote($title);
+            }
+            if ($currentRules === '' || $currentRules === null) {
+                $sets[] = $db->quoteName('execution_rules') . ' = ' . $db->quote($rulesJson);
+            }
+            // Only set state if it is NULL (not set yet). Do not flip enabled/disabled chosen by admin
+            if ($currentState === null) {
+                $sets[] = $db->quoteName('state') . ' = ' . (int)$enabled;
+            }
+
+            if (!empty($sets)) {
+                $upd = $db->getQuery(true)
+                    ->update($db->quoteName('#__scheduler_tasks'))
+                    ->set(implode(', ', $sets))
+                    ->where($db->quoteName('id') . ' = ' . (int)$existingId);
+                $db->setQuery($upd)->execute();
+            }
         } else {
-            // Insert new task
+            // Insert new task with our defaults
             $ins = $db->getQuery(true)
                 ->insert($db->quoteName('#__scheduler_tasks'))
                 ->columns($db->quoteName(['title','type','execution_rules','state','last_execution']))
