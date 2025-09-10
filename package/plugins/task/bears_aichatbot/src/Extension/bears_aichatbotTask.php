@@ -47,6 +47,11 @@ class AichatbotTask extends CMSPlugin
     {
         $name = $task->getName();
         try {
+            // Load credentials from Module params so admin config lives in one place
+            $this->loadCredentialsFromModule();
+            // Ensure document collection exists before running tasks
+            $this->ensureCollectionExists();
+
             if ($name === 'aichatbot.queue') {
                 [$ok, $info] = $this->processQueue();
                 return new TaskResult($ok ? TaskStatus::OK : TaskStatus::KNOCKOUT, $info);
@@ -67,6 +72,7 @@ class AichatbotTask extends CMSPlugin
      */
     protected function processQueue(): array
     {
+        $startedAt = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $batch = (int) $this->params->get('batch_size', 50);
         $maxAttempts = (int) $this->params->get('max_attempts', 5);
@@ -112,6 +118,30 @@ class AichatbotTask extends CMSPlugin
             $processed += (int) $ok; $failed += (int) (!$ok);
         }
 
+        // Mark last successful queue run
+        try {
+            $this->params->set('last_run_queue', $startedAt);
+            // Persist to extensions table
+            $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
+            $sel = $dbExt->getQuery(true)
+                ->select($dbExt->quoteName(['extension_id','params']))
+                ->from($dbExt->quoteName('#__extensions'))
+                ->where($dbExt->quoteName('type') . ' = ' . $dbExt->quote('plugin'))
+                ->where($dbExt->quoteName('element') . ' = ' . $dbExt->quote('bears_aichatbot'))
+                ->where($dbExt->quoteName('folder') . ' = ' . $dbExt->quote('task'))
+                ->setLimit(1);
+            $dbExt->setQuery($sel);
+            $row = $dbExt->loadAssoc();
+            if ($row) {
+                $reg = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
+                $reg->set('last_run_queue', $startedAt);
+                $upd = $dbExt->getQuery(true)
+                    ->update($dbExt->quoteName('#__extensions'))
+                    ->set($dbExt->quoteName('params') . ' = ' . $dbExt->quote((string)$reg))
+                    ->where($dbExt->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
+                $dbExt->setQuery($upd)->execute();
+            }
+        } catch (\Throwable $ignore) {}
         return [true, sprintf('Queue processed: %d ok, %d failed', $processed, $failed)];
     }
 
@@ -122,6 +152,7 @@ class AichatbotTask extends CMSPlugin
     {
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $processed = 0; $deleted = 0;
+        $startedAt = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
         $catIds = $this->params->get('selected_categories', []);
         if (is_string($catIds)) { $catIds = array_filter(array_map('intval', explode(',', $catIds))); }
@@ -157,13 +188,32 @@ class AichatbotTask extends CMSPlugin
         }
         if (empty($allCatIds)) { $allCatIds = $catIds; }
 
-        // Fetch currently published articles in scope
+        // Determine incremental window
+        $lastRun = trim((string)$this->params->get('last_run_reconcile', ''));
+        if ($lastRun === '') {
+            // Optionally bootstrap from scheduler last_execution for this task type
+            try {
+                $qLast = $db->getQuery(true)
+                    ->select($db->quoteName('last_execution'))
+                    ->from($db->quoteName('#__scheduler_tasks'))
+                    ->where($db->quoteName('type') . ' = ' . $db->quote('aichatbot.reconcile'))
+                    ->setLimit(1);
+                $db->setQuery($qLast);
+                $lastExec = (string)($db->loadResult() ?? '');
+                if ($lastExec !== '') { $lastRun = $lastExec; }
+            } catch (\Throwable $ignore) {}
+        }
+
+        // Fetch currently published articles in scope (incremental if lastRun available)
         $q = $db->getQuery(true)
-            ->select($db->quoteName(['id','title','introtext','fulltext','state']))
+            ->select($db->quoteName(['id','title','introtext','fulltext','state','modified','created']))
             ->from($db->quoteName('#__content'))
             ->where($db->quoteName('state') . ' = 1');
         if (!empty($allCatIds)) {
             $q->where($db->quoteName('catid') . ' IN (' . implode(',', array_map('intval', $allCatIds)) . ')');
+        }
+        if ($lastRun !== '') {
+            $q->where('(' . $db->quoteName('modified') . ' >= ' . $db->quote($lastRun) . ' OR ' . $db->quoteName('created') . ' >= ' . $db->quote($lastRun) . ')');
         }
         $db->setQuery($q);
         $articles = (array) $db->loadAssocList('id');
@@ -176,7 +226,7 @@ class AichatbotTask extends CMSPlugin
         $docs = [];
         foreach ((array)$db->loadAssocList() as $row) { $docs[(int)$row['content_id']] = $row; }
 
-        // Upsert changed/new
+        // Upsert changed/new (incremental if lastRun set)
         foreach ($articles as $id => $a) {
             $hash = $this->computeHash($a['title'], $a['introtext'], $a['fulltext'], (int)$a['state']);
             $row  = $docs[(int)$id] ?? null;
@@ -185,14 +235,52 @@ class AichatbotTask extends CMSPlugin
                 if ($ok) { $processed++; }
             }
         }
-        // Delete out-of-scope or unpublished
+        // Deletions/out-of-scope detection must consider full current scope to avoid false deletes during incremental mode
+        $currentInScopeIds = null;
+        try {
+            $qIds = $db->getQuery(true)
+                ->select($db->quoteName('id'))
+                ->from($db->quoteName('#__content'))
+                ->where($db->quoteName('state') . ' = 1');
+            if (!empty($allCatIds)) {
+                $qIds->where($db->quoteName('catid') . ' IN (' . implode(',', array_map('intval', $allCatIds)) . ')');
+            }
+            $db->setQuery($qIds);
+            $currentInScopeIds = array_map('intval', (array)$db->loadColumn());
+        } catch (\Throwable $ignore) {
+            $currentInScopeIds = null;
+        }
         foreach ($docs as $contentId => $row) {
-            if (!isset($articles[$contentId])) {
+            $shouldExist = $currentInScopeIds !== null ? in_array((int)$contentId, $currentInScopeIds, true) : isset($articles[$contentId]);
+            if (!$shouldExist) {
                 $ok = $this->handleDelete($db, (int)$contentId);
                 if ($ok) { $deleted++; }
             }
         }
 
+        // Mark last successful reconcile run
+        try {
+            $this->params->set('last_run_reconcile', $startedAt);
+            $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
+            $sel = $dbExt->getQuery(true)
+                ->select($dbExt->quoteName(['extension_id','params']))
+                ->from($dbExt->quoteName('#__extensions'))
+                ->where($dbExt->quoteName('type') . ' = ' . $dbExt->quote('plugin'))
+                ->where($dbExt->quoteName('element') . ' = ' . $dbExt->quote('bears_aichatbot'))
+                ->where($dbExt->quoteName('folder') . ' = ' . $dbExt->quote('task'))
+                ->setLimit(1);
+            $dbExt->setQuery($sel);
+            $row = $dbExt->loadAssoc();
+            if ($row) {
+                $reg = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
+                $reg->set('last_run_reconcile', $startedAt);
+                $upd = $dbExt->getQuery(true)
+                    ->update($dbExt->quoteName('#__extensions'))
+                    ->set($dbExt->quoteName('params') . ' = ' . $dbExt->quote((string)$reg))
+                    ->where($dbExt->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
+                $dbExt->setQuery($upd)->execute();
+            }
+        } catch (\Throwable $ignore) {}
         return [true, sprintf('Reconcile: %d upserts, %d deletes', $processed, $deleted)];
     }
 
@@ -285,6 +373,106 @@ class AichatbotTask extends CMSPlugin
         $txt = strip_tags($html);
         $txt = preg_replace('/\s+/', ' ', $txt);
         return trim((string)$txt);
+    }
+
+    protected function loadCredentialsFromModule(): void
+    {
+        try {
+            // If plugin already has token, keep it; otherwise try module
+            $token = trim((string)$this->params->get('ionos_token', ''));
+            $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
+            $endpoint = (string)$this->params->get('ionos_endpoint', '');
+            if ($token !== '' && $endpoint !== '') {
+                return; // already configured
+            }
+            $db = Factory::getContainer()->get(DatabaseInterface::class);
+            // Find a published module instance with credentials
+            $q = $db->getQuery(true)
+                ->select($db->quoteName(['id','params','published']))
+                ->from($db->quoteName('#__modules'))
+                ->where($db->quoteName('module') . ' = ' . $db->quote('mod_bears_aichatbot'))
+                ->where($db->quoteName('published') . ' = 1')
+                ->order($db->quoteName('id') . ' ASC')
+                ->setLimit(10);
+            $db->setQuery($q);
+            $mods = (array)$db->loadAssocList();
+            foreach ($mods as $m) {
+                $reg = new \Joomla\Registry\Registry((string)($m['params'] ?? ''));
+                $mtoken = trim((string)$reg->get('ionos_token', ''));
+                $mtokenId = trim((string)$reg->get('ionos_token_id', ''));
+                $mendpoint = trim((string)$reg->get('ionos_endpoint', ''));
+                if ($mendpoint === '') { $mendpoint = 'https://openai.inference.de-txl.ionos.com/v1/chat/completions'; }
+                if ($mtoken !== '') {
+                    // Derive API base for collections from chat endpoint
+                    $apiBase = preg_replace('#/v1/.*$#', '/v1', $mendpoint) ?: 'https://api.inference.ionos.com/v1';
+                    $this->params->set('ionos_token', $mtoken);
+                    $this->params->set('ionos_token_id', $mtokenId);
+                    $this->params->set('ionos_endpoint', rtrim($apiBase, '/'));
+                    return;
+                }
+            }
+        } catch (\Throwable $e) {
+            // ignore, scheduler will just run without creds
+        }
+    }
+
+    protected function ensureCollectionExists(): void
+    {
+        try {
+            $collectionId = trim((string)$this->params->get('collection_id', ''));
+            $token = trim((string)$this->params->get('ionos_token', ''));
+            $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
+            $base = trim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'));
+            if ($collectionId !== '' || $token === '') {
+                return;
+            }
+            if ($base === '') { $base = 'https://api.inference.ionos.com/v1'; }
+            $base = rtrim($base, '/');
+
+            $site = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
+            $root = \Joomla\CMS\Uri\Uri::root();
+            $host = parse_url($root, PHP_URL_HOST) ?: 'localhost';
+            $name = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
+            $payload = [ 'name' => $name, 'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')' ];
+            $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
+            if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+            $http = \Joomla\CMS\Http\HttpFactory::getHttp();
+            $resp = $http->post($base . '/document-collections', json_encode($payload), $headers, 30);
+            if ($resp->code >= 200 && $resp->code < 300) {
+                $data = json_decode((string)$resp->body, true);
+                $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
+                if ($newId !== '') {
+                    // Persist into plugin params in extensions table
+                    $db = Factory::getContainer()->get(DatabaseInterface::class);
+                    $sel = $db->getQuery(true)
+                        ->select($db->quoteName(['extension_id','params']))
+                        ->from($db->quoteName('#__extensions'))
+                        ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+                        ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
+                        ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
+                        ->setLimit(1);
+                    $db->setQuery($sel);
+                    $row = $db->loadAssoc();
+                    if ($row) {
+                        $registry = new \Joomla\Registry\Registry((string)($row['params'] ?? ''));
+                        $registry->set('collection_id', $newId);
+                        $upd = $db->getQuery(true)
+                            ->update($db->quoteName('#__extensions'))
+                            ->set($db->quoteName('params') . ' = ' . $db->quote((string)$registry))
+                            ->where($db->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
+                        $db->setQuery($upd)->execute();
+                        // also update in-memory params
+                        $this->params->set('collection_id', $newId);
+                        // Enqueue backend notice for admins
+                        try {
+                            \Joomla\CMS\Factory::getApplication()->enqueueMessage('AI Chatbot: Created IONOS document collection (ID: ' . $newId . ').', 'message');
+                        } catch (\Throwable $ignore) {}
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            // silent
+        }
     }
 
     // IONOS Document Collection API calls

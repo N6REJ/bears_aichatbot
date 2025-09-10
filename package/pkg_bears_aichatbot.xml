@@ -13,4 +13,5 @@
     <file type="plugin" group="task">plugins/task/bears_aichatbot</file>
     <file type="plugin" group="content">plugins/content/bears_aichatbot</file>
   </files>
+  <scriptfile>script.php</scriptfile>
 </extension>

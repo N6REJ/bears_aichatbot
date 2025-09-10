@@ -92,6 +92,87 @@ class ModBearsAichatbotHelper
         // Get site URL for better link generation
         $siteUrl = \Joomla\CMS\Uri\Uri::root();
         
+        // Build local knowledge context (Articles + Additional URLs + Kunena)
+        $localContext = self::buildKnowledgeContext($params, $message, $strict);
+        $kbStats = self::$lastContextStats;
+        if ($localContext !== '' && stripos($localContext, 'No knowledge available') === false) {
+            $context = "Knowledge from Joomla Articles, Kunena and URLs:\n\n" . $localContext;
+        }
+        
+        // Auto-create a document collection on first use if missing but credentials are present
+        if ($collectionId === '' && $token !== '') {
+            try {
+                // Derive API base from chat endpoint if needed
+                $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
+                if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
+                $apiBase = rtrim($apiBase, '/');
+
+                $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
+                $root   = \Joomla\CMS\Uri\Uri::root();
+                $host   = parse_url($root, PHP_URL_HOST) ?: 'localhost';
+                $name   = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
+                $payload = [ 'name' => $name, 'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')' ];
+                $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
+                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+
+                $http = HttpFactory::getHttp();
+                $resp = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
+                if ($resp->code >= 200 && $resp->code < 300) {
+                    $data = json_decode((string)$resp->body, true);
+                    $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
+                    if ($newId !== '') {
+                        // Persist to the module params (#__modules)
+                        try {
+                            $db = Factory::getContainer()->get('DatabaseDriver');
+                            $q  = $db->getQuery(true)
+                                ->select($db->quoteName('params'))
+                                ->from($db->quoteName('#__modules'))
+                                ->where($db->quoteName('id') . ' = ' . (int) $moduleId)
+                                ->setLimit(1);
+                            $db->setQuery($q);
+                            $rawParams = (string) $db->loadResult();
+                            $reg = new Registry($rawParams);
+                            $reg->set('ionos_collection_id', $newId);
+                            $upd = $db->getQuery(true)
+                                ->update($db->quoteName('#__modules'))
+                                ->set($db->quoteName('params') . ' = ' . $db->quote((string)$reg))
+                                ->where($db->quoteName('id') . ' = ' . (int)$moduleId);
+                            $db->setQuery($upd)->execute();
+                            // update in-memory
+                            $params->set('ionos_collection_id', $newId);
+                        } catch (\Throwable $e) { /* ignore module save error */ }
+
+                        // Persist to the task plugin params (#__extensions)
+                        try {
+                            $db = Factory::getContainer()->get('DatabaseDriver');
+                            $sel = $db->getQuery(true)
+                                ->select($db->quoteName(['extension_id','params']))
+                                ->from($db->quoteName('#__extensions'))
+                                ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+                                ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
+                                ->where($db->quoteName('folder') . ' = ' . $db->quote('task'))
+                                ->setLimit(1);
+                            $db->setQuery($sel);
+                            $row = $db->loadAssoc();
+                            if ($row) {
+                                $preg = new Registry((string)($row['params'] ?? ''));
+                                $preg->set('collection_id', $newId);
+                                $upd2 = $db->getQuery(true)
+                                    ->update($db->quoteName('#__extensions'))
+                                    ->set($db->quoteName('params') . ' = ' . $db->quote((string)$preg))
+                                    ->where($db->quoteName('extension_id') . ' = ' . (int)$row['extension_id']);
+                                $db->setQuery($upd2)->execute();
+                            }
+                        } catch (\Throwable $e) { /* ignore plugin save error */ }
+
+                        $collectionId = $newId;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Silent failure; collection can be created later by Scheduler
+            }
+        }
+        
         // Try Document Collection retrieval if configured and no context yet
         if ($context === '' && $collectionId !== '' && $token !== '') {
             $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
@@ -121,8 +202,13 @@ class ModBearsAichatbotHelper
                         if ($added >= $topK) break;
                     }
                     if (!empty($parts)) {
-                        $context = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
-                        $kbStats = [ 'doc_collection' => $collectionId, 'retrieved' => $added ];
+                        $docCtx = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
+                        if ($context !== '') {
+                            $context .= "\n\n---\n\n" . $docCtx;
+                        } else {
+                            $context = $docCtx;
+                        }
+                        $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added ]);
                     }
                 }
             } catch (\Throwable $e) {
@@ -135,11 +221,15 @@ class ModBearsAichatbotHelper
         if ((int) $params->get('include_sitemap', 1) === 1) {
             $sitemapUrl = trim((string) $params->get('sitemap_url', ''));
             
-            // Try to use external sitemap if URL provided
+            // Preferred: use external sitemap when URL provided; Fallback: use menu-based sitemap
             if ($sitemapUrl !== '') {
                 $sitemap = self::fetchExternalSitemap($sitemapUrl);
+                if ($sitemap === '') {
+                    // External sitemap invalid/unavailable, fallback to menu-based sitemap
+                    $sitemap = self::buildSitemap();
+                }
             } else {
-                // Otherwise build from menu structure
+                // No URL provided: use menu-based sitemap
                 $sitemap = self::buildSitemap();
             }
             
@@ -149,7 +239,10 @@ class ModBearsAichatbotHelper
         }
         
         // If strict and no relevant KB found, refuse without calling the model
-        $hasKb = (($kbStats['article_count'] ?? 0) + ($kbStats['kunena_count'] ?? 0) + ($kbStats['url_count'] ?? 0)) > 0;
+        $hasKb = (($kbStats['article_count'] ?? 0)
+            + ($kbStats['kunena_count'] ?? 0)
+            + ($kbStats['url_count'] ?? 0)
+            + ($kbStats['retrieved'] ?? 0)) > 0;
         if ($strict && (!$hasKb || stripos($context, 'No knowledge available') !== false)) {
             return ['success' => true, 'answer' => "I don't know based on the provided dataset.", 'kb' => $kbStats];
         }
@@ -637,8 +730,7 @@ class ModBearsAichatbotHelper
             $response = $http->get($sitemapUrl, ['Accept' => 'text/html, application/xml, text/xml, */*']);
             
             if ($response->code < 200 || $response->code >= 300) {
-                // Fall back to building from menu
-                return self::buildSitemap();
+                return '';
             }
             
             // Check if it's XML or HTML
@@ -654,8 +746,7 @@ class ModBearsAichatbotHelper
             }
             
         } catch (\Throwable $e) {
-            // Fall back to building from menu if external sitemap fails
-            return self::buildSitemap();
+            return '';
         }
     }
     
@@ -684,7 +775,7 @@ class ModBearsAichatbotHelper
             $links = $osmapLinks->length > 0 ? $osmapLinks : $xpath->query('//a[@href]');
             
             if ($links->length === 0) {
-                return self::buildSitemap();
+                return '';
             }
             
             $baseUrl = \Joomla\CMS\Uri\Uri::root();
@@ -763,10 +854,10 @@ class ModBearsAichatbotHelper
                 return implode("\n", $sitemap);
             }
             
-            return self::buildSitemap();
+            return '';
             
         } catch (\Throwable $e) {
-            return self::buildSitemap();
+            return '';
         }
     }
     
@@ -781,7 +872,7 @@ class ModBearsAichatbotHelper
         try {
             $xml = simplexml_load_string($xmlContent);
             if (!$xml) {
-                return self::buildSitemap();
+                return '';
             }
             
             $sitemap = [];
@@ -863,12 +954,10 @@ class ModBearsAichatbotHelper
                 return implode("\n", $sitemap);
             }
             
-            // Otherwise fall back to building from menu
-            return self::buildSitemap();
+            return '';
             
         } catch (\Throwable $e) {
-            // Fall back to building from menu if external sitemap fails
-            return self::buildSitemap();
+            return '';
         }
     }
 }
