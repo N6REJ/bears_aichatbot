@@ -10,7 +10,7 @@
 
   <files>
     <file type="module" client="site">mod_bears_aichatbot</file>
-    <file type="plugin" group="task">plugins/task/aichatbot</file>
-    <file type="plugin" group="content">plugins/content/aichatbot</file>
+    <file type="plugin" group="task">plugins/task/bears_aichatbot</file>
+    <file type="plugin" group="content">plugins/content/bears_aichatbot</file>
   </files>
 </extension>

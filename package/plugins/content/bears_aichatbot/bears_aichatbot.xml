@@ -7,6 +7,7 @@
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Content plugin to enqueue document collection updates on article changes.</description>
   <files>
+    <filename plugin="bears_aichatbot">bears_aichatbot.php</filename>
     <folder>services</folder>
     <folder>src</folder>
     <folder>forms</folder>

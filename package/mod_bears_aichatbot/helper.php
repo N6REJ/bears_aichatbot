@@ -43,10 +43,14 @@ class ModBearsAichatbotHelper
             return ['success' => false, 'error' => 'Empty message'];
         }
 
-        // Build knowledge base context from selected categories (strict mode enforced)
+        // Build knowledge base context (will try Document Collection retrieval later)
         $strict = true;
-        $context = self::buildKnowledgeContext($params, $message, $strict);
-        $kbStats = self::$lastContextStats;
+        $kbStats = [];
+        $context = '';
+        $collectionId = trim((string)$params->get('ionos_collection_id', ''));
+        $topK = (int)$params->get('retrieval_top_k', 6);
+        $minScore = (float)$params->get('retrieval_min_score', 0.2);
+        if ($topK < 1) { $topK = 6; }
 
         // IONOS configuration (read from module params defined in XML)
         $tokenId = trim((string) $params->get('ionos_token_id', ''));
@@ -88,6 +92,44 @@ class ModBearsAichatbotHelper
         // Get site URL for better link generation
         $siteUrl = \Joomla\CMS\Uri\Uri::root();
         
+        // Try Document Collection retrieval if configured and no context yet
+        if ($context === '' && $collectionId !== '' && $token !== '') {
+            $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
+            if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
+            try {
+                $http = HttpFactory::getHttp();
+                $url = rtrim($apiBase, '/') . '/document-collections/' . rawurlencode($collectionId) . '/query';
+                $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore ];
+                $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
+                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+                $resp = $http->post($url, json_encode($payload), $headers, 30);
+                if ($resp->code >= 200 && $resp->code < 300) {
+                    $data = json_decode((string)$resp->body, true);
+                    $chunks = (array)($data['results'] ?? $data['documents'] ?? []);
+                    $parts = [];
+                    $added = 0;
+                    foreach ($chunks as $c) {
+                        $text = (string)($c['text'] ?? ($c['content'] ?? ''));
+                        if ($text === '') continue;
+                        $meta  = (array)($c['metadata'] ?? []);
+                        $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
+                        $label = $source !== '' ? ('Source: ' . $source) : '';
+                        $snippet = mb_substr($text, 0, 1500);
+                        $ctx = ($label !== '' ? ($label . "\n") : '') . $snippet;
+                        $parts[] = $ctx;
+                        $added++;
+                        if ($added >= $topK) break;
+                    }
+                    if (!empty($parts)) {
+                        $context = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
+                        $kbStats = [ 'doc_collection' => $collectionId, 'retrieved' => $added ];
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore retrieval failure and fallback
+            }
+        }
+
         // Build sitemap if enabled
         $sitemapInfo = '';
         if ((int) $params->get('include_sitemap', 1) === 1) {
@@ -782,6 +824,7 @@ class ModBearsAichatbotHelper
                     
                     // Fetch sub-sitemap
                     try {
+                        $http = HttpFactory::getHttp();
                         $subResponse = $http->get($loc, ['Accept' => 'application/xml, text/xml']);
                         if ($subResponse->code >= 200 && $subResponse->code < 300) {
                             $subXml = simplexml_load_string($subResponse->body);

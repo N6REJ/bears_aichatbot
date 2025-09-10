@@ -4,7 +4,7 @@
     <fieldset name="basic" label="PLG_TASK_AICHATBOT_FIELDSET_BASIC">
       <field name="ionos_token_id" type="text" label="PLG_TASK_AICHATBOT_TOKEN_ID" description="PLG_TASK_AICHATBOT_TOKEN_ID_DESC"/>
       <field name="ionos_token" type="password" label="PLG_TASK_AICHATBOT_TOKEN" description="PLG_TASK_AICHATBOT_TOKEN_DESC"/>
-      <field name="ionos_endpoint" type="text" label="PLG_TASK_AICHATBOT_ENDPOINT" default="https://openai.inference.de-txl.ionos.com/v1"/>
+      <field name="ionos_endpoint" type="text" label="PLG_TASK_AICHATBOT_ENDPOINT" default="https://api.inference.ionos.com/v1"/>
       <field name="collection_id" type="text" label="PLG_TASK_AICHATBOT_COLLECTION_ID" description="PLG_TASK_AICHATBOT_COLLECTION_ID_DESC"/>
 
       <field name="batch_size" type="number" default="50" min="1" max="500" label="PLG_TASK_AICHATBOT_BATCH_SIZE"/>

@@ -287,15 +287,77 @@ class AichatbotTask extends CMSPlugin
         return trim((string)$txt);
     }
 
-    // Stub external calls - replace with IONOS Document Collection API
+    // IONOS Document Collection API calls
     protected function apiUpsert(string $remoteId, string $text, array $metadata): bool
     {
-        // TODO: implement HTTP call using plugin params (ionos_token_id, ionos_token, endpoint, collection_id)
-        return true;
+        $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
+        $token   = trim((string)$this->params->get('ionos_token', ''));
+        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'), '/');
+        $collectionId = trim((string)$this->params->get('collection_id', ''));
+        if ($token === '' || $collectionId === '') {
+            throw new \RuntimeException('Missing IONOS credentials or collection_id');
+        }
+        $url = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents';
+
+        $payload = [
+            'id'       => (string)$remoteId,
+            'text'     => (string)$text,
+            'metadata' => (object)$metadata,
+        ];
+
+        $headers = [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+            'Content-Type'  => 'application/json',
+        ];
+        if ($tokenId !== '') {
+            // Some deployments require additional token id header
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
+
+        $http = \Joomla\CMS\Http\HttpFactory::getHttp();
+        $resp = $http->post($url, json_encode($payload), $headers, 30);
+        if ($resp->code >= 200 && $resp->code < 300) {
+            return true;
+        }
+        // 409 might mean update vs create; try PUT to upsert by id
+        if ($resp->code === 409) {
+            $urlPut = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
+            $resp2 = $http->put($urlPut, json_encode($payload), $headers, 30);
+            if ($resp2->code >= 200 && $resp2->code < 300) {
+                return true;
+            }
+            throw new \RuntimeException('IONOS upsert conflict and put failed: HTTP ' . $resp2->code . ' ' . mb_substr((string)$resp2->body, 0, 500));
+        }
+        throw new \RuntimeException('IONOS upsert failed: HTTP ' . $resp->code . ' ' . mb_substr((string)$resp->body, 0, 500));
     }
+
     protected function apiDelete(string $remoteId): bool
     {
-        // TODO: implement HTTP call
-        return true;
+        $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
+        $token   = trim((string)$this->params->get('ionos_token', ''));
+        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'), '/');
+        $collectionId = trim((string)$this->params->get('collection_id', ''));
+        if ($token === '' || $collectionId === '') {
+            throw new \RuntimeException('Missing IONOS credentials or collection_id');
+        }
+        $url = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
+        $headers = [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept'        => 'application/json',
+        ];
+        if ($tokenId !== '') {
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
+        $http = \Joomla\CMS\Http\HttpFactory::getHttp();
+        $resp = $http->delete($url, [], $headers, 30);
+        if ($resp->code >= 200 && $resp->code < 300) {
+            return true;
+        }
+        if ($resp->code === 404) {
+            // Treat as success (already gone)
+            return true;
+        }
+        throw new \RuntimeException('IONOS delete failed: HTTP ' . $resp->code . ' ' . mb_substr((string)$resp->body, 0, 500));
     }
 }
