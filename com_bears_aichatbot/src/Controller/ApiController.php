@@ -1,6 +1,6 @@
 <?php
 /**
- * API controller for usage JSON and CSV export
+ * API controller for usage JSON, CSV export and collection operations
  */
 
 namespace Joomla\Component\Bears_aichatbot\Administrator\Controller;
@@ -14,14 +14,29 @@ use Joomla\CMS\Language\Text;
 
 class ApiController extends BaseController
 {
+    private function respond($payload, int $code = 200): void
+    {
+        $app = Factory::getApplication();
+        if (function_exists('http_response_code')) {
+            @http_response_code($code);
+        }
+        $app->setHeader('Content-Type', 'application/json', true);
+        $app->setHeader('status', (string) $code, true);
+        echo json_encode($payload);
+        $app->close();
+    }
+
+    private function respondError(string $message, int $code = 400, array $extra = []): void
+    {
+        $this->respond(['error' => array_merge(['code' => $code, 'message' => $message], $extra)], $code);
+    }
+
     public function filtersJson()
     {
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $db = Factory::getContainer()->get('DatabaseDriver');
         $options = [
@@ -53,10 +68,7 @@ class ApiController extends BaseController
                 ->order($db->quoteName('collection_id') . ' ASC');
             $db->setQuery($q); $options['collections'] = (array)$db->loadColumn();
         } catch (\Throwable $ignore) {}
-
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $options]);
-        $app->close();
+        $this->respond(['data' => $options], 200);
     }
 
     public function usageJson()
@@ -64,9 +76,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
 
         $input = $app->input;
@@ -106,9 +116,7 @@ class ApiController extends BaseController
         $db->setQuery($q);
         $rows = (array)$db->loadAssocList();
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function seriesJson()
@@ -116,9 +124,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $input = $app->input;
         $from = $input->getString('from');
@@ -150,9 +156,7 @@ class ApiController extends BaseController
         if ($collectionId !== '') { $q->where($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId)); }
         $db->setQuery($q); $rows = (array)$db->loadAssocList();
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function kpisJson()
@@ -160,9 +164,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $input = $app->input;
         $from = $input->getString('from');
@@ -199,9 +201,7 @@ class ApiController extends BaseController
 
         $kpis['docs'] = $docs;
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $kpis]);
-        $app->close();
+        $this->respond(['data' => $kpis], 200);
     }
 
     public function collectionJson()
@@ -209,9 +209,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $input = $app->input;
         $from = $input->getString('from');
@@ -224,12 +222,9 @@ class ApiController extends BaseController
             ->order($db->quoteName('stat_date') . ' ASC');
         if ($from !== '') { $q->where($db->quoteName('stat_date') . ' >= ' . $db->quote($from)); }
         if ($to !== '') { $q->where($db->quoteName('stat_date') . ' <= ' . $db->quote($to)); }
-        $db->setQuery($q);
-        $rows = (array)$db->loadAssocList();
+        $db->setQuery($q); $rows = (array)$db->loadAssocList();
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function spendJson()
@@ -237,9 +232,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $input = $app->input;
         $from = $input->getString('from');
@@ -271,9 +264,7 @@ class ApiController extends BaseController
         $db->setQuery($q);
         $rows = (array)$db->loadAssocList();
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function rebuildCollection()
@@ -281,19 +272,14 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         // CSRF
         if (!\Joomla\CMS\Session\Session::checkToken('post')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Invalid token']);
-            $app->close();
+            $this->respondError('Invalid token', 403);
         }
         $db = Factory::getContainer()->get('DatabaseDriver');
         $in = $app->input;
-        $recreate = (int)$in->get('recreate', 1) === 1; // always recreate new collection by default
         // Load token+endpoint
         $token = '';$tokenId = '';$apiBase = '';
         try {
@@ -316,9 +302,7 @@ class ApiController extends BaseController
             }
         } catch (\Throwable $ignore) {}
         if ($token === '' || $apiBase === '') {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'IONOS token or endpoint not configured']);
-            $app->close();
+            $this->respondError('IONOS token or endpoint not configured', 400);
         }
         $http = \Joomla\CMS\Http\HttpFactory::getHttp();
         $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
@@ -338,14 +322,10 @@ class ApiController extends BaseController
                 throw new \RuntimeException('Create failed: HTTP ' . $resp->code);
             }
         } catch (\Throwable $e) {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'Create collection failed: ' . $e->getMessage()]);
-            $app->close();
+            $this->respondError('Create collection failed: ' . $e->getMessage(), 500);
         }
         if ($newId === '') {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'Create collection returned no id']);
-            $app->close();
+            $this->respondError('Create collection returned no id', 502);
         }
         // Persist new collection id
         try {
@@ -375,9 +355,7 @@ class ApiController extends BaseController
             }
         } catch (\Throwable $e) {}
 
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => ['collection_id' => $newId, 'enqueued' => $enqueued]]);
-        $app->close();
+        $this->respond(['data' => ['collection_id' => $newId, 'enqueued' => $enqueued]], 200);
     }
 
     public function latencyJson()
@@ -385,9 +363,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $in = $app->input;
         $from = $in->getString('from');
@@ -413,9 +389,7 @@ class ApiController extends BaseController
         if ($model !== '') { $q->where($db->quoteName('model') . ' = ' . $db->quote($model)); }
         if ($collectionId !== '') { $q->where($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId)); }
         $db->setQuery($q); $rows = (array)$db->loadAssocList();
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function histTokensJson()
@@ -423,9 +397,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $in = $app->input;
         $from = $in->getString('from');
@@ -442,19 +414,18 @@ class ApiController extends BaseController
                 WHEN total_tokens <= 2000 THEN '1001-2000'
                 WHEN total_tokens <= 4000 THEN '2001-4000'
                 ELSE '>4000' END AS bucket")
+            ->select('MIN(total_tokens) AS min_tokens')
             ->select('COUNT(*) AS count')
             ->from($db->quoteName('#__aichatbot_usage'))
             ->group('bucket')
-            ->order('MIN(total_tokens) ASC');
+            ->order('min_tokens ASC');
         if ($from !== '') { $q->where($db->quoteName('created_at') . ' >= ' . $db->quote($from)); }
         if ($to !== '') { $q->where($db->quoteName('created_at') . ' <= ' . $db->quote($to)); }
         if ($moduleId) { $q->where($db->quoteName('module_id') . ' = ' . (int)$moduleId); }
         if ($model !== '') { $q->where($db->quoteName('model') . ' = ' . $db->quote($model)); }
         if ($collectionId !== '') { $q->where($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId)); }
         $db->setQuery($q); $rows = (array)$db->loadAssocList();
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function outcomesJson()
@@ -462,9 +433,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $in = $app->input;
         $from = $in->getString('from');
@@ -491,9 +460,7 @@ class ApiController extends BaseController
         if ($model !== '') { $q->where($db->quoteName('model') . ' = ' . $db->quote($model)); }
         if ($collectionId !== '') { $q->where($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId)); }
         $db->setQuery($q); $rows = (array)$db->loadAssocList();
-        $app->setHeader('Content-Type', 'application/json', true);
-        echo json_encode(['data' => $rows]);
-        $app->close();
+        $this->respond(['data' => $rows], 200);
     }
 
     public function collectionMetaJson()
@@ -501,9 +468,7 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo json_encode(['error' => 'Forbidden']);
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
         $db = Factory::getContainer()->get('DatabaseDriver');
         $in = $app->input;
@@ -521,9 +486,7 @@ class ApiController extends BaseController
             } catch (\Throwable $ignore) {}
         }
         if ($collectionId === '') {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'No collection_id configured']);
-            $app->close();
+            $this->respondError('No collection_id configured', 400);
         }
         // Load token and endpoint from any published module of our type
         $token = '';
@@ -549,9 +512,7 @@ class ApiController extends BaseController
             }
         } catch (\Throwable $ignore) {}
         if ($token === '' || $apiBase === '') {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'IONOS token or endpoint not configured']);
-            $app->close();
+            $this->respondError('IONOS token or endpoint not configured', 400);
         }
         try {
             $http = \Joomla\CMS\Http\HttpFactory::getHttp();
@@ -561,17 +522,11 @@ class ApiController extends BaseController
             $resp = $http->get($url, $headers, 30);
             if ($resp->code >= 200 && $resp->code < 300) {
                 $data = json_decode((string)$resp->body, true);
-                $app->setHeader('Content-Type', 'application/json', true);
-                echo json_encode(['data' => $data]);
-                $app->close();
+                $this->respond(['data' => $data], 200);
             }
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => 'HTTP ' . $resp->code, 'body' => mb_substr((string)$resp->body, 0, 2000)]);
-            $app->close();
+            $this->respondError('HTTP ' . $resp->code, $resp->code, ['body' => mb_substr((string)$resp->body, 0, 2000)]);
         } catch (\Throwable $e) {
-            $app->setHeader('Content-Type', 'application/json', true);
-            echo json_encode(['error' => $e->getMessage()]);
-            $app->close();
+            $this->respondError($e->getMessage(), 500);
         }
     }
 
@@ -580,16 +535,11 @@ class ApiController extends BaseController
         $app = Factory::getApplication();
         $user = $app->getIdentity();
         if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
-            $app->setHeader('status', 403, true);
-            echo 'Forbidden';
-            $app->close();
+            $this->respondError('Forbidden', 403);
         }
-
         // CSRF check
         if (!\Joomla\CMS\Session\Session::checkToken('get')) {
-            $app->setHeader('status', 403, true);
-            echo 'Invalid token';
-            $app->close();
+            $this->respondError('Invalid token', 403);
         }
 
         $input = $app->input;
@@ -612,9 +562,9 @@ class ApiController extends BaseController
         $db->setQuery($q);
         $rows = (array)$db->loadAssocList();
 
+        // Stream CSV on success
         $app->setHeader('Content-Type', 'text/csv; charset=utf-8', true);
         $app->setHeader('Content-Disposition', 'attachment; filename="aichatbot_usage.csv"', true);
-
         $out = fopen('php://output', 'w');
         if (!empty($rows)) {
             fputcsv($out, array_keys($rows[0]));
