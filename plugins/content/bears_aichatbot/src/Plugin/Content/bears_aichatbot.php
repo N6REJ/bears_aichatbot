@@ -3,11 +3,11 @@
  * Joomla 5 Content plugin: Enqueue document collection updates on article changes
  */
 
-namespace PlgContentBearsAichatbot\Plugin\Content {
+namespace plugins\content\bears_aichatbot\src\Plugin\Content {
 
-use Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\CMS\Factory;
-use Joomla\Database\DatabaseInterface;
+    use Joomla\CMS\Factory;
+    use Joomla\CMS\Plugin\CMSPlugin;
+    use Joomla\Database\DatabaseInterface;
 
 // phpcs:disable PSR1.Files.SideEffects
 \defined('_JEXEC') or die;
