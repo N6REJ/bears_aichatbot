@@ -1,6 +1,6 @@
 <?php
 /**
- * Joomla 5 Service Provider for plg_task_aichatbot
+ * Joomla 5 Service Provider for plg_task_bears_aichatbot
  */
 use Joomla\DI\Container;
 use Joomla\CMS\Extension\PluginInterface;
@@ -13,6 +13,6 @@ use Joomla\CMS\Extension\Service\Provider\Plugin as PluginProvider;
 return new class implements Joomla\CMS\Extension\ServiceProviderInterface {
     public function register(Container $container)
     {
-        $container->registerServiceProvider(new PluginProvider('\\PlgTaskAichatbot'));
+        $container->registerServiceProvider(new PluginProvider('\\PlgTaskBearsAichatbot'));
     }
 };

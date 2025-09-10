@@ -3,7 +3,7 @@
  * Joomla 5 Content plugin: Enqueue document collection updates on article changes
  */
 
-namespace PlgContentAichatbot\Plugin\Content {
+namespace PlgContentBearsAichatbot\Plugin\Content {
 
 use Joomla\CMS\Plugin\CMSPlugin;
 use Joomla\CMS\Factory;
@@ -13,7 +13,7 @@ use Joomla\Database\DatabaseInterface;
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
-class Aichatbot extends CMSPlugin
+class BearsAichatbot extends CMSPlugin
 {
     protected $autoloadLanguage = true;
 

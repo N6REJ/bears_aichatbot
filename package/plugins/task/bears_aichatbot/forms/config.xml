@@ -1,15 +1,15 @@
 <?xml version="1.0" encoding="utf-8"?>
 <form>
   <fields name="params">
-    <fieldset name="basic" label="PLG_TASK_AICHATBOT_FIELDSET_BASIC">
-      <field name="ionos_token_id" type="text" label="PLG_TASK_AICHATBOT_TOKEN_ID" description="PLG_TASK_AICHATBOT_TOKEN_ID_DESC"/>
-      <field name="ionos_token" type="password" label="PLG_TASK_AICHATBOT_TOKEN" description="PLG_TASK_AICHATBOT_TOKEN_DESC"/>
-      <field name="ionos_endpoint" type="text" label="PLG_TASK_AICHATBOT_ENDPOINT" default="https://api.inference.ionos.com/v1"/>
-      <field name="collection_id" type="text" label="PLG_TASK_AICHATBOT_COLLECTION_ID" description="PLG_TASK_AICHATBOT_COLLECTION_ID_DESC"/>
+    <fieldset name="basic" label="PLG_TASK_BEARS_AICHATBOT_FIELDSET_BASIC">
+      <field name="ionos_token_id" type="text" label="PLG_TASK_BEARS_AICHATBOT_TOKEN_ID" description="PLG_TASK_BEARS_AICHATBOT_TOKEN_ID_DESC"/>
+      <field name="ionos_token" type="password" label="PLG_TASK_BEARS_AICHATBOT_TOKEN" description="PLG_TASK_BEARS_AICHATBOT_TOKEN_DESC"/>
+      <field name="ionos_endpoint" type="text" label="PLG_TASK_BEARS_AICHATBOT_ENDPOINT" default="https://api.inference.ionos.com/v1"/>
+      <field name="collection_id" type="text" label="PLG_TASK_BEARS_AICHATBOT_COLLECTION_ID" description="PLG_TASK_BEARS_AICHATBOT_COLLECTION_ID_DESC"/>
 
-      <field name="batch_size" type="number" default="50" min="1" max="500" label="PLG_TASK_AICHATBOT_BATCH_SIZE"/>
-      <field name="max_attempts" type="number" default="5" min="1" max="20" label="PLG_TASK_AICHATBOT_MAX_ATTEMPTS"/>
-      <field name="selected_categories" type="category" extension="com_content" multiple="true" label="PLG_TASK_AICHATBOT_CATEGORIES" description="PLG_TASK_AICHATBOT_CATEGORIES_DESC"/>
+      <field name="batch_size" type="number" default="50" min="1" max="500" label="PLG_TASK_BEARS_AICHATBOT_BATCH_SIZE"/>
+      <field name="max_attempts" type="number" default="5" min="1" max="20" label="PLG_TASK_BEARS_AICHATBOT_MAX_ATTEMPTS"/>
+      <field name="selected_categories" type="category" extension="com_content" multiple="true" label="PLG_TASK_BEARS_AICHATBOT_CATEGORIES" description="PLG_TASK_BEARS_AICHATBOT_CATEGORIES_DESC"/>
     </fieldset>
   </fields>
 </form>
