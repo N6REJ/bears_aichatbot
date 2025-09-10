@@ -9,7 +9,7 @@
 use Joomla\CMS\Factory;
 use Joomla\Database\DatabaseInterface;
 
-class Pkg_Bears_AichatbotInstallerScript
+class pkg_bears_aichatbotInstallerScript
 {
     public function postflight($type, $parent)
     {
