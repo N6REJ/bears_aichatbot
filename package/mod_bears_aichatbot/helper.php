@@ -4,12 +4,14 @@
  * Helper functions
  */
 
-defined('_JEXEC') or die;
-
 use Joomla\CMS\Factory;
 use Joomla\CMS\Helper\ModuleHelper;
 use Joomla\Registry\Registry;
 use Joomla\CMS\Http\HttpFactory;
+
+// phpcs:disable PSR1.Files.SideEffects
+\defined('_JEXEC') or die;
+// phpcs:enable PSR1.Files.SideEffects
 
 class ModBearsAichatbotHelper
 {
@@ -43,10 +45,28 @@ class ModBearsAichatbotHelper
             return ['success' => false, 'error' => 'Empty message'];
         }
 
-        // Build knowledge base context from selected categories (strict mode enforced)
+        // Build knowledge base context (will try Document Collection retrieval later)
         $strict = true;
-        $context = self::buildKnowledgeContext($params, $message, $strict);
-        $kbStats = self::$lastContextStats;
+        $kbStats = [];
+        $context = '';
+        $collectionId = trim((string)$params->get('ionos_collection_id', ''));
+        if ($collectionId === '') {
+            // Read from centralized state table
+            try {
+                $db = Factory::getContainer()->get('DatabaseDriver');
+                $q  = $db->getQuery(true)
+                    ->select($db->quoteName('collection_id'))
+                    ->from($db->quoteName('#__aichatbot_state'))
+                    ->where($db->quoteName('id') . ' = 1')
+                    ->setLimit(1);
+                $db->setQuery($q);
+                $cid = (string)($db->loadResult() ?? '');
+                if ($cid !== '') { $collectionId = $cid; }
+            } catch (\Throwable $e) { /* ignore */ }
+        }
+        $topK = (int)$params->get('retrieval_top_k', 6);
+        $minScore = (float)$params->get('retrieval_min_score', 0.2);
+        if ($topK < 1) { $topK = 6; }
 
         // IONOS configuration (read from module params defined in XML)
         $tokenId = trim((string) $params->get('ionos_token_id', ''));
@@ -88,16 +108,168 @@ class ModBearsAichatbotHelper
         // Get site URL for better link generation
         $siteUrl = \Joomla\CMS\Uri\Uri::root();
         
+        // Build local knowledge context (Articles + Additional URLs + Kunena)
+        $localContext = self::buildKnowledgeContext($params, $message, $strict);
+        $kbStats = self::$lastContextStats;
+        if ($localContext !== '' && stripos($localContext, 'No knowledge available') === false) {
+            $context = "Knowledge from Joomla Articles, Kunena and URLs:\n\n" . $localContext;
+        }
+        
+        // Auto-create a document collection on first use if missing but credentials are present
+        if ($collectionId === '' && $token !== '') {
+            try {
+                // Derive API base from chat endpoint if needed
+                $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
+                if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
+                $apiBase = rtrim($apiBase, '/');
+
+                $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
+                $root   = \Joomla\CMS\Uri\Uri::root();
+                $host   = parse_url($root, PHP_URL_HOST) ?: 'localhost';
+                $name   = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
+                $payload = [ 'name' => $name, 'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')' ];
+                $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
+                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+
+                $http = HttpFactory::getHttp();
+                $resp = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
+                if ($resp->code >= 200 && $resp->code < 300) {
+                    $data = json_decode((string)$resp->body, true);
+                    $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
+                    if ($newId !== '') {
+                        // Persist operational state to centralized table only
+                        try {
+                            $db = Factory::getContainer()->get('DatabaseDriver');
+                            $upd = $db->getQuery(true)
+                                ->update($db->quoteName('#__aichatbot_state'))
+                                ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
+                                ->where($db->quoteName('id') . ' = 1');
+                            $db->setQuery($upd)->execute();
+                        } catch (\Throwable $e) { /* ignore state save error */ }
+                        // Use in this request
+                        $collectionId = $newId;
+                    }
+                }
+            } catch (\Throwable $e) {
+                // Silent failure; collection can be created later by Scheduler
+            }
+        }
+        
+        // Try Document Collection retrieval if configured and no context yet
+        if ($context === '' && $collectionId !== '' && $token !== '') {
+            $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
+            if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
+            try {
+                $http = HttpFactory::getHttp();
+                $url = rtrim($apiBase, '/') . '/document-collections/' . rawurlencode($collectionId) . '/query';
+                $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore, 'topK' => $topK, 'scoreThreshold' => $minScore ];
+                $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
+                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+                $resp = $http->post($url, json_encode($payload), $headers, 30);
+                if ($resp->code >= 200 && $resp->code < 300) {
+                    $data = json_decode((string)$resp->body, true);
+
+                    // Collect possible result arrays from different schemas
+                    $candidates = [];
+                    if (isset($data['results']) && is_array($data['results'])) $candidates = $data['results'];
+                    elseif (isset($data['documents']) && is_array($data['documents'])) $candidates = $data['documents'];
+                    elseif (isset($data['data']) && is_array($data['data'])) $candidates = $data['data'];
+                    elseif (isset($data['hits']) && is_array($data['hits'])) $candidates = $data['hits'];
+                    elseif (isset($data['matches']) && is_array($data['matches'])) $candidates = $data['matches'];
+                    elseif (isset($data['items']) && is_array($data['items'])) $candidates = $data['items'];
+
+                    // Handle vector DB shape: documents (array of strings) + metadatas (array)
+                    if (empty($candidates) && isset($data['documents']) && is_array($data['documents'])) {
+                        $docsArr = $data['documents'];
+                        $metasArr = isset($data['metadatas']) && is_array($data['metadatas']) ? $data['metadatas'] : [];
+                        $scoresArr = isset($data['scores']) && is_array($data['scores']) ? $data['scores'] : [];
+                        $tmp = [];
+                        foreach ($docsArr as $i => $docVal) {
+                            $tmp[] = [
+                                'text' => is_string($docVal) ? $docVal : (string)($docVal['text'] ?? $docVal['content'] ?? ''),
+                                'metadata' => isset($metasArr[$i]) && is_array($metasArr[$i]) ? $metasArr[$i] : [],
+                                'score' => isset($scoresArr[$i]) ? (float)$scoresArr[$i] : null,
+                            ];
+                        }
+                        $candidates = $tmp;
+                    }
+
+                    // Normalize candidates to {text, metadata, score}
+                    $normalized = [];
+                    foreach ((array)$candidates as $c) {
+                        $text = '';
+                        if (is_string($c)) { $text = $c; $meta = []; $score = null; }
+                        else {
+                            $meta = (array)($c['metadata'] ?? $c['meta'] ?? $c['attrs'] ?? ($c['document']['metadata'] ?? []));
+                            $score = $c['score'] ?? $c['similarity'] ?? $c['relevance'] ?? null;
+                            if ($score === null && isset($c['distance'])) {
+                                // Convert distance (0=identical, 1=far) to similarity if plausible
+                                $d = (float)$c['distance'];
+                                if ($d >= 0 && $d <= 1) { $score = 1.0 - $d; }
+                            }
+                            // Extract text from common paths
+                            $text = (string)($c['text']
+                                ?? ($c['content'] ?? null)
+                                ?? ($c['chunk'] ?? null)
+                                ?? ($c['page_content'] ?? null)
+                                ?? ($c['document']['text'] ?? null)
+                                ?? ($c['document']['content'] ?? ''));
+                        }
+                        $text = (string)$text;
+                        if ($text === '') { continue; }
+                        $normalized[] = [ 'text' => $text, 'metadata' => $meta ?? [], 'score' => is_numeric($score) ? (float)$score : null ];
+                    }
+
+                    // Client-side filter/sort according to minScore and topK if score is available
+                    if (!empty($normalized)) {
+                        // Filter by score if present
+                        $hasScores = array_reduce($normalized, function($carry, $it){ return $carry || ($it['score'] !== null); }, false);
+                        if ($hasScores) {
+                            $normalized = array_values(array_filter($normalized, function($it) use ($minScore){ return $it['score'] === null ? true : ($it['score'] >= $minScore); }));
+                            usort($normalized, function($a, $b){ return ($b['score'] <=> $a['score']); });
+                        }
+                        // Trim to topK
+                        if (count($normalized) > $topK) { $normalized = array_slice($normalized, 0, $topK); }
+
+                        $parts = [];
+                        foreach ($normalized as $it) {
+                            $meta = (array)$it['metadata'];
+                            $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
+                            $label = $source !== '' ? ('Source: ' . $source) : '';
+                            $snippet = mb_substr((string)$it['text'], 0, 1500);
+                            $parts[] = ($label !== '' ? ($label . "\n") : '') . $snippet;
+                        }
+                        $added = count($parts);
+                        if (!empty($parts)) {
+                            $docCtx = "Relevant knowledge snippets from the document collection:\n\n" . implode("\n\n---\n\n", $parts);
+                            if ($context !== '') {
+                                $context .= "\n\n---\n\n" . $docCtx;
+                            } else {
+                                $context = $docCtx;
+                            }
+                            $kbStats = array_merge($kbStats, [ 'doc_collection' => $collectionId, 'retrieved' => $added ]);
+                        }
+                    }
+                }
+            } catch (\Throwable $e) {
+                // ignore retrieval failure and fallback
+            }
+        }
+
         // Build sitemap if enabled
         $sitemapInfo = '';
         if ((int) $params->get('include_sitemap', 1) === 1) {
             $sitemapUrl = trim((string) $params->get('sitemap_url', ''));
             
-            // Try to use external sitemap if URL provided
+            // Preferred: use external sitemap when URL provided; Fallback: use menu-based sitemap
             if ($sitemapUrl !== '') {
                 $sitemap = self::fetchExternalSitemap($sitemapUrl);
+                if ($sitemap === '') {
+                    // External sitemap invalid/unavailable, fallback to menu-based sitemap
+                    $sitemap = self::buildSitemap();
+                }
             } else {
-                // Otherwise build from menu structure
+                // No URL provided: use menu-based sitemap
                 $sitemap = self::buildSitemap();
             }
             
@@ -107,7 +279,10 @@ class ModBearsAichatbotHelper
         }
         
         // If strict and no relevant KB found, refuse without calling the model
-        $hasKb = (($kbStats['article_count'] ?? 0) + ($kbStats['kunena_count'] ?? 0) + ($kbStats['url_count'] ?? 0)) > 0;
+        $hasKb = (($kbStats['article_count'] ?? 0)
+            + ($kbStats['kunena_count'] ?? 0)
+            + ($kbStats['url_count'] ?? 0)
+            + ($kbStats['retrieved'] ?? 0)) > 0;
         if ($strict && (!$hasKb || stripos($context, 'No knowledge available') !== false)) {
             return ['success' => true, 'answer' => "I don't know based on the provided dataset.", 'kb' => $kbStats];
         }
@@ -595,8 +770,7 @@ class ModBearsAichatbotHelper
             $response = $http->get($sitemapUrl, ['Accept' => 'text/html, application/xml, text/xml, */*']);
             
             if ($response->code < 200 || $response->code >= 300) {
-                // Fall back to building from menu
-                return self::buildSitemap();
+                return '';
             }
             
             // Check if it's XML or HTML
@@ -612,8 +786,7 @@ class ModBearsAichatbotHelper
             }
             
         } catch (\Throwable $e) {
-            // Fall back to building from menu if external sitemap fails
-            return self::buildSitemap();
+            return '';
         }
     }
     
@@ -642,7 +815,7 @@ class ModBearsAichatbotHelper
             $links = $osmapLinks->length > 0 ? $osmapLinks : $xpath->query('//a[@href]');
             
             if ($links->length === 0) {
-                return self::buildSitemap();
+                return '';
             }
             
             $baseUrl = \Joomla\CMS\Uri\Uri::root();
@@ -721,10 +894,10 @@ class ModBearsAichatbotHelper
                 return implode("\n", $sitemap);
             }
             
-            return self::buildSitemap();
+            return '';
             
         } catch (\Throwable $e) {
-            return self::buildSitemap();
+            return '';
         }
     }
     
@@ -739,7 +912,7 @@ class ModBearsAichatbotHelper
         try {
             $xml = simplexml_load_string($xmlContent);
             if (!$xml) {
-                return self::buildSitemap();
+                return '';
             }
             
             $sitemap = [];
@@ -782,6 +955,7 @@ class ModBearsAichatbotHelper
                     
                     // Fetch sub-sitemap
                     try {
+                        $http = HttpFactory::getHttp();
                         $subResponse = $http->get($loc, ['Accept' => 'application/xml, text/xml']);
                         if ($subResponse->code >= 200 && $subResponse->code < 300) {
                             $subXml = simplexml_load_string($subResponse->body);
@@ -820,12 +994,10 @@ class ModBearsAichatbotHelper
                 return implode("\n", $sitemap);
             }
             
-            // Otherwise fall back to building from menu
-            return self::buildSitemap();
+            return '';
             
         } catch (\Throwable $e) {
-            // Fall back to building from menu if external sitemap fails
-            return self::buildSitemap();
+            return '';
         }
     }
 }

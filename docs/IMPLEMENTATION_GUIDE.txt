@@ -19,7 +19,7 @@ Provide a clear roadmap of what is already implemented, what must be completed t
 - Task plugin (Scheduler)
   - Registers tasks:
     - aichatbot.queue: processes job queue, calls handleUpsert/handleDelete
-    - aichatbot.reconcile: scans selected categories, recomputes hashes, upserts changes, deletes out-of-scope
+    - aichatbot.reconcile: scans selected categories (incremental since last successful run when available), recomputes hashes, upserts changes, deletes out-of-scope
   - API calls are stubbed (apiUpsert/apiDelete)
   - Manifest wired to install SQL, show params, uninstall SQL
 
@@ -152,3 +152,9 @@ Where to find things in this repo
 Notes
 - Strict dataset-only behavior remains enforced in module helper. If you switch to retrieval, keep strict mode and only include retrieved chunks in <kb>.
 - Ensure service providers load classes correctly in Joomla 5; adjust services/provider.php if class names move.
+
+
+
+Appendix: Retrieval parameter quick guide
+- Top K: number of highest-scoring snippets to include in the <kb> context (typical 4–10; default 6). Higher values provide more context but increase tokens.
+- Min score: similarity threshold in [0.0, 1.0]. Candidates below this score are discarded even if they are within the Top K (typical 0.2–0.4; default 0.2).

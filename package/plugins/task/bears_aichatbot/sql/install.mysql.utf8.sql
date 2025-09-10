@@ -25,3 +25,16 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_jobs` (
   KEY `idx_status` (`status`),
   KEY `idx_content_action` (`content_id`, `action`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Centralized operational state table (collection id, last run timestamps)
+CREATE TABLE IF NOT EXISTS `#__aichatbot_state` (
+  `id` TINYINT NOT NULL DEFAULT 1,
+  `collection_id` VARCHAR(191) DEFAULT NULL,
+  `last_run_queue` DATETIME DEFAULT NULL,
+  `last_run_reconcile` DATETIME DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Ensure a single row exists
+INSERT INTO `#__aichatbot_state` (`id`) VALUES (1)
+ON DUPLICATE KEY UPDATE `id` = `id`;
