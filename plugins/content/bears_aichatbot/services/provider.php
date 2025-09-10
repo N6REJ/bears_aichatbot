@@ -17,10 +17,24 @@ return new class implements ServiceProviderInterface {
         } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin')) {
             $providerClass = '\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin';
         } else {
-            throw new \RuntimeException('Joomla Plugin service provider class not found.');
+            // Gracefully no-op if provider class is unavailable to avoid breaking the Plugin Manager
+            return;
         }
 
-        // Register by group, element, and plugin root path (per Joomla manual)
-        $container->registerServiceProvider(new $providerClass('content', 'bears_aichatbot', dirname(__DIR__)));
+        // Register by group/element and optionally path, depending on constructor signature
+        if ($providerClass !== null) {
+            try {
+                $ref  = new \ReflectionClass($providerClass);
+                $ctor = $ref->getConstructor();
+                $n    = $ctor ? $ctor->getNumberOfParameters() : 0;
+                if ($n >= 3) {
+                    $container->registerServiceProvider(new $providerClass('content', 'bears_aichatbot', dirname(__DIR__)));
+                } else {
+                    $container->registerServiceProvider(new $providerClass('content', 'bears_aichatbot'));
+                }
+            } catch (\Throwable $e) {
+                // Graceful no-op to avoid breaking the Plugin Manager
+            }
+        }
     }
 };
