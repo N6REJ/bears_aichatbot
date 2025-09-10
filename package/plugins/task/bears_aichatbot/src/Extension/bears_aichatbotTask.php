@@ -3,7 +3,7 @@
  * Joomla 5 Task plugin: processes AI Chatbot document collection sync.
  */
 
-namespace PlgTaskAichatbot\Extension { 
+namespace PlgTaskBearsAichatbot\Extension { 
 
 use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\CMS\Factory;
@@ -19,7 +19,7 @@ use Joomla\Utilities\ArrayHelper;
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
-class AichatbotTask extends CMSPlugin
+class BearsAichatbotTask extends CMSPlugin
 {
     /** @var CMSApplicationInterface */
     protected $app;
@@ -40,8 +40,8 @@ class AichatbotTask extends CMSPlugin
     public function onRegisterTasks(): array
     {
         return [
-            TaskOption::create('aichatbot.queue', 'Process AI Chatbot job queue', '\\PlgTaskAichatbot\\Extension\\AichatbotTask'),
-            TaskOption::create('aichatbot.reconcile', 'Reconcile AI Chatbot collection', '\\PlgTaskAichatbot\\Extension\\AichatbotTask'),
+            TaskOption::create('bears_aichatbot.queue', 'Process AI Chatbot job queue', '\\PlgTaskBearsAichatbot\\Extension\\BearsAichatbotTask'),
+            TaskOption::create('bears_aichatbot.reconcile', 'Reconcile AI Chatbot collection', '\\PlgTaskBearsAichatbot\\Extension\\BearsAichatbotTask'),
         ];
     }
 
@@ -56,11 +56,11 @@ class AichatbotTask extends CMSPlugin
             // Load collection id from centralized state for this run
             $this->loadCollectionFromState();
 
-            if ($name === 'aichatbot.queue') {
+            if ($name === 'bears_aichatbot.queue') {
                 [$ok, $info] = $this->processQueue();
                 return new TaskResult($ok ? TaskStatus::OK : TaskStatus::KNOCKOUT, $info);
             }
-            if ($name === 'aichatbot.reconcile') {
+            if ($name === 'bears_aichatbot.reconcile') {
                 [$ok, $info] = $this->reconcile();
                 return new TaskResult($ok ? TaskStatus::OK : TaskStatus::KNOCKOUT, $info);
             }

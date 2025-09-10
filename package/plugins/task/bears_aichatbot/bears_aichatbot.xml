@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="plugin" group="task" version="5.0" method="upgrade">
-  <name>plg_task_aichatbot</name>
+  <name>plg_task_bears_aichatbot</name>
   <author>N6REJ</author>
   <creationDate>2025-09-06</creationDate>
   <version>2025.09.06.8</version>
@@ -15,8 +15,8 @@
     <folder>language</folder>
   </files>
   <languages>
-    <language tag="en-GB">language/en-GB/en-GB.plg_task_aichatbot.ini</language>
-    <language tag="en-GB">language/en-GB/en-GB.plg_task_aichatbot.sys.ini</language>
+    <language tag="en-GB">language/en-GB/en-GB.plg_task_bears_aichatbot.ini</language>
+    <language tag="en-GB">language/en-GB/en-GB.plg_task_bears_aichatbot.sys.ini</language>
   </languages>
 
   <config>forms/config.xml</config>
