@@ -50,6 +50,12 @@
       return token;
     });
 
+    // Handle custom knowledge tags: keep inner content, drop the <kb> wrappers
+    // Do this BEFORE escaping to preserve the content for Markdown processing
+    out = out.replace(/<kb>([\s\S]*?)<\/kb>/gi, function (_, inner) { return inner; });
+    // Remove any stray self-closing or unmatched kb tags
+    out = out.replace(/<\/?kb\s*\/?>(?=\s|$)/gi, '');
+
     // Escape HTML for remaining text
     out = escapeHtml(out);
 
