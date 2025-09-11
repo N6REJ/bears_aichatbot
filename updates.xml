@@ -5,10 +5,10 @@
         <description>Bears AI Knowledgebase Chatbot</description>
         <element>mod_bears_aichatbot</element>
         <type>module</type>
-        <version>2025.09.11</version>
+        <version>2025.09.11.3</version>
         <infourl title="AI Chatbot">https://github.com/N6REJ/mod_bears_aichatbot</infourl>
         <downloads>
-            <downloadurl type="full" format="zip">https://github.com/N6REJ/bears_aichatbot/releases/download/2025.09.11/pkg_bears_aichatbot_2025.09.11.zip</downloadurl>
+            <downloadurl type="full" format="zip">https://github.com/N6REJ/bears_aichatbot/releases/download/2025.09.11.3/pkg_bears_aichatbot_2025.09.11.3.zip</downloadurl>
         </downloads>
         <tags>
             <tag>ai</tag>
