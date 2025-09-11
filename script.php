@@ -6,8 +6,8 @@
  */
 \defined('_JEXEC') or die;
 
-use Joomla\CMS\Factory;
 use Joomla\CMS\Table\Extension as ExtensionTable;
+use Joomla\Database\DatabaseInterface;
 
 /**
  * Primary installer script class keyed to how Joomla may compute the class name
@@ -20,19 +20,17 @@ class pkg_pkg_bears_aichatbotInstallerScript
 {
     public function postflight($type, $parent)
     {
-        // 1) Enable the plugins (content + task) via Extension table (standard Joomla 5)
-        $this->enablePlugin('content', 'bears_aichatbot');
-        $this->enablePlugin('task', 'bears_aichatbot');
+        // Obtain DB from installer parent to avoid DI container usage
+        $db = $parent->getParent()->getDbo();
 
-        // 2) Inform admins about scheduling tasks via the standard UI
-        //    Standard behavior is to let admins create and configure Scheduled Tasks from the backend.
-
+        // Enable the plugins (content + task) via Extension table (standard Joomla 5)
+        $this->enablePlugin($db, 'content', 'bears_aichatbot');
+        $this->enablePlugin($db, 'task', 'bears_aichatbot');
     }
 
-    protected function enablePlugin(string $folder, string $element): void
+    protected function enablePlugin(DatabaseInterface $db, string $folder, string $element): void
     {
         try {
-            $db = Factory::getDbo();
             $table = new ExtensionTable($db);
 
             if ($table->load(['type' => 'plugin', 'element' => $element, 'folder' => $folder])) {
