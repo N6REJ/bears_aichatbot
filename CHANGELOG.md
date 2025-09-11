@@ -5,18 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.11.6] - 2025-09-11
+## [2025.09.11.8] - 2025-09-11
+
+### Added
+
+* Add comprehensive administrator component with analytics dashboard and enhanced usage logging ([560d3d5](https://github.com/N6REJ/bears_aichatbot/commit/560d3d5))
 
 ### Changed
 
-* Update version to 2025.09.11.3 [skip ci] ([b429130](https://github.com/N6REJ/bears_aichatbot/commit/b429130))
-* Merge remote-tracking branch 'origin/main' ([f6a3654](https://github.com/N6REJ/bears_aichatbot/commit/f6a3654))
-* Update version to 2025.09.11.4 [skip ci] ([2d85350](https://github.com/N6REJ/bears_aichatbot/commit/2d85350))
-* Merge remote-tracking branch 'origin/main' ([bb5ada0](https://github.com/N6REJ/bears_aichatbot/commit/bb5ada0))
-* Merge remote-tracking branch 'origin/main' ([fbc6733](https://github.com/N6REJ/bears_aichatbot/commit/fbc6733))
-* Update version to 2025.09.11.5 [skip ci] ([fbff473](https://github.com/N6REJ/bears_aichatbot/commit/fbff473))
-
-### Fixed
-
-* Fix admin menu link normalization to prevent duplicate index.php in component URL ([acd71ef](https://github.com/N6REJ/bears_aichatbot/commit/acd71ef))
+* Update version to 2025.09.11.6 [skip ci] ([b14e598](https://github.com/N6REJ/bears_aichatbot/commit/b14e598))
+* Merge remote-tracking branch 'origin/main' ([954caf7](https://github.com/N6REJ/bears_aichatbot/commit/954caf7))
+* Update version to 2025.09.11.7 [skip ci] ([3d458fe](https://github.com/N6REJ/bears_aichatbot/commit/3d458fe))
 
