@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.11.9] - 2025-09-11
+## [2025.09.11.10] - 2025-09-11
 
 ### Changed
 
@@ -13,4 +13,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update version to 2025.09.11.8 [skip ci] ([4cbb894](https://github.com/N6REJ/bears_aichatbot/commit/4cbb894))
 * Refactor component dispatcher initialization to use factory pattern with proper router setup ([8087eb3](https://github.com/N6REJ/bears_aichatbot/commit/8087eb3))
 * Merge remote-tracking branch 'origin/main' ([58d2555](https://github.com/N6REJ/bears_aichatbot/commit/58d2555))
+* Update version to 2025.09.11.9 [skip ci] ([adb2817](https://github.com/N6REJ/bears_aichatbot/commit/adb2817))
+* Merge remote-tracking branch 'origin/main' ([bbbb281](https://github.com/N6REJ/bears_aichatbot/commit/bbbb281))
+
+### Fixed
+
+* Fix component dispatcher and router initialization to pass application instance ([826e1eb](https://github.com/N6REJ/bears_aichatbot/commit/826e1eb))
 
