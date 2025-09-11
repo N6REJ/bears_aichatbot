@@ -10,6 +10,7 @@
 
   <scriptfile>script.php</scriptfile>
   <files>
+    <file type="component" id="com_bears_aichatbot" client="administrator">com_bears_aichatbot</file>
     <file type="module" client="site">mod_bears_aichatbot</file>
     <file type="plugin" group="task">plugins/task/bears_aichatbot</file>
     <file type="plugin" group="content">plugins/content/bears_aichatbot</file>
