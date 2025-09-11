@@ -7,7 +7,7 @@
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
-use Joomla\CMS\Table\Table;
+use Joomla\CMS\Table\Extension as ExtensionTable;
 
 /**
  * Primary installer script class keyed to how Joomla may compute the class name
@@ -26,20 +26,14 @@ class pkg_pkg_bears_aichatbotInstallerScript
 
         // 2) Inform admins about scheduling tasks via the standard UI
         //    Standard behavior is to let admins create and configure Scheduled Tasks from the backend.
-        try {
-            Factory::getApplication()->enqueueMessage(
-                'Bears AI Chatbot installed. Create Scheduled Tasks for the plugin\'s task types via System → Scheduled Tasks if needed.',
-                'info'
-            );
-        } catch (\Throwable $e) {
-            // ignore if application is not available in this context
-        }
+
     }
 
     protected function enablePlugin(string $folder, string $element): void
     {
         try {
-            $table = Table::getInstance('Extension');
+            $db = Factory::getDbo();
+            $table = new ExtensionTable($db);
 
             if ($table->load(['type' => 'plugin', 'element' => $element, 'folder' => $folder])) {
                 if ((int) $table->enabled !== 1) {
