@@ -304,39 +304,53 @@ class ApiController extends BaseController
         if ($token === '' || $apiBase === '') {
             $this->respondError('IONOS token or endpoint not configured', 400);
         }
+
         $http = \Joomla\CMS\Http\HttpFactory::getHttp();
         $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
         if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
-        $newId = '';
-        try {
-            $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
-            $root   = \Joomla\CMS\Uri\Uri::root();
-            $host   = parse_url($root, PHP_URL_HOST) ?: 'localhost';
-            $name   = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
-            $payload = [ 'name' => $name, 'description' => 'Rebuilt by Bears AI Chatbot dashboard' ];
-            $resp = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
-            if ($resp->code >= 200 && $resp->code < 300) {
-                $data = json_decode((string)$resp->body, true);
-                $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
-            } else {
-                throw new \RuntimeException('Create failed: HTTP ' . $resp->code);
-            }
-        } catch (\Throwable $e) {
-            $this->respondError('Create collection failed: ' . $e->getMessage(), 500);
-        }
-        if ($newId === '') {
-            $this->respondError('Create collection returned no id', 502);
-        }
-        // Persist new collection id
-        try {
-            $upd = $db->getQuery(true)
-                ->update($db->quoteName('#__aichatbot_state'))
-                ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
-                ->where($db->quoteName('id') . ' = 1');
-            $db->setQuery($upd)->execute();
-        } catch (\Throwable $e) {}
 
-        // Clear mapping table and enqueue upsert jobs for all currently published content
+        // Get current collection id from state
+        $activeCollectionId = '';
+        try {
+            $qcid = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($qcid);
+            $activeCollectionId = (string)($db->loadResult() ?? '');
+        } catch (\Throwable $ignore) {}
+        if ($activeCollectionId === '') {
+            $this->respondError('No collection_id configured', 400);
+        }
+
+        // Try to bulk delete documents in the existing collection
+        $bulkDeleted = false;
+        try {
+            $delUrl = $apiBase . '/document-collections/' . rawurlencode($activeCollectionId) . '/documents';
+            $respDel = $http->delete($delUrl, $headers, 60);
+            if ($respDel->code >= 200 && $respDel->code < 300) { $bulkDeleted = true; }
+        } catch (\Throwable $ignore) {}
+
+        // Fallback: delete per-doc using locally known remote ids
+        if (!$bulkDeleted) {
+            try {
+                $qdocs = $db->getQuery(true)
+                    ->select($db->quoteName('doc_id'))
+                    ->from($db->quoteName('#__aichatbot_docs'))
+                    ->where($db->quoteName('doc_id') . " IS NOT NULL AND " . $db->quoteName('doc_id') . " != ''");
+                $db->setQuery($qdocs);
+                $docIds = (array)$db->loadColumn();
+                foreach ($docIds as $docId) {
+                    try {
+                        $url = $apiBase . '/document-collections/' . rawurlencode($activeCollectionId) . '/documents/' . rawurlencode((string)$docId);
+                        $http->delete($url, $headers, 30);
+                    } catch (\Throwable $ignore2) {}
+                }
+            } catch (\Throwable $ignore) {}
+        }
+
+        // Clear local mapping and enqueue upserts for all published content
         $enqueued = 0;
         try {
             $db->setQuery('DELETE FROM ' . $db->quoteName('#__aichatbot_docs'))->execute();
@@ -355,7 +369,7 @@ class ApiController extends BaseController
             }
         } catch (\Throwable $e) {}
 
-        $this->respond(['data' => ['collection_id' => $newId, 'enqueued' => $enqueued]], 200);
+        $this->respond(['data' => ['collection_id' => $activeCollectionId, 'enqueued' => $enqueued, 'mode' => 'reuse']], 200);
     }
 
     public function latencyJson()

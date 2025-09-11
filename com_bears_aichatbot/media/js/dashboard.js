@@ -200,21 +200,27 @@
     if (btnRebuild) {
       btnRebuild.addEventListener('click', async function(){
         const status = qs('#rebuild-status');
-        const proceed = window.confirm('This will create a new document collection, reset mappings, and enqueue a full re-sync. Continue?');
+        const proceed = window.confirm(
+          'This will rebuild the existing document collection in place:\n' +
+          '- All documents in the current collection will be deleted\n' +
+          '- A full re-sync will be enqueued to repopulate it from Joomla content\n' +
+          '- During reindexing, some answers may be incomplete\n' +
+          'No new collection will be created. Continue?'
+        );
         if (!proceed) {
           if (status) { status.textContent = 'Rebuild canceled.'; }
           return;
         }
-        if (status) { status.textContent = 'Rebuilding...'; }
+        if (status) { status.textContent = 'Rebuilding (in-place)...'; }
         try {
           const res = await fetch(window.BAICHATBOT.base + 'index.php?option=' + window.BAICHATBOT.option + '&task=api.rebuildCollection', {
             method: 'POST',
             headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8', 'Accept': 'application/json' },
-            body: window.BAICHATBOT.token + '=1&recreate=1'
+            body: window.BAICHATBOT.token + '=1&recreate=0'
           });
           const json = await res.json();
           if (json && json.data) {
-            if (status) { status.textContent = 'New collection: ' + (json.data.collection_id || '') + ' | Enqueued: ' + (json.data.enqueued || 0); }
+            if (status) { status.textContent = 'Collection rebuilt (in-place): ' + (json.data.collection_id || '') + ' | Enqueued: ' + (json.data.enqueued || 0); }
             // Refresh meta and collection size chart after short delay
             setTimeout(refresh, 1000);
           } else if (json && json.error) {

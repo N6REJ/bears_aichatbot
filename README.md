@@ -23,7 +23,7 @@ Features
   - Requests, errors, token usage, spend, and KPIs
   - Charts: tokens over time, requests/errors, spend (USD), latency, token histogram, outcomes (answered/refused/error), collection size history
   - Collection Info (metadata fetched from IONOS Document Collections API)
-  - Rebuild Document Collection tool with confirmation prompt
+  - Rebuild Document Collection tool with confirmation prompt (in-place)
   - CSV export (filters respected)
 
 
@@ -119,10 +119,15 @@ Administrator component (com_bears_aichatbot)
 - Collection Info
   - Calls IONOS API: GET /document-collections/{collection_id}
   - Displays metadata: name, description, created/updated, documentsCount (if available)
-- Rebuild Document Collection
-  - Button with confirmation prompt
-  - Creates a new collection, updates centralized state, clears mapping, enqueues upserts for all published content
-  - Safe: does not delete the old collection; scheduler repopulates the new one from Joomla content
+- Rebuild Document Collection (in-place)
+  - Button with confirmation prompt that explains impact:
+    - Deletes all documents in the current collection
+    - Enqueues a full re-sync to repopulate from Joomla content
+    - Answers may be incomplete during reindexing
+    - No new collection is created; the collection_id remains the same
+  - Implementation details:
+    - Uses DELETE /document-collections/{collection_id}/documents for bulk purge when supported, otherwise deletes per-document using locally known ids
+    - Clears local mapping and enqueues upserts for all published content
 
 
 Usage logging and analytics
@@ -157,7 +162,7 @@ Upgrades and data migration
 - Component upgrades include SQL updates:
   - 1.0.1: add cost columns and backfill estimated_cost for existing rows using standard pricing
   - 1.0.2: add latency, payload sizes, outcome, retrieved_top_score and initialize outcome for error rows
-- The module also performs a lazy CREATE TABLE IF NOT EXISTS for #__aichatbot_usage to avoid failures when the admin component isn’t installed yet.
+- The module also performs a lazy CREATE TABLE IF NOT EXISTS for #__aichatbot_usage that mirrors the full install schema (including duration_ms, request_bytes, response_bytes, outcome, retrieved_top_score) to avoid failures when the admin component isn’t installed yet.
 
 
 Scheduler tasks
@@ -175,6 +180,7 @@ Security
 - Admin-only access to analytics endpoints (core.manage)
 - Rebuild action is CSRF-protected and requires confirmation
 - Credentials are read from the module at runtime by the task plugin
+- Admin API uses consistent JSON responses with proper HTTP status codes; errors follow { error: { code, message } }
 
 
 Troubleshooting
@@ -189,7 +195,7 @@ See CHANGELOG.md for the detailed list of changes. Notable recent additions:
 - Admin component with analytics and cost tracking
 - Spend and latency charts; outcome and histogram analytics
 - Collection Info (metadata) and Collection Size history
-- Rebuild Document Collection tool with confirmation
+- Rebuild Document Collection tool with confirmation (in-place)
 - Logging of extended metrics and cost estimation
 
 
