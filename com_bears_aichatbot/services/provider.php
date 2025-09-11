@@ -25,10 +25,12 @@ return new class implements ServiceProviderInterface {
         $container->set(
             ComponentInterface::class,
             function (Container $container) {
-                return new Joomla\Component\Bears_aichatbot\Administrator\Dispatcher\Dispatcher(
-                    $container->get(ComponentDispatcherFactoryInterface::class),
-                    $container->get('JComponentRouter')
+                $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
+                    ->createDispatcher('com_bears_aichatbot');
+                $dispatcher->setRouter(
+                    $container->get(RouterFactoryInterface::class)->createRouter('com_bears_aichatbot')
                 );
+                return $dispatcher;
             }
         );
     }
