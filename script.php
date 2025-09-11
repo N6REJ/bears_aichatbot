@@ -38,6 +38,18 @@ class pkg_pkg_bears_aichatbotInstallerScript
         // 2) Ensure Scheduler tasks exist, set to daily at midnight (cron: 0 0 * * *)
         $this->ensureSchedulerTask($db, 'bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '0 0 * * *');
         $this->ensureSchedulerTask($db, 'bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '0 0 * * *');
+
+        // 3) Normalize admin menu link for the component to avoid duplicated index.php?index.php?
+        // Some Joomla installs prepend index.php? automatically, so the stored link should be 'option=com_bears_aichatbot'
+        try {
+            $q = $db->getQuery(true)
+                ->update($db->quoteName('#__extensions'))
+                ->set($db->quoteName('admin_menu_link') . ' = ' . $db->quote('option=com_bears_aichatbot'))
+                ->where($db->quoteName('type') . ' = ' . $db->quote('component'))
+                ->where($db->quoteName('element') . ' = ' . $db->quote('com_bears_aichatbot'))
+                ->where($db->quoteName('client_id') . ' = 1');
+            $db->setQuery($q)->execute();
+        } catch (\Throwable $ignore) {}
     }
 
     protected function ensureSchedulerTask(DatabaseInterface $db, string $type, string $title, string $cron): void
