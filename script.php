@@ -44,7 +44,6 @@ class pkg_pkg_bears_aichatbotInstallerScript
         try {
             $q = $db->getQuery(true)
                 ->update($db->quoteName('#__extensions'))
-                ->set($db->quoteName('admin_menu_link') . ' = ' . $db->quote('option=com_bears_aichatbot'))
                 ->where($db->quoteName('type') . ' = ' . $db->quote('component'))
                 ->where($db->quoteName('element') . ' = ' . $db->quote('com_bears_aichatbot'))
                 ->where($db->quoteName('client_id') . ' = 1');

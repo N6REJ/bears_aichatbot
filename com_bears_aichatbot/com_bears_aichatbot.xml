@@ -12,10 +12,10 @@
   <namespace path="src">Joomla\\Component\\Bears_aichatbot</namespace>
 
   <administration>
-    <menu link="index.php?option=com_bears_aichatbot" img="class:chart">Bears AI Chatbot</menu>
+    <menu link="option=com_bears_aichatbot" img="class:chart">Bears AI Chatbot</menu>
     <submenu>
-      <menu link="index.php?option=com_bears_aichatbot">COM_BEARS_AICHATBOT_DASHBOARD_TITLE</menu>
-      <menu link="index.php?option=com_bears_aichatbot&amp;view=usage">COM_BEARS_AICHATBOT_USAGE_TITLE</menu>
+      <menu link="option=com_bears_aichatbot">COM_BEARS_AICHATBOT_DASHBOARD_TITLE</menu>
+      <menu link="option=com_bears_aichatbot&amp;view=usage">COM_BEARS_AICHATBOT_USAGE_TITLE</menu>
     </submenu>
 
     <files>
