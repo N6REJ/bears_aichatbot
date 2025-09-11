@@ -1,13 +1,13 @@
 <?php
 /**
  * Package installer script for pkg_bears_aichatbot
- * - Enables the content and task plugins by default
- * - Creates Scheduler tasks to run daily at midnight
+ * - Enables the content and task plugins by default using Joomla 5 APIs
+ * - Defers Scheduler task creation to Joomla's standard Scheduled Tasks UI
  */
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Factory;
-use Joomla\Database\DatabaseInterface;
+use Joomla\CMS\Table\Table;
 
 /**
  * Primary installer script class keyed to how Joomla may compute the class name
@@ -20,104 +20,32 @@ class pkg_pkg_bears_aichatbotInstallerScript
 {
     public function postflight($type, $parent)
     {
-        $db = Factory::getContainer()->get(DatabaseInterface::class);
+        // 1) Enable the plugins (content + task) via Extension table (standard Joomla 5)
+        $this->enablePlugin('content', 'bears_aichatbot');
+        $this->enablePlugin('task', 'bears_aichatbot');
 
-        // 1) Enable the plugins (content + task)
+        // 2) Inform admins about scheduling tasks via the standard UI
+        //    Standard behavior is to let admins create and configure Scheduled Tasks from the backend.
         try {
-            $q = $db->getQuery(true)
-                ->update($db->quoteName('#__extensions'))
-                ->set($db->quoteName('enabled') . ' = 1')
-                ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
-                ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbot'))
-                ->where($db->quoteName('folder') . ' IN (' . $db->quote('content') . ', ' . $db->quote('task') . ')');
-            $db->setQuery($q)->execute();
+            Factory::getApplication()->enqueueMessage(
+                'Bears AI Chatbot installed. Create Scheduled Tasks for the plugin\'s task types via System → Scheduled Tasks if needed.',
+                'info'
+            );
         } catch (\Throwable $e) {
-            // ignore
+            // ignore if application is not available in this context
         }
-
-        // 2) Ensure Scheduler tasks exist, set to daily at midnight (cron: 0 0 * * *)
-        $this->ensureSchedulerTask($db, 'bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '0 0 * * *');
-        $this->ensureSchedulerTask($db, 'bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '0 0 * * *');
-
-        // 3) Normalize admin menu link for the component to avoid duplicated index.php?index.php?
-        // Some Joomla installs prepend index.php? automatically, so the stored link should be 'option=com_bears_aichatbot'
-        try {
-            $q = $db->getQuery(true)
-                ->update($db->quoteName('#__extensions'))
-                ->where($db->quoteName('type') . ' = ' . $db->quote('component'))
-                ->where($db->quoteName('element') . ' = ' . $db->quote('com_bears_aichatbot'))
-                ->where($db->quoteName('client_id') . ' = 1');
-            $db->setQuery($q)->execute();
-        } catch (\Throwable $ignore) {}
     }
 
-    protected function ensureSchedulerTask(DatabaseInterface $db, string $type, string $title, string $cron): void
+    protected function enablePlugin(string $folder, string $element): void
     {
         try {
-            // Check if a task of this type already exists
-            $q = $db->getQuery(true)
-                ->select('COUNT(*)')
-                ->from($db->quoteName('#__scheduler_tasks'))
-                ->where($db->quoteName('type') . ' = ' . $db->quote($type));
-            $db->setQuery($q);
-            $exists = (int) $db->loadResult() > 0;
-            if ($exists) {
-                return;
-            }
+            $table = Table::getInstance('Extension');
 
-            // Preferred (Joomla 4.3+/5): execution_rules JSON column with rule "cron"
-            $executionRules = json_encode(['rule' => 'cron', 'expression' => $cron], JSON_UNESCAPED_SLASHES);
-            $ins = $db->getQuery(true)
-                ->insert($db->quoteName('#__scheduler_tasks'))
-                ->columns([
-                    $db->quoteName('type'),
-                    $db->quoteName('title'),
-                    $db->quoteName('state'),
-                    $db->quoteName('execution_rules'),
-                    $db->quoteName('params'),
-                    $db->quoteName('priority'),
-                ])
-                ->values(implode(',', [
-                    $db->quote($type),
-                    $db->quote($title),
-                    1, // enabled
-                    $db->quote($executionRules),
-                    $db->quote('{}'),
-                    3, // normal priority
-                ]));
-            try {
-                $db->setQuery($ins)->execute();
-                return;
-            } catch (\Throwable $e) {
-                // fall through to alternate schema
-            }
-
-            // Alternate legacy schema: if cron_expression column exists, use it
-            try {
-                $columns = $db->getTableColumns('#__scheduler_tasks', false);
-                if (isset($columns['cron_expression'])) {
-                    $ins2 = $db->getQuery(true)
-                        ->insert($db->quoteName('#__scheduler_tasks'))
-                        ->columns([
-                            $db->quoteName('type'),
-                            $db->quoteName('title'),
-                            $db->quoteName('state'),
-                            $db->quoteName('cron_expression'),
-                            $db->quoteName('params'),
-                            $db->quoteName('priority'),
-                        ])
-                        ->values(implode(',', [
-                            $db->quote($type),
-                            $db->quote($title),
-                            1,
-                            $db->quote($cron),
-                            $db->quote('{}'),
-                            3,
-                        ]));
-                    $db->setQuery($ins2)->execute();
+            if ($table->load(['type' => 'plugin', 'element' => $element, 'folder' => $folder])) {
+                if ((int) $table->enabled !== 1) {
+                    $table->enabled = 1;
+                    $table->store();
                 }
-            } catch (\Throwable $ignore) {
-                // ignore
             }
         } catch (\Throwable $e) {
             // ignore
