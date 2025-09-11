@@ -12,6 +12,7 @@ use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
 use Joomla\CMS\Extension\Service\Provider\RouterFactory;
 use Joomla\CMS\Router\RouterFactoryInterface;
+use Joomla\CMS\Application\CMSApplicationInterface;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
 
@@ -25,11 +26,12 @@ return new class implements ServiceProviderInterface {
         $container->set(
             ComponentInterface::class,
             function (Container $container) {
+                $app = $container->get(CMSApplicationInterface::class);
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
-                    ->createDispatcher('com_bears_aichatbot');
-                $dispatcher->setRouter(
-                    $container->get(RouterFactoryInterface::class)->createRouter('com_bears_aichatbot')
-                );
+                    ->createDispatcher($app, 'com_bears_aichatbot');
+                $router = $container->get(RouterFactoryInterface::class)
+                    ->createRouter($app, $dispatcher->getExtension());
+                $dispatcher->setRouter($router);
                 return $dispatcher;
             }
         );
