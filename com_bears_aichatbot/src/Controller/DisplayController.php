@@ -1,15 +1,13 @@
 <?php
 /**
- * Administrator Display controller for com_bears_aichatbot
+ * Bridge controller so core dispatcher can resolve base namespace controller
+ * and delegate to the Administrator controller.
  */
 
-namespace Joomla\Component\BearsAichatbot\Administrator\Controller;
+namespace Joomla\Component\BearsAichatbot\Controller;
 
 \defined('_JEXEC') or die;
 
-use Joomla\CMS\MVC\Controller\BaseController as JBaseController;
-
-class DisplayController extends JBaseController
+class DisplayController extends \Joomla\Component\BearsAichatbot\Administrator\Controller\DisplayController
 {
-    protected $default_view = 'dashboard';
 }
