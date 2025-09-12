@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.38] - 2025-09-12
+
+### Fixed
+
+* Correct BaseController constructor parameter order in dispatcher fallbacks; now instantiate controllers as ($app, ?MVCFactoryInterface, $input, $config) to satisfy Joomla 5. Prevents fatal: BaseController::__construct(): Argument #2 ($factory) must be of type ?MVCFactoryInterface, AdministratorApplication given.
+
+### Changed
+
+* Bump component version to 2025.09.12.38 to ensure upgrade copies updated dispatcher files.
+
 ## [2025.09.12.37] - 2025-09-12
 
 ### Fixed

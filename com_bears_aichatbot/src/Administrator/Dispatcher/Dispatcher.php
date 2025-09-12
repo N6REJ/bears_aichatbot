@@ -41,7 +41,10 @@ class Dispatcher extends ComponentDispatcher
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
                 return $factory->createController($name, $basePrefix, $input, $config);
             } catch (\Throwable $e) {
-                return new $baseClass($config, $app, $input);
+                // Fallback: instantiate directly with correct constructor signature
+                $factoryObj = null;
+                try { $factoryObj = Factory::getContainer()->get(MVCFactoryInterface::class); } catch (\Throwable $ignore) {}
+                return new $baseClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
             }
         }
 
@@ -53,7 +56,10 @@ class Dispatcher extends ComponentDispatcher
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
                 return $factory->createController($name, $adminPrefix, $input, $config);
             } catch (\Throwable $e) {
-                return new $adminClass($config, $app, $input);
+                // Fallback: instantiate directly with correct constructor signature
+                $factoryObj = null;
+                try { $factoryObj = Factory::getContainer()->get(MVCFactoryInterface::class); } catch (\Throwable $ignore) {}
+                return new $adminClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
             }
         }
 
