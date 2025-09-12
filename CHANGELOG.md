@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.39] - 2025-09-12
+
+### Fixed
+
+* Dispatcher: Add dual constructor-order compatibility when directly instantiating controllers. Try J5 order ($app, ?MVCFactoryInterface, $input, $config) and fall back to legacy order ($config, ?MVCFactoryInterface, $app, $input). Prevents fatal: BaseController::__construct(): Argument #3 ($app) must be of type ?CMSApplicationInterface, Joomla\CMS\Input\Input given.
+
 ## [2025.09.12.38] - 2025-09-12
 
 ### Fixed

@@ -31,11 +31,17 @@ class Dispatcher extends \Joomla\Component\BearsAichatbot\Administrator\Dispatch
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
                 return $factory->createController($name, $prefix, $input, array_merge(['option' => 'com_bears_aichatbot'], $config));
             } catch (\Throwable $e) {
-                // Fallback: instantiate directly with correct BaseController signature
+                // Fallback: instantiate directly with constructor signature compatibility
                 $app = Factory::getApplication();
                 $factoryObj = null;
                 try { $factoryObj = Factory::getContainer()->get(MVCFactoryInterface::class); } catch (\Throwable $ignore) {}
-                return new $class($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, array_merge(['option' => 'com_bears_aichatbot'], $config));
+                try {
+                    // Preferred J5 order
+                    return new $class($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, array_merge(['option' => 'com_bears_aichatbot'], $config));
+                } catch (\Throwable $e2) {
+                    // Legacy order
+                    return new $class(array_merge(['option' => 'com_bears_aichatbot'], $config), $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $app, $input);
+                }
             }
         }
 

@@ -41,10 +41,16 @@ class Dispatcher extends ComponentDispatcher
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
                 return $factory->createController($name, $basePrefix, $input, $config);
             } catch (\Throwable $e) {
-                // Fallback: instantiate directly with correct constructor signature
+                // Fallback: instantiate directly with constructor signature compatibility
                 $factoryObj = null;
                 try { $factoryObj = Factory::getContainer()->get(MVCFactoryInterface::class); } catch (\Throwable $ignore) {}
-                return new $baseClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
+                try {
+                    // Preferred J5 order: ($app, ?MVCFactoryInterface, $input, $config)
+                    return new $baseClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
+                } catch (\Throwable $e2) {
+                    // Legacy order: ($config, ?MVCFactoryInterface, $app, $input)
+                    return new $baseClass($config, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $app, $input);
+                }
             }
         }
 
@@ -56,17 +62,33 @@ class Dispatcher extends ComponentDispatcher
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
                 return $factory->createController($name, $adminPrefix, $input, $config);
             } catch (\Throwable $e) {
-                // Fallback: instantiate directly with correct constructor signature
+                // Fallback: instantiate directly with constructor signature compatibility
                 $factoryObj = null;
                 try { $factoryObj = Factory::getContainer()->get(MVCFactoryInterface::class); } catch (\Throwable $ignore) {}
-                return new $adminClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
+                try {
+                    // Preferred J5 order: ($app, ?MVCFactoryInterface, $input, $config)
+                    return new $adminClass($app, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $input, $config);
+                } catch (\Throwable $e2) {
+                    // Legacy order: ($config, ?MVCFactoryInterface, $app, $input)
+                    return new $adminClass($config, $factoryObj instanceof MVCFactoryInterface ? $factoryObj : null, $app, $input);
+                }
             }
         }
 
         // 3) Legacy fallback (controllers/display.php)
         $legacyClass = $name === 'Display' ? 'Bears_aichatbotControllerDisplay' : 'Bears_aichatbotController' . $name;
         if (class_exists($legacyClass)) {
-            return new $legacyClass($config, $app, $input);
+            // Try legacy instantiation orders for maximum compatibility
+            try {
+                return new $legacyClass($app, null, $input, $config);
+            } catch (\Throwable $e1) {
+                try {
+                    return new $legacyClass($config, null, $app, $input);
+                } catch (\Throwable $e2) {
+                    // Final fallback: try original legacy order (may work on some variants)
+                    return new $legacyClass($config, $app, $input);
+                }
+            }
         }
 
         // Defer to parent which may have additional resolution logic
