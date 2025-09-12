@@ -43,7 +43,13 @@ class DisplayController extends JBaseController
 
         // Use core view resolution to ensure paths and layouts are registered properly
         $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
-        $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
+        try {
+            $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
+        } catch (\Throwable $e) {
+            // Fallback: try base component namespace views if Administrator-prefixed view could not be resolved
+            $fallbackPrefix = 'Joomla\\Component\\BearsAichatbot';
+            $view = $this->getView($name, 'html', $fallbackPrefix, ['base_path' => $basePath]);
+        }
 
         // Attach the corresponding model if present
         try {
