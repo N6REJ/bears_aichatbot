@@ -41,7 +41,7 @@ return new class implements ServiceProviderInterface {
                 }
 
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
-                    ->createDispatcher($app, 'com_bears_aichatbot');
+                    ->createDispatcher($app);
                 $router = $container->get(RouterFactoryInterface::class)
                     ->createRouter($app, $dispatcher->getExtension());
                 $dispatcher->setRouter($router);
