@@ -28,6 +28,18 @@ class DisplayController extends JBaseController
         // Normalise view name to expected PSR segment (Usage, Dashboard, ...)
         $name = ucfirst(strtolower($viewName));
 
+        // Defensive autoload guard: ensure the Admin view class is available
+        try {
+            $viewClass = $prefix . '\\View\\' . $name . '\\HtmlView';
+            if (!class_exists($viewClass)) {
+                $base = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'Administrator'; // points to src/Administrator
+                $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $name . DIRECTORY_SEPARATOR . 'HtmlView.php';
+                if (is_file($file)) {
+                    require_once $file;
+                }
+            }
+        } catch (\Throwable $ignore) {}
+
         // Create the view and attach the corresponding model if present
         $view = $this->getView($name, 'html', $prefix);
         try {
