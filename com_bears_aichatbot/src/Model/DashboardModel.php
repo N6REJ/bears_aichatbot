@@ -3,7 +3,7 @@
  * Dashboard model (mainly passes filters, server renders template; JSON is served by ApiController)
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Model;
+namespace Joomla\Component\BearsAichatbot\Administrator\Model;
 
 \defined('_JEXEC') or die;
 

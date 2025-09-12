@@ -3,7 +3,7 @@
  * Dashboard view
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\View\Dashboard;
+namespace Joomla\Component\BearsAichatbot\Administrator\View\Dashboard;
 
 \defined('_JEXEC') or die;
 

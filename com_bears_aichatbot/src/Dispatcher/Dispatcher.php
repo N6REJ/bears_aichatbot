@@ -3,7 +3,7 @@
  * Dispatcher for com_bears_aichatbot (administrator)
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Dispatcher;
+namespace Joomla\Component\BearsAichatbot\Administrator\Dispatcher;
 
 \defined('_JEXEC') or die;
 
@@ -29,7 +29,7 @@ class Dispatcher extends ComponentDispatcher
         }
         $name = ucfirst($name);
 
-        $prefix = 'Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller';
+        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator\\Controller';
         $class  = $prefix . '\\' . $name . 'Controller';
 
         if (class_exists($class)) {

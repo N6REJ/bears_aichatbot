@@ -17,6 +17,6 @@ if (!$user->authorise('core.manage', 'com_bears_aichatbot')) {
     throw new \Exception(Text::_('JERROR_ALERTNOAUTHOR'), 403);
 }
 
-$controller = BaseController::getInstance('Joomla\\Component\\Bears_aichatbot\\Administrator');
+$controller = BaseController::getInstance('Joomla\\Component\\BearsAichatbot\\Administrator');
 $controller->execute($app->input->get('task'));
 $controller->redirect();

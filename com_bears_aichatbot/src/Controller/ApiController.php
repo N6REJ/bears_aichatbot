@@ -3,7 +3,7 @@
  * API controller for usage JSON, CSV export and collection operations
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Controller;
+namespace Joomla\Component\BearsAichatbot\Administrator\Controller;
 
 \defined('_JEXEC') or die;
 

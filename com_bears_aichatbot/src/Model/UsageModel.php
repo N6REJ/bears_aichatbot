@@ -3,7 +3,7 @@
  * Usage model for listing table
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Model;
+namespace Joomla\Component\BearsAichatbot\Administrator\Model;
 
 \defined('_JEXEC') or die;
 

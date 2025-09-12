@@ -3,7 +3,7 @@
  * Usage view
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\View\Usage;
+namespace Joomla\Component\BearsAichatbot\Administrator\View\Usage;
 
 \defined('_JEXEC') or die;
 

@@ -18,15 +18,15 @@ use Joomla\DI\ServiceProviderInterface;
 return new class implements ServiceProviderInterface {
     public function register(Container $container)
     {
-        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\Bears_aichatbot'));
-        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\Bears_aichatbot'));
+        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\BearsAichatbot'));
+        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\BearsAichatbot'));
 
         // Try to register a RouterFactory provider (supports J5 and legacy namespaces)
         try {
             if (class_exists('\\Joomla\\Extension\\Service\\Provider\\RouterFactory')) {
-                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\BearsAichatbot'));
             } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\RouterFactory')) {
-                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\BearsAichatbot'));
             }
         } catch (\Throwable $e) {
             // ignore
@@ -38,21 +38,21 @@ return new class implements ServiceProviderInterface {
                 // Admin-only component: use the AdministratorApplication directly
                 $app = $container->get(AdministratorApplication::class);
 
-                // Provide class aliases to handle factories that look in the base namespace (without Administrator)
+                // Provide class aliases so both normalised and underscored base namespaces resolve to Admin classes
                 try {
-                    // Base-namespace aliases
-                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
-                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher');
+                    // Normalised base aliases (preferred in J4.3+/J5)
+                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
+                        class_alias('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher');
                     }
-                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController')) {
-                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController');
+                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Controller\\DisplayController')) {
+                        class_alias('Joomla\\Component\\BearsAichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController');
                     }
-                    // Normalized (no-underscore) namespace aliases some Joomla internals may compute
-                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
-                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher');
+                    // Underscored base aliases (backward references)
+                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
+                        class_alias('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher');
                     }
-                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController')) {
-                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController');
+                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Controller\\DisplayController')) {
+                        class_alias('Joomla\\Component\\BearsAichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController');
                     }
                 } catch (\Throwable $ignore) {}
 
@@ -71,7 +71,7 @@ return new class implements ServiceProviderInterface {
                 // Prepare a forced custom dispatcher if available
                 $forcedDispatcher = null;
                 try {
-                    $customDispatcherClass = 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher';
+                    $customDispatcherClass = 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher';
                     if (class_exists($customDispatcherClass)) {
                         $factory = $container->get(MVCFactoryInterface::class);
                         $forcedDispatcher = new $customDispatcherClass($app, $dispatcher->getExtension(), $factory);

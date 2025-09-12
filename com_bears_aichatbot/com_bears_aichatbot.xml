@@ -9,10 +9,10 @@
   <description>Administrator dashboard for Bears AI Chatbot usage analytics and document collection overview.</description>
   <client>administrator</client>
 
-  <namespace path="src">Joomla\\Component\\Bears_aichatbot</namespace>
+  <namespace path="src">Joomla\\Component\\BearsAichatbot</namespace>
 
   <administration>
-    <namespace path="src">Joomla\\Component\\Bears_aichatbot\\Administrator</namespace>
+    <namespace path="src">Joomla\\Component\\BearsAichatbot\\Administrator</namespace>
     <menu link="option=com_bears_aichatbot" img="class:chart">Bears AI Chatbot</menu>
     <submenu>
       <menu link="option=com_bears_aichatbot">COM_BEARS_AICHATBOT_DASHBOARD_TITLE</menu>

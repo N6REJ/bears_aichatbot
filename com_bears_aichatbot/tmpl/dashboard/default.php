@@ -1,5 +1,5 @@
 <?php
-/** @var Joomla\Component\Bears_aichatbot\Administrator\View\Dashboard\HtmlView $this */
+/** @var Joomla\Component\BearsAichatbot\Administrator\View\Dashboard\HtmlView $this */
 \defined('_JEXEC') or die;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\CMS\Router\Route;

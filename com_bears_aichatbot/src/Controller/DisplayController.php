@@ -3,7 +3,7 @@
  * Administrator Display controller for com_bears_aichatbot
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Controller;
+namespace Joomla\Component\BearsAichatbot\Administrator\Controller;
 
 \defined('_JEXEC') or die;
 

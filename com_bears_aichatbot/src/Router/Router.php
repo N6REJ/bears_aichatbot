@@ -1,5 +1,5 @@
 <?php
-namespace Joomla\Component\Bears_aichatbot\Administrator\Router;
+namespace Joomla\Component\BearsAichatbot\Administrator\Router;
 
 \defined('_JEXEC') or die;
 
