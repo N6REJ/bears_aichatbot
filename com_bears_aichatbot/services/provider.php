@@ -57,12 +57,16 @@ return new class implements ServiceProviderInterface {
                 } elseif ($container->has('Joomla\\Router\\RouterFactoryInterface')) {
                     $routerFactory = $container->get('Joomla\\Router\\RouterFactoryInterface');
                 }
-                if ($routerFactory === null) {
-                    throw new \RuntimeException('RouterFactoryInterface service is not available');
+                if ($routerFactory !== null) {
+                    try {
+                        $router = $routerFactory->createRouter($app, $dispatcher->getExtension());
+                        if ($router) {
+                            $dispatcher->setRouter($router);
+                        }
+                    } catch (\Throwable $e) {
+                        // Gracefully continue without setting a router if creation fails
+                    }
                 }
-
-                $router = $routerFactory->createRouter($app, $dispatcher->getExtension());
-                $dispatcher->setRouter($router);
                 return $dispatcher;
             }
         );
