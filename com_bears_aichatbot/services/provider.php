@@ -56,6 +56,8 @@ return new class implements ServiceProviderInterface {
                     }
                 } catch (\Throwable $ignore) {}
 
+                // Note: Removed eval-based shim. Base-namespace controller file now exists under src/Controller/DisplayController.php
+
                 $dispatcherFactory = $container->get(ComponentDispatcherFactoryInterface::class);
                 $dispatcher = $dispatcherFactory->createDispatcher($app);
 

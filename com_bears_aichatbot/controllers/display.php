@@ -17,3 +17,8 @@ class Bears_aichatbotControllerDisplay extends BaseController
 if (!class_exists('BearsAichatbotControllerDisplay')) {
     class_alias('Bears_aichatbotControllerDisplay', 'BearsAichatbotControllerDisplay');
 }
+
+// Ensure a namespaced base controller class exists when legacy file is loaded
+if (!class_exists('Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController') && class_exists('BearsAichatbotControllerDisplay')) {
+    class_alias('BearsAichatbotControllerDisplay', 'Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController');
+}
