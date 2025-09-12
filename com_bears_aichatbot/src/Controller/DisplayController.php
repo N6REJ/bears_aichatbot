@@ -1,10 +1,9 @@
 <?php
 /**
- * Compatibility Display controller in base namespace to satisfy Joomla dispatcher resolution.
- * It proxies to the Administrator controller.
+ * Administrator Display controller for com_bears_aichatbot
  */
 
-namespace Joomla\Component\Bears_aichatbot\Controller;
+namespace Joomla\Component\Bears_aichatbot\Administrator\Controller;
 
 \defined('_JEXEC') or die;
 
