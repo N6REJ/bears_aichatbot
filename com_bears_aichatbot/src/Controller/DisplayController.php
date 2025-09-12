@@ -41,8 +41,22 @@ class DisplayController extends JBaseController
             }
         } catch (\Throwable $ignore) {}
 
-        // Create the view and attach the corresponding model if present
-        $view = $this->getView($name, 'html', $prefix);
+        // Prefer manual view instantiation to avoid getView() resolution issues
+        $view = null;
+        $viewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
+        if (class_exists($viewClass)) {
+            try {
+                $view = new $viewClass();
+            } catch (\Throwable $e) {
+                $view = null;
+            }
+        }
+        // Fallback to core resolution if manual instantiation failed
+        if ($view === null) {
+            $view = $this->getView($name, 'html', $prefix);
+        }
+
+        // Attach the corresponding model if present
         try {
             $modelClass = $nameClass;
             $model = $this->getModel($modelClass);
@@ -51,6 +65,7 @@ class DisplayController extends JBaseController
             }
         } catch (\Throwable $ignore) {}
 
+        // Provide document and render
         $view->document = Factory::getDocument();
         $view->display();
 

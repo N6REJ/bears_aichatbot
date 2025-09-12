@@ -5,6 +5,13 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.49] - 2025-09-12
+
+### Fixed
+
+- Avoid 404 "View not found" by manually instantiating HtmlView classes in Display controllers (Administrator and base), wiring model/document, and falling back to core getView() only if needed.
+- Bump component version to 2025.09.12.49 to force deployment on upgrade.
+
 ## [2025.09.12.48] - 2025-09-12
 
 ### Fixed
