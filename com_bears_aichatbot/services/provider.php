@@ -38,6 +38,16 @@ return new class implements ServiceProviderInterface {
                 // Admin-only component: use the AdministratorApplication directly
                 $app = $container->get(AdministratorApplication::class);
 
+                // Provide class aliases to handle factories that look in the base namespace (without Administrator)
+                try {
+                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
+                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher');
+                    }
+                    if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController')) {
+                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController');
+                    }
+                } catch (\Throwable $ignore) {}
+
                 $dispatcherFactory = $container->get(ComponentDispatcherFactoryInterface::class);
                 $dispatcher = $dispatcherFactory->createDispatcher($app);
 
