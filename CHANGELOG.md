@@ -14,4 +14,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Merge remote-tracking branch 'origin/main' ([88eacaa](https://github.com/N6REJ/bears_aichatbot/commit/88eacaa))
 * Update version to 2025.09.12.52 [skip ci] ([4ea83eb](https://github.com/N6REJ/bears_aichatbot/commit/4ea83eb))
 * Update version to 2025.09.12.52 and add fallback namespace resolution in DisplayController classes to gracefully handle missing Administrator view classes by falling back to base component namespace ([b1f43b3](https://github.com/N6REJ/bears_aichatbot/commit/b1f43b3))
-

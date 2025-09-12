@@ -21,8 +21,8 @@ class DisplayController extends JBaseController
         $viewName = $input->getCmd('view', $this->default_view ?: 'dashboard');
         $input->set('view', $viewName);
 
-        // Force the correct Joomla 5 Administrator view prefix (without trailing \\View)
-        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator';
+        // Use base namespace prefix for view resolution to avoid admin autoload edge cases
+        $prefix = 'Joomla\\Component\\BearsAichatbot';
 
         // Normalise view name for class and for getView()
         $nameClass = ucfirst(strtolower($viewName));
