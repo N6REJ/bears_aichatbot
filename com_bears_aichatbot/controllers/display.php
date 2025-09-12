@@ -12,3 +12,8 @@ class Bears_aichatbotControllerDisplay extends BaseController
 {
     protected $default_view = 'dashboard';
 }
+
+// Provide additional legacy alias expected by some Joomla dispatcher variants
+if (!class_exists('BearsAichatbotControllerDisplay')) {
+    class_alias('Bears_aichatbotControllerDisplay', 'BearsAichatbotControllerDisplay');
+}
