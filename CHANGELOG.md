@@ -5,6 +5,12 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.59] - 2025-09-12
+
+### Fixed
+
+* Prevent 404 "View not found [dashboard]" by force-loading Administrator HtmlView classes (Dashboard, Usage) during component boot in services/provider.php to avoid autoload timing issues before BaseController::getView() runs. Bumped manifest version for deployment.
+
 ## [2025.09.12.58] - 2025-09-12
 
 ### Fixed

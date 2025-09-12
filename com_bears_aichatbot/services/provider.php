@@ -86,6 +86,17 @@ return new class implements ServiceProviderInterface {
                         require_once $adminDisplayControllerFile;
                     }
 
+                    // Ensure Administrator HtmlView classes are available to avoid autoload timing issues during getView()
+                    $adminViewsBase = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Administrator' . DIRECTORY_SEPARATOR . 'View';
+                    $adminDashboardView = $adminViewsBase . DIRECTORY_SEPARATOR . 'Dashboard' . DIRECTORY_SEPARATOR . 'HtmlView.php';
+                    if (is_file($adminDashboardView)) {
+                        require_once $adminDashboardView;
+                    }
+                    $adminUsageView = $adminViewsBase . DIRECTORY_SEPARATOR . 'Usage' . DIRECTORY_SEPARATOR . 'HtmlView.php';
+                    if (is_file($adminUsageView)) {
+                        require_once $adminUsageView;
+                    }
+
                     // Prefer base namespace bridge (will extend Administrator dispatcher) if present
                     $customDispatcherClass = 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher';
                     if (!class_exists($customDispatcherClass) && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
