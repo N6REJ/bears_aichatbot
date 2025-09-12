@@ -1,15 +1,16 @@
 <?php
 /**
- * Display controller for com_bears_aichatbot (administrator)
+ * Compatibility Display controller in base namespace to satisfy Joomla dispatcher resolution.
+ * It proxies to the Administrator controller.
  */
 
-namespace Joomla\Component\Bears_aichatbot\Administrator\Controller;
+namespace Joomla\Component\Bears_aichatbot\Controller;
 
 \defined('_JEXEC') or die;
 
-use Joomla\CMS\MVC\Controller\BaseController;
+use Joomla\CMS\MVC\Controller\BaseController as JBaseController;
 
-class DisplayController extends BaseController
+class DisplayController extends JBaseController
 {
     protected $default_view = 'dashboard';
 }
