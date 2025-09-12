@@ -12,6 +12,7 @@
   <namespace path="src">Joomla\\Component\\Bears_aichatbot</namespace>
 
   <administration>
+    <namespace path="src">Joomla\\Component\\Bears_aichatbot\\Administrator</namespace>
     <menu link="option=com_bears_aichatbot" img="class:chart">Bears AI Chatbot</menu>
     <submenu>
       <menu link="option=com_bears_aichatbot">COM_BEARS_AICHATBOT_DASHBOARD_TITLE</menu>
