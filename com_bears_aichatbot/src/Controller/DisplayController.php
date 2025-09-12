@@ -22,11 +22,14 @@ class DisplayController extends JBaseController
         $viewName = $input->getCmd('view', $this->default_view ?: 'dashboard');
         $input->set('view', $viewName);
 
-        // Force the correct Joomla 5 Administrator view prefix
-        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator\\View\\';
+        // Force the correct Joomla 5 Administrator view prefix (no trailing backslash)
+        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator\\View';
+
+        // Normalise view name to expected PSR segment (Usage, Dashboard, ...)
+        $name = ucfirst(strtolower($viewName));
 
         // Create the view and attach the corresponding model if present
-        $view = $this->getView(ucfirst($viewName), 'html', $prefix);
+        $view = $this->getView($name, 'html', $prefix);
         try {
             $modelClass = ucfirst($viewName);
             $model = $this->getModel($modelClass);
