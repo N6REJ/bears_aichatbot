@@ -38,6 +38,9 @@ return new class implements ServiceProviderInterface {
                 // Admin-only component: use the AdministratorApplication directly
                 $app = $container->get(AdministratorApplication::class);
 
+                // TEMP DEBUG: confirm provider executes on component boot (remove after test)
+                throw new \RuntimeException('[PROVIDER TEST] services/provider.php executed', 500);
+
                 // Provide class aliases so both normalised and underscored base namespaces resolve to Admin classes
                 try {
                     // Normalised base aliases (preferred in J4.3+/J5)
