@@ -40,3 +40,35 @@ class Dispatcher extends ComponentDispatcher
         return parent::getController();
     }
 }
+
+// Also provide a base-namespace Dispatcher for environments resolving without the Administrator segment
+namespace Joomla\Component\Bears_aichatbot\Dispatcher {
+    \defined('_JEXEC') or die;
+    use Joomla\CMS\Dispatcher\ComponentDispatcher as JComponentDispatcher;
+    use Joomla\CMS\MVC\Controller\BaseController as JBaseController;
+    use Joomla\CMS\MVC\Factory\MVCFactoryInterface as JMVCFactoryInterface;
+    use Joomla\CMS\Factory as JFactory;
+
+    class Dispatcher extends JComponentDispatcher
+    {
+        public function getController(): JBaseController
+        {
+            $input  = JFactory::getApplication()->input;
+            $task   = $input->getCmd('task', 'display');
+            $name   = ucfirst($task);
+            $prefix = 'Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller';
+            $class  = $prefix . '\\' . $name . 'Controller';
+
+            if (class_exists($class)) {
+                try {
+                    $factory = JFactory::getContainer()->get(JMVCFactoryInterface::class);
+                    return $factory->createController($name, $prefix, $input, ['option' => 'com_bears_aichatbot']);
+                } catch (\Throwable $e) {
+                    return new $class(['option' => 'com_bears_aichatbot'], JFactory::getApplication(), $input);
+                }
+            }
+
+            return parent::getController();
+        }
+    }
+}
