@@ -48,6 +48,19 @@ class DisplayController extends JBaseController
         } catch (\Throwable $e) {
             // Fallback: try base component namespace views if Administrator-prefixed view could not be resolved
             $fallbackPrefix = 'Joomla\\Component\\BearsAichatbot';
+
+            // Defensive autoload guard for base-namespace HtmlView class
+            try {
+                $fallbackClass = $fallbackPrefix . '\\View\\' . $nameClass . '\\HtmlView';
+                if (!class_exists($fallbackClass)) {
+                    $baseSrc = dirname(__DIR__, 2); // points to src
+                    $fallbackFile = $baseSrc . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $nameClass . DIRECTORY_SEPARATOR . 'HtmlView.php';
+                    if (is_file($fallbackFile)) {
+                        require_once $fallbackFile;
+                    }
+                }
+            } catch (\Throwable $ignore) {}
+
             $view = $this->getView($name, 'html', $fallbackPrefix, ['base_path' => $basePath]);
         }
 
