@@ -25,13 +25,27 @@ return new class implements ServiceProviderInterface {
         $container->set(
             ComponentInterface::class,
             function (Container $container) {
-                $app        = $container->get(AdministratorApplication::class);
-                $mvcFactory = $container->get(MVCFactoryInterface::class);
-                $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
-                    ->createDispatcher($app);
+                $app               = $container->get(AdministratorApplication::class);
+                $mvcFactory        = $container->get(MVCFactoryInterface::class);
+                $dispatcherFactory = $container->get(ComponentDispatcherFactoryInterface::class);
 
-                // Construct a standard MVCComponent for Joomla 5
-                return new MVCComponent($mvcFactory, $app, $dispatcher);
+                // Create the dispatcher (used by some constructor variants and/or set later)
+                $dispatcher = $dispatcherFactory->createDispatcher($app);
+
+                // Joomla 5 environments may expect the dispatcherFactory-first signature.
+                // Try that first, then fall back to the older ($mvcFactory, $app) signature.
+                try {
+                    $component = new MVCComponent($dispatcherFactory, $mvcFactory, $app);
+                } catch (\Throwable $e) {
+                    $component = new MVCComponent($mvcFactory, $app);
+                }
+
+                // If the component exposes setDispatcher, wire in the created dispatcher
+                if (method_exists($component, 'setDispatcher')) {
+                    $component->setDispatcher($dispatcher);
+                }
+
+                return $component;
             }
         );
     }
