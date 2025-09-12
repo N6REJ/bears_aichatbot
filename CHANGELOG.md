@@ -5,18 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.12.49] - 2025-09-12
+## [2025.09.12.50] - 2025-09-12
 
-### Fixed
+### Added
 
-- Avoid 404 "View not found" by manually instantiating HtmlView classes in Display controllers (Administrator and base), wiring model/document, and falling back to core getView() only if needed.
-- Bump component version to 2025.09.12.49 to force deployment on upgrade.
-
-## [2025.09.12.48] - 2025-09-12
+* Add robust model handling and error prevention in Dashboard HtmlView with defensive programming patterns ([4c80974](https://github.com/N6REJ/bears_aichatbot/commit/4c80974))
 
 ### Changed
 
-* Update version to 2025.09.12.46 [skip ci] ([14d37bc](https://github.com/N6REJ/bears_aichatbot/commit/14d37bc))
-* Update version to 2025.09.12.47 and fix base path calculation in DisplayController autoload guard to use single dirname() call ([0aee0ce](https://github.com/N6REJ/bears_aichatbot/commit/0aee0ce))
-* Update version to 2025.09.12.47 [skip ci] ([61e77d1](https://github.com/N6REJ/bears_aichatbot/commit/61e77d1))
-* Update version to 2025.09.12.48 and fix view name case handling in DisplayController classes to pass lowercase names to getView() while maintaining PascalCase for class resolution ([fe23b28](https://github.com/N6REJ/bears_aichatbot/commit/fe23b28))
+* Update version to 2025.09.12.48 [skip ci] ([cc7df31](https://github.com/N6REJ/bears_aichatbot/commit/cc7df31))
+* Update version to 2025.09.12.49 and replace getView() calls with manual view instantiation in DisplayController classes to prevent 404 "View not found" errors by directly creating HtmlView instances with fallback to core resolution ([2fee3b4](https://github.com/N6REJ/bears_aichatbot/commit/2fee3b4))
+* Merge remote-tracking branch 'origin/main' ([44c6b97](https://github.com/N6REJ/bears_aichatbot/commit/44c6b97))
+* Update version to 2025.09.12.49 [skip ci] ([916acc4](https://github.com/N6REJ/bears_aichatbot/commit/916acc4))
+
