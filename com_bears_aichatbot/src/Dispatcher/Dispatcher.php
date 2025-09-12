@@ -18,25 +18,30 @@ class Dispatcher extends ComponentDispatcher
      * Override to be tolerant of namespace resolution differences.
      * Try Admin controller namespace explicitly before deferring to parent.
      */
-    public function getController(): BaseController
+    public function getController(string $name, string $client = '', array $config = []): BaseController
     {
-        $input  = Factory::getApplication()->input;
-        $task   = $input->getCmd('task', 'display');
-        $name   = ucfirst($task);
+        $input = Factory::getApplication()->input;
+
+        // If name not provided, derive from task
+        if ($name === '' || $name === null) {
+            $task = $input->getCmd('task', 'display');
+            $name = ucfirst($task);
+        }
+
         $prefix = 'Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller';
         $class  = $prefix . '\\' . $name . 'Controller';
 
         if (class_exists($class)) {
             try {
                 $factory = Factory::getContainer()->get(MVCFactoryInterface::class);
-                return $factory->createController($name, $prefix, $input, ['option' => 'com_bears_aichatbot']);
+                return $factory->createController($name, $prefix, $input, array_merge(['option' => 'com_bears_aichatbot'], $config));
             } catch (\Throwable $e) {
                 // Fallback to direct instantiation if factory path fails
-                return new $class(['option' => 'com_bears_aichatbot'], Factory::getApplication(), $input);
+                return new $class(array_merge(['option' => 'com_bears_aichatbot'], $config), Factory::getApplication(), $input);
             }
         }
 
         // Defer to core resolution (will throw if still not found)
-        return parent::getController();
+        return parent::getController($name, $client, $config);
     }
 }
