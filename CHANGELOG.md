@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.48] - 2025-09-12
+
+### Fixed
+
+* Admin and base DisplayController now pass lowercase view name to BaseController::getView() while retaining PascalCase for class checks. This resolves persistent 404 "View not found [Dashboard/Usage]" on some Joomla 5 environments where a capitalized name prevents view resolution.
+
+### Changed
+
+* Bump component version to 2025.09.12.48 to force deployment on upgrade.
+
 ## [2025.09.12.47] - 2025-09-12
 
 ### Changed
@@ -13,4 +23,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update version to 2025.09.12.46 and add defensive autoload guard in DisplayController classes to prevent 404 "View not found" errors by ensuring view class files are loaded before getView() calls ([3762693](https://github.com/N6REJ/bears_aichatbot/commit/3762693))
 * Update version to 2025.09.12.46 [skip ci] ([14d37bc](https://github.com/N6REJ/bears_aichatbot/commit/14d37bc))
 * Update version to 2025.09.12.47 and fix base path calculation in DisplayController autoload guard to use single dirname() call ([0aee0ce](https://github.com/N6REJ/bears_aichatbot/commit/0aee0ce))
-

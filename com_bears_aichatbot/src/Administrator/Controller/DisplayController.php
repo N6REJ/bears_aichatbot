@@ -24,16 +24,17 @@ class DisplayController extends JBaseController
         // Force the correct Joomla 5 Administrator view prefix (without trailing \\View)
         $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator';
 
-        // Normalise view name to expected PSR segment (Usage, Dashboard, ...)
-        $name = ucfirst(strtolower($viewName));
+        // Normalise view name for class and for getView()
+        $nameClass = ucfirst(strtolower($viewName));
+        $name = strtolower($viewName);
 
         // Defensive autoload guard: ensure the view class is available before calling getView()
         try {
-            $viewClass = $prefix . '\\View\\' . $name . '\\HtmlView';
+            $viewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
             if (!class_exists($viewClass)) {
                 // Base path to src/Administrator
                 $base = dirname(__DIR__); // src/Administrator
-                $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $name . DIRECTORY_SEPARATOR . 'HtmlView.php';
+                $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $nameClass . DIRECTORY_SEPARATOR . 'HtmlView.php';
                 if (is_file($file)) {
                     require_once $file;
                 }
@@ -43,7 +44,7 @@ class DisplayController extends JBaseController
         // Create the view and attach the corresponding model if present
         $view = $this->getView($name, 'html', $prefix);
         try {
-            $modelClass = ucfirst($viewName);
+            $modelClass = $nameClass;
             $model = $this->getModel($modelClass);
             if ($model) {
                 $view->setModel($model, true);
