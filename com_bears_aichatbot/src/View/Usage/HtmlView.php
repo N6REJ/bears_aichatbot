@@ -1,9 +1,9 @@
 <?php
 /**
- * Usage view
+ * Usage view (base namespace copy to avoid admin namespace conflicts)
  */
 
-namespace Joomla\Component\BearsAichatbot\Administrator\View\Usage;
+namespace Joomla\Component\BearsAichatbot\View\Usage;
 
 \defined('_JEXEC') or die;
 
@@ -19,9 +19,7 @@ class HtmlView extends BaseHtmlView
 
     public function display($tpl = null)
     {
-        $this->items = $this->get('Items');
-        $this->pagination = $this->get('Pagination');
-        $this->state = $this->get('State');
+        // Base namespace variant; not used by Administrator controller
         ToolbarHelper::title(Text::_('COM_BEARS_AICHATBOT_USAGE_TITLE'), 'list');
         parent::display($tpl);
     }

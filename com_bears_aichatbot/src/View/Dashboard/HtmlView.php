@@ -1,9 +1,9 @@
 <?php
 /**
- * Dashboard view
+ * Dashboard view (base namespace copy to avoid admin namespace conflicts)
  */
 
-namespace Joomla\Component\BearsAichatbot\Administrator\View\Dashboard;
+namespace Joomla\Component\BearsAichatbot\View\Dashboard;
 
 \defined('_JEXEC') or die;
 
@@ -17,7 +17,7 @@ class HtmlView extends BaseHtmlView
 
     public function display($tpl = null)
     {
-        $this->filters = $this->getModel()->getFilters();
+        // Base namespace variant; not used by Administrator controller
         ToolbarHelper::title(Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'), 'chart');
         parent::display($tpl);
     }

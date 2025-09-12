@@ -1,9 +1,9 @@
 <?php
 /**
- * Dashboard model (mainly passes filters, server renders template; JSON is served by ApiController)
+ * Dashboard model (base namespace copy to avoid admin namespace conflicts)
  */
 
-namespace Joomla\Component\BearsAichatbot\Administrator\Model;
+namespace Joomla\Component\BearsAichatbot\Model;
 
 \defined('_JEXEC') or die;
 
