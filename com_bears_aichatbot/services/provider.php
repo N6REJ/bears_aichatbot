@@ -38,11 +38,18 @@ return new class implements ServiceProviderInterface {
                 // Admin-only component: use the AdministratorApplication directly
                 $app = $container->get(AdministratorApplication::class);
 
-                $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
-                    ->createDispatcher($app);
+                $dispatcherFactory = $container->get(ComponentDispatcherFactoryInterface::class);
+                $dispatcher = $dispatcherFactory->createDispatcher($app);
 
-                // Build ComponentInterface implementation
-                $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
+                // Build ComponentInterface implementation with constructor compatibility
+                try {
+                    // Preferred signature (Joomla 5 variant): dispatcherFactory first
+                    $component = new MVCComponent($dispatcherFactory, $container->get(MVCFactoryInterface::class), $app);
+                } catch (\Throwable $e) {
+                    // Fallback to older signature: MVCFactory first
+                    $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
+                }
+                // Ensure dispatcher is set
                 $component->setDispatcher($dispatcher);
 
                 // Try to obtain a RouterFactory from the container (either namespace)
