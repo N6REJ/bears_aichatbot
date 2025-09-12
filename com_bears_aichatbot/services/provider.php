@@ -10,6 +10,8 @@ use Joomla\CMS\Dispatcher\ComponentDispatcherFactoryInterface;
 use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
+use Joomla\CMS\Extension\MVCComponent;
+use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\CMS\Application\AdministratorApplication;
 use Joomla\CMS\Application\SiteApplication;
 use Joomla\DI\Container;
@@ -50,6 +52,10 @@ return new class implements ServiceProviderInterface {
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
                     ->createDispatcher($app);
 
+                // Create the component (Joomla 5 expects a ComponentInterface implementation)
+                $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
+                $component->setDispatcher($dispatcher);
+
                 // Obtain RouterFactory from container using either CMS or Core interface
                 $routerFactory = null;
                 if ($container->has('Joomla\\CMS\\Router\\RouterFactoryInterface')) {
@@ -61,13 +67,18 @@ return new class implements ServiceProviderInterface {
                     try {
                         $router = $routerFactory->createRouter($app, $dispatcher->getExtension());
                         if ($router) {
-                            $dispatcher->setRouter($router);
+                            // Prefer setting the router on the component to satisfy J5 expectations
+                            if (method_exists($component, 'setRouter')) {
+                                $component->setRouter($router);
+                            } elseif (method_exists($dispatcher, 'setRouter')) {
+                                $dispatcher->setRouter($router);
+                            }
                         }
                     } catch (\Throwable $e) {
                         // Gracefully continue without setting a router if creation fails
                     }
                 }
-                return $dispatcher;
+                return $component;
             }
         );
     }
