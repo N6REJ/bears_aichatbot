@@ -22,11 +22,12 @@ class Dispatcher extends ComponentDispatcher
     {
         $input = Factory::getApplication()->input;
 
-        // If name not provided, derive from task
+        // Normalise controller name to StudlyCaps; derive from task if missing
         if ($name === '' || $name === null) {
             $task = $input->getCmd('task', 'display');
-            $name = ucfirst($task);
+            $name = $task;
         }
+        $name = ucfirst($name);
 
         $prefix = 'Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller';
         $class  = $prefix . '\\' . $name . 'Controller';
