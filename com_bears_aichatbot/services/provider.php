@@ -80,6 +80,11 @@ return new class implements ServiceProviderInterface {
                     if (is_file($adminDispatcherFile)) {
                         require_once $adminDispatcherFile;
                     }
+                    // Ensure the Administrator Display controller is available (some environments fail to autoload early during boot)
+                    $adminDisplayControllerFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Administrator' . DIRECTORY_SEPARATOR . 'Controller' . DIRECTORY_SEPARATOR . 'DisplayController.php';
+                    if (is_file($adminDisplayControllerFile)) {
+                        require_once $adminDisplayControllerFile;
+                    }
 
                     // Prefer base namespace bridge (will extend Administrator dispatcher) if present
                     $customDispatcherClass = 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher';

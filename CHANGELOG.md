@@ -5,6 +5,16 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [2025.09.12.37] - 2025-09-12
+
+### Fixed
+
+* Provider: force-require Administrator DisplayController during component boot so environments with early autoload timing reliably resolve the 'Display' controller (prevents 404 Invalid controller class: Display).
+
+### Changed
+
+* Bump component version to 2025.09.12.37 to ensure upgrade copies updated provider.
+
 ## [2025.09.12.36] - 2025-09-12
 
 ### Added
