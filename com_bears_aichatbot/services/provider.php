@@ -71,7 +71,19 @@ return new class implements ServiceProviderInterface {
                 // Prepare a forced custom dispatcher if available
                 $forcedDispatcher = null;
                 try {
+                    // Ensure the Administrator dispatcher class is available even if the autoloader mapping is not yet registered
+                    $adminDispatcherFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Dispatcher' . DIRECTORY_SEPARATOR . 'Dispatcher.php';
+                    if (is_file($adminDispatcherFile)) {
+                        require_once $adminDispatcherFile;
+                    }
+
+                    // Prefer base namespace bridge (will extend Administrator dispatcher) if present
                     $customDispatcherClass = 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher';
+                    if (!class_exists($customDispatcherClass) && class_exists('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
+                        // Create a runtime alias so factory can resolve base dispatcher
+                        class_alias('Joomla\\Component\\BearsAichatbot\\Administrator\\Dispatcher\\Dispatcher', $customDispatcherClass);
+                    }
+
                     if (class_exists($customDispatcherClass)) {
                         $factory = $container->get(MVCFactoryInterface::class);
                         $forcedDispatcher = new $customDispatcherClass($app, $dispatcher->getExtension(), $factory);
