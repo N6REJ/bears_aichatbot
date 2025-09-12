@@ -1,6 +1,6 @@
 <?php
 /**
- * Services provider for com_bears_aichatbot (Joomla 5 native, admin-only)
+ * Services provider for com_bears_aichatbot (Joomla 5 admin; router optional with cross-namespace support)
  */
 
 \defined('_JEXEC') or die;
@@ -14,15 +14,23 @@ use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\CMS\Application\AdministratorApplication;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
-use Joomla\Extension\Service\Provider\RouterFactory;
-use Joomla\Router\RouterFactoryInterface;
 
 return new class implements ServiceProviderInterface {
     public function register(Container $container)
     {
         $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\Bears_aichatbot'));
         $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\Bears_aichatbot'));
-        $container->registerServiceProvider(new RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+
+        // Try to register a RouterFactory provider (supports J5 and legacy namespaces)
+        try {
+            if (class_exists('\\Joomla\\Extension\\Service\\Provider\\RouterFactory')) {
+                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+            } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\RouterFactory')) {
+                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+            }
+        } catch (\Throwable $e) {
+            // ignore
+        }
 
         $container->set(
             ComponentInterface::class,
@@ -33,15 +41,27 @@ return new class implements ServiceProviderInterface {
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
                     ->createDispatcher($app);
 
-                // Joomla 5 expects a ComponentInterface implementation (MVCComponent)
+                // Build ComponentInterface implementation
                 $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
                 $component->setDispatcher($dispatcher);
 
-                // Create and set the router using the J5 RouterFactory
-                $router = $container->get(RouterFactoryInterface::class)
-                    ->createRouter($app, $dispatcher->getExtension());
-                if (method_exists($component, 'setRouter')) {
-                    $component->setRouter($router);
+                // Try to obtain a RouterFactory from the container (either namespace)
+                $routerFactory = null;
+                if ($container->has('Joomla\\Router\\RouterFactoryInterface')) {
+                    $routerFactory = $container->get('Joomla\\Router\\RouterFactoryInterface');
+                } elseif ($container->has('Joomla\\CMS\\Router\\RouterFactoryInterface')) {
+                    $routerFactory = $container->get('Joomla\\CMS\\Router\\RouterFactoryInterface');
+                }
+
+                if ($routerFactory) {
+                    try {
+                        $router = $routerFactory->createRouter($app, $dispatcher->getExtension());
+                        if ($router && method_exists($component, 'setRouter')) {
+                            $component->setRouter($router);
+                        }
+                    } catch (\Throwable $e) {
+                        // gracefully skip router if creation fails
+                    }
                 }
 
                 return $component;
