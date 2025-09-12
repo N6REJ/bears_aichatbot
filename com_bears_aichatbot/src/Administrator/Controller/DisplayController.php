@@ -31,7 +31,8 @@ class DisplayController extends JBaseController
         try {
             $viewClass = $prefix . '\\View\\' . $name . '\\HtmlView';
             if (!class_exists($viewClass)) {
-                $base = dirname(__DIR__, 2); // points to src/Administrator
+                // Base path to src/Administrator
+                $base = dirname(__DIR__); // src/Administrator
                 $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $name . DIRECTORY_SEPARATOR . 'HtmlView.php';
                 if (is_file($file)) {
                     require_once $file;
