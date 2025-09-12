@@ -1,4 +1,4 @@
-name: Package and Release Module
+name: Package and Release Package
 
 on:
   pull_request:
@@ -44,3 +44,4 @@ jobs:
             git commit -m "Update version to ${{ steps.package.outputs.version }} [skip ci]"
             git push origin main
           fi
+
