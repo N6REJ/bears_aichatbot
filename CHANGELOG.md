@@ -18,4 +18,3 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Removed
 
 * Remove temporary debug exception from service provider after successful boot verification ([e79ed9f](https://github.com/N6REJ/bears_aichatbot/commit/e79ed9f))
-

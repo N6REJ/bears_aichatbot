@@ -76,7 +76,7 @@ return new class implements ServiceProviderInterface {
                 $forcedDispatcher = null;
                 try {
                     // Ensure the Administrator dispatcher class is available even if the autoloader mapping is not yet registered
-                    $adminDispatcherFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Dispatcher' . DIRECTORY_SEPARATOR . 'Dispatcher.php';
+                    $adminDispatcherFile = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'src' . DIRECTORY_SEPARATOR . 'Administrator' . DIRECTORY_SEPARATOR . 'Dispatcher' . DIRECTORY_SEPARATOR . 'Dispatcher.php';
                     if (is_file($adminDispatcherFile)) {
                         require_once $adminDispatcherFile;
                     }
