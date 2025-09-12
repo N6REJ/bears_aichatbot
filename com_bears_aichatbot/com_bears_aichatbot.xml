@@ -1,44 +1,22 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="component" method="upgrade" version="5.0">
   <name>com_bears_aichatbot</name>
-  <title>Bears AI Chatbot</title>
   <author>N6REJ</author>
   <creationDate>2025-09-12</creationDate>
-  <version>2025.09.12.59</version>
-  <license>GNU General Public License version 3 or later</license>
-  <description>Administrator dashboard for Bears AI Chatbot usage analytics and document collection overview.</description>
-  <client>administrator</client>
-
-  <namespace path="src">Joomla\\Component\\BearsAichatbot</namespace>
+  <version>2025.09.12.60</version>
+  <license>GNU General Public License version 3 or later; see LICENSE</license>
+  <description>Administrator-only component with a simple Hello World view.</description>
 
   <administration>
-    <menu link="option=com_bears_aichatbot" img="class:chart">Bears AI Chatbot</menu>
-    <submenu>
-      <menu link="option=com_bears_aichatbot">COM_BEARS_AICHATBOT_DASHBOARD_TITLE</menu>
-      <menu link="option=com_bears_aichatbot&amp;view=usage">COM_BEARS_AICHATBOT_USAGE_TITLE</menu>
-    </submenu>
-
-    <files>
+    <menu>Bears AI Chatbot</menu>
+    <metadata>
+      <layout title="Bears AI Chatbot"/>
+    </metadata>
+    <files folder="">
       <filename>com_bears_aichatbot.xml</filename>
-      <filename>bears_aichatbot.php</filename>
       <folder>services</folder>
       <folder>src</folder>
       <folder>tmpl</folder>
-      <folder>media</folder>
-      <folder>sql</folder>
-      <folder>language</folder>
     </files>
-
-    <languages>
-      <language tag="en-GB">language/en-GB/en-GB.com_bears_aichatbot.ini</language>
-    </languages>
-
-    <sql>
-      <file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
-      <file driver="mysql" charset="utf8" type="uninstall">sql/uninstall.mysql.utf8.sql</file>
-    </sql>
-    <schemas>
-      <schemapath type="mysql">sql/updates/mysql</schemapath>
-    </schemas>
   </administration>
 </extension>

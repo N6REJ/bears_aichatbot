@@ -1,61 +1,37 @@
 <?php
 /**
- * Administrator Display controller for com_bears_aichatbot
+ * Administrator Display Controller for com_bears_aichatbot
  */
 
 namespace Joomla\Component\BearsAichatbot\Administrator\Controller;
 
 \defined('_JEXEC') or die;
 
+use Joomla\CMS\Application\AdministratorApplication;
 use Joomla\CMS\Factory;
-use Joomla\CMS\MVC\Controller\BaseController as JBaseController;
+use Joomla\CMS\MVC\Controller\BaseController;
 
-class DisplayController extends JBaseController
+class DisplayController extends BaseController
 {
-    protected $default_view = 'dashboard';
+    protected $default_view = 'hello';
 
     public function display($cachable = false, $urlparams = [])
     {
-        $app   = Factory::getApplication();
-        $input = $app->input;
-        $viewName = $input->getCmd('view', $this->default_view ?: 'dashboard');
-        $input->set('view', $viewName);
+        $app   = $this->getApplication() instanceof AdministratorApplication
+            ? $this->getApplication()
+            : Factory::getApplication();
 
-        // Use Administrator component namespace as the view prefix to match admin views under src/Administrator/View
-        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator';
+        $input = $app->getInput();
+        $viewName = $input->getCmd('view', $this->default_view);
 
-        // Normalise view name for class and for getView()
-        $nameClass = ucfirst(strtolower($viewName));
-        $name = strtolower($viewName);
+        // Resolve the view with the Administrator prefix
+        $prefix   = 'Joomla\\Component\\BearsAichatbot\\Administrator';
+        $view     = $this->getView($viewName, 'html', $prefix, [
+            'base_path' => JPATH_COMPONENT_ADMINISTRATOR,
+        ]);
 
-        // Defensive autoload guard: ensure the Administrator view class is available before calling getView()
-        try {
-            $viewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
-            if (!class_exists($viewClass)) {
-                // Path to src/Administrator
-                $base = dirname(__DIR__) ; // points to src/Administrator
-                $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $nameClass . DIRECTORY_SEPARATOR . 'HtmlView.php';
-                if (is_file($file)) {
-                    require_once $file;
-                }
-            }
-        } catch (\Throwable $ignore) {}
-
-        // Use core view resolution to ensure paths and layouts are registered properly (Administrator prefix only)
-        $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
-        $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
-
-        // Attach the corresponding model if present
-        try {
-            $modelClass = $nameClass;
-            $model = $this->getModel($modelClass);
-            if ($model) {
-                $view->setModel($model, true);
-            }
-        } catch (\Throwable $ignore) {}
-
-        // Provide document and render
         $view->document = Factory::getDocument();
+        $view->setLayout('default');
         $view->display();
 
         return $this;
