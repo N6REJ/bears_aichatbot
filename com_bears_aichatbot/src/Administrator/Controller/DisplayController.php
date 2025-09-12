@@ -41,6 +41,12 @@ class DisplayController extends JBaseController
             }
         } catch (\Throwable $ignore) {}
 
+        // If Admin HtmlView class still isn't available, fall back to base namespace views
+        $adminViewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
+        if (!class_exists($adminViewClass)) {
+            $prefix = 'Joomla\\Component\\BearsAichatbot';
+        }
+
         // Use core view resolution to ensure paths and layouts are registered properly
         $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
         $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
