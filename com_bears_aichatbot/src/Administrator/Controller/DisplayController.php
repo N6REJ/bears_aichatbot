@@ -41,28 +41,9 @@ class DisplayController extends JBaseController
             }
         } catch (\Throwable $ignore) {}
 
-        // Use core view resolution to ensure paths and layouts are registered properly
+        // Use core view resolution to ensure paths and layouts are registered properly (Administrator prefix only)
         $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
-        try {
-            $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
-        } catch (\Throwable $e) {
-            // Fallback: try base component namespace views if Administrator-prefixed view could not be resolved
-            $fallbackPrefix = 'Joomla\\Component\\BearsAichatbot';
-
-            // Defensive autoload guard for base-namespace HtmlView class
-            try {
-                $fallbackClass = $fallbackPrefix . '\\View\\' . $nameClass . '\\HtmlView';
-                if (!class_exists($fallbackClass)) {
-                    $baseSrc = dirname(__DIR__, 2); // points to src
-                    $fallbackFile = $baseSrc . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $nameClass . DIRECTORY_SEPARATOR . 'HtmlView.php';
-                    if (is_file($fallbackFile)) {
-                        require_once $fallbackFile;
-                    }
-                }
-            } catch (\Throwable $ignore) {}
-
-            $view = $this->getView($name, 'html', $fallbackPrefix, ['base_path' => $basePath]);
-        }
+        $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
 
         // Attach the corresponding model if present
         try {
