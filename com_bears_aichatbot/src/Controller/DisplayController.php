@@ -41,20 +41,9 @@ class DisplayController extends JBaseController
             }
         } catch (\Throwable $ignore) {}
 
-        // Prefer manual view instantiation to avoid getView() resolution issues
-        $view = null;
-        $viewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
-        if (class_exists($viewClass)) {
-            try {
-                $view = new $viewClass();
-            } catch (\Throwable $e) {
-                $view = null;
-            }
-        }
-        // Fallback to core resolution if manual instantiation failed
-        if ($view === null) {
-            $view = $this->getView($name, 'html', $prefix);
-        }
+        // Use core view resolution to ensure paths and layouts are registered properly
+        $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
+        $view = $this->getView($name, 'html', $prefix, ['base_path' => $basePath]);
 
         // Attach the corresponding model if present
         try {
