@@ -18,15 +18,15 @@ use Joomla\DI\ServiceProviderInterface;
 return new class implements ServiceProviderInterface {
     public function register(Container $container)
     {
-        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\Bears_aichatbot'));
-        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\Bears_aichatbot'));
+        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\Bears_aichatbot\\Administrator'));
+        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\Bears_aichatbot\\Administrator'));
 
         // Try to register a RouterFactory provider (supports J5 and legacy namespaces)
         try {
             if (class_exists('\\Joomla\\Extension\\Service\\Provider\\RouterFactory')) {
-                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot\\Administrator'));
             } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\RouterFactory')) {
-                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot\\Administrator'));
             }
         } catch (\Throwable $e) {
             // ignore
