@@ -49,8 +49,10 @@ return new class implements ServiceProviderInterface {
                     // Fallback to older signature: MVCFactory first
                     $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
                 }
-                // Ensure dispatcher is set
-                $component->setDispatcher($dispatcher);
+                // Ensure dispatcher is set when supported (older/newer Joomla variants may differ)
+                if (method_exists($component, 'setDispatcher')) {
+                    $component->setDispatcher($dispatcher);
+                }
 
                 // Try to obtain a RouterFactory from the container (either namespace)
                 $routerFactory = null;
