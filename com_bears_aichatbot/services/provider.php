@@ -40,11 +40,19 @@ return new class implements ServiceProviderInterface {
 
                 // Provide class aliases to handle factories that look in the base namespace (without Administrator)
                 try {
+                    // Base-namespace aliases
                     if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
                         class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher');
                     }
                     if (!class_exists('Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController')) {
                         class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\Bears_aichatbot\\Controller\\DisplayController');
+                    }
+                    // Normalized (no-underscore) namespace aliases some Joomla internals may compute
+                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher')) {
+                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Dispatcher\\Dispatcher', 'Joomla\\Component\\BearsAichatbot\\Dispatcher\\Dispatcher');
+                    }
+                    if (!class_exists('Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController') && class_exists('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController')) {
+                        class_alias('Joomla\\Component\\Bears_aichatbot\\Administrator\\Controller\\DisplayController', 'Joomla\\Component\\BearsAichatbot\\Controller\\DisplayController');
                     }
                 } catch (\Throwable $ignore) {}
 
