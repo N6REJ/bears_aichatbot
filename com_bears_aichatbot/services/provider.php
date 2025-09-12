@@ -69,7 +69,19 @@ return new class implements ServiceProviderInterface {
                 }
                 // Ensure dispatcher is set when supported (older/newer Joomla variants may differ)
                 if (method_exists($component, 'setDispatcher')) {
-                    $component->setDispatcher($dispatcher);
+                    // Prefer our custom Dispatcher that enforces Admin controller resolution when available
+                    try {
+                        $customDispatcherClass = 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher';
+                        if (class_exists($customDispatcherClass)) {
+                            $factory = $container->get(MVCFactoryInterface::class);
+                            $forcedDispatcher = new $customDispatcherClass($app, $dispatcher->getExtension(), $factory);
+                            $component->setDispatcher($forcedDispatcher);
+                        } else {
+                            $component->setDispatcher($dispatcher);
+                        }
+                    } catch (\Throwable $e) {
+                        $component->setDispatcher($dispatcher);
+                    }
                 }
 
                 // Try to obtain a RouterFactory from the container (either namespace)
