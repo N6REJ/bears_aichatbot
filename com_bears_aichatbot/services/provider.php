@@ -67,20 +67,54 @@ return new class implements ServiceProviderInterface {
                     // Fallback to older signature: MVCFactory first
                     $component = new MVCComponent($container->get(MVCFactoryInterface::class), $app);
                 }
-                // Ensure dispatcher is set when supported (older/newer Joomla variants may differ)
-                if (method_exists($component, 'setDispatcher')) {
-                    // Prefer our custom Dispatcher that enforces Admin controller resolution when available
-                    try {
-                        $customDispatcherClass = 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher';
-                        if (class_exists($customDispatcherClass)) {
-                            $factory = $container->get(MVCFactoryInterface::class);
-                            $forcedDispatcher = new $customDispatcherClass($app, $dispatcher->getExtension(), $factory);
+
+                // Prepare a forced custom dispatcher if available
+                $forcedDispatcher = null;
+                try {
+                    $customDispatcherClass = 'Joomla\\Component\\Bears_aichatbot\\Dispatcher\\Dispatcher';
+                    if (class_exists($customDispatcherClass)) {
+                        $factory = $container->get(MVCFactoryInterface::class);
+                        $forcedDispatcher = new $customDispatcherClass($app, $dispatcher->getExtension(), $factory);
+                    }
+                } catch (\Throwable $ignore) {}
+
+                // Ensure dispatcher is set when supported; otherwise, wrap component to force our dispatcher
+                if ($forcedDispatcher instanceof \Joomla\CMS\Dispatcher\ComponentDispatcher) {
+                    if (method_exists($component, 'setDispatcher')) {
+                        try {
                             $component->setDispatcher($forcedDispatcher);
-                        } else {
-                            $component->setDispatcher($dispatcher);
+                        } catch (\Throwable $ignore) {}
+                    } else {
+                        // Wrap MVCComponent to force our dispatcher via getDispatcher override
+                        $mvcFactory = $container->get(MVCFactoryInterface::class);
+                        try {
+                            $component = new class($dispatcherFactory, $mvcFactory, $app, $forcedDispatcher) extends MVCComponent {
+                                private $forcedDispatcher;
+                                public function __construct($dispatcherFactory, $mvcFactory, $app, $forced)
+                                {
+                                    $this->forcedDispatcher = $forced;
+                                    parent::__construct($dispatcherFactory, $mvcFactory, $app);
+                                }
+                                public function getDispatcher()
+                                {
+                                    return $this->forcedDispatcher;
+                                }
+                            };
+                        } catch (\Throwable $e) {
+                            // Fallback for older constructor signature
+                            $component = new class($mvcFactory, $app, $forcedDispatcher) extends MVCComponent {
+                                private $forcedDispatcher;
+                                public function __construct($mvcFactory, $app, $forced)
+                                {
+                                    $this->forcedDispatcher = $forced;
+                                    parent::__construct($mvcFactory, $app);
+                                }
+                                public function getDispatcher()
+                                {
+                                    return $this->forcedDispatcher;
+                                }
+                            };
                         }
-                    } catch (\Throwable $e) {
-                        $component->setDispatcher($dispatcher);
                     }
                 }
 
