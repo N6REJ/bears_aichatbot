@@ -12,7 +12,8 @@ use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
 use Joomla\CMS\Extension\Service\Provider\RouterFactory;
 use Joomla\CMS\Router\RouterFactoryInterface;
-use Joomla\CMS\Application\CMSApplicationInterface;
+use Joomla\CMS\Application\AdministratorApplication;
+use Joomla\CMS\Application\SiteApplication;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
 
@@ -26,7 +27,19 @@ return new class implements ServiceProviderInterface {
         $container->set(
             ComponentInterface::class,
             function (Container $container) {
-                $app = $container->get(CMSApplicationInterface::class);
+                // Joomla 5: CMSApplicationInterface may not be registered as a service alias.
+                // Resolve the current application using concrete classes or the generic 'app' service.
+                if ($container->has(AdministratorApplication::class)) {
+                    $app = $container->get(AdministratorApplication::class);
+                } elseif ($container->has(SiteApplication::class)) {
+                    $app = $container->get(SiteApplication::class);
+                } elseif ($container->has('app')) {
+                    $app = $container->get('app');
+                } else {
+                    // As a last resort, attempt to use the global Factory (kept for broad compatibility)
+                    $app = \Joomla\CMS\Factory::getApplication();
+                }
+
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
                     ->createDispatcher($app, 'com_bears_aichatbot');
                 $router = $container->get(RouterFactoryInterface::class)
