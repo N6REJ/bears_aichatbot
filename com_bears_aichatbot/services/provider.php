@@ -10,8 +10,6 @@ use Joomla\CMS\Dispatcher\ComponentDispatcherFactoryInterface;
 use Joomla\CMS\Extension\ComponentInterface;
 use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
-use Joomla\CMS\Extension\Service\Provider\RouterFactory;
-use Joomla\CMS\Router\RouterFactoryInterface;
 use Joomla\CMS\Application\AdministratorApplication;
 use Joomla\CMS\Application\SiteApplication;
 use Joomla\DI\Container;
@@ -22,7 +20,16 @@ return new class implements ServiceProviderInterface {
     {
         $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\Bears_aichatbot'));
         $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\Bears_aichatbot'));
-        $container->registerServiceProvider(new RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+        // Register RouterFactory provider with compatibility for Joomla 4.3+/5 namespaces
+        try {
+            if (class_exists('\\Joomla\\Extension\\Service\\Provider\\RouterFactory')) {
+                $container->registerServiceProvider(new \Joomla\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+            } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\RouterFactory')) {
+                $container->registerServiceProvider(new \Joomla\CMS\Extension\Service\Provider\RouterFactory('Joomla\\Component\\Bears_aichatbot'));
+            }
+        } catch (\Throwable $e) {
+            // ignore registration failure to avoid breaking admin
+        }
 
         $container->set(
             ComponentInterface::class,
@@ -42,8 +49,19 @@ return new class implements ServiceProviderInterface {
 
                 $dispatcher = $container->get(ComponentDispatcherFactoryInterface::class)
                     ->createDispatcher($app);
-                $router = $container->get(RouterFactoryInterface::class)
-                    ->createRouter($app, $dispatcher->getExtension());
+
+                // Obtain RouterFactory from container using either CMS or Core interface
+                $routerFactory = null;
+                if ($container->has('Joomla\\CMS\\Router\\RouterFactoryInterface')) {
+                    $routerFactory = $container->get('Joomla\\CMS\\Router\\RouterFactoryInterface');
+                } elseif ($container->has('Joomla\\Router\\RouterFactoryInterface')) {
+                    $routerFactory = $container->get('Joomla\\Router\\RouterFactoryInterface');
+                }
+                if ($routerFactory === null) {
+                    throw new \RuntimeException('RouterFactoryInterface service is not available');
+                }
+
+                $router = $routerFactory->createRouter($app, $dispatcher->getExtension());
                 $dispatcher->setRouter($router);
                 return $dispatcher;
             }
