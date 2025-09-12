@@ -21,31 +21,25 @@ class DisplayController extends JBaseController
         $viewName = $input->getCmd('view', $this->default_view ?: 'dashboard');
         $input->set('view', $viewName);
 
-        // Use base namespace prefix for view resolution to avoid admin autoload edge cases
-        $prefix = 'Joomla\\Component\\BearsAichatbot';
+        // Use Administrator component namespace as the view prefix to match admin views under src/Administrator/View
+        $prefix = 'Joomla\\Component\\BearsAichatbot\\Administrator';
 
         // Normalise view name for class and for getView()
         $nameClass = ucfirst(strtolower($viewName));
         $name = strtolower($viewName);
 
-        // Defensive autoload guard: ensure the view class is available before calling getView()
+        // Defensive autoload guard: ensure the Administrator view class is available before calling getView()
         try {
             $viewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
             if (!class_exists($viewClass)) {
-                // Base path to src/Administrator
-                $base = dirname(__DIR__); // src/Administrator
+                // Path to src/Administrator
+                $base = dirname(__DIR__) ; // points to src/Administrator
                 $file = $base . DIRECTORY_SEPARATOR . 'View' . DIRECTORY_SEPARATOR . $nameClass . DIRECTORY_SEPARATOR . 'HtmlView.php';
                 if (is_file($file)) {
                     require_once $file;
                 }
             }
         } catch (\Throwable $ignore) {}
-
-        // If Admin HtmlView class still isn't available, fall back to base namespace views
-        $adminViewClass = $prefix . '\\View\\' . $nameClass . '\\HtmlView';
-        if (!class_exists($adminViewClass)) {
-            $prefix = 'Joomla\\Component\\BearsAichatbot';
-        }
 
         // Use core view resolution to ensure paths and layouts are registered properly
         $basePath = dirname(__DIR__, 3); // administrator/components/com_bears_aichatbot
