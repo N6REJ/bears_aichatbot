@@ -1,13 +1,16 @@
 <?php
 /**
- * Bridge controller so core dispatcher can resolve base namespace controller
- * and delegate to the Administrator controller.
+ * Base-namespace Display controller so core dispatcher can resolve a controller
+ * even if Administrator-prefixed classes are not loaded yet.
  */
 
 namespace Joomla\Component\BearsAichatbot\Controller;
 
 \defined('_JEXEC') or die;
 
-class DisplayController extends \Joomla\Component\BearsAichatbot\Administrator\Controller\DisplayController
+use Joomla\CMS\MVC\Controller\BaseController as JBaseController;
+
+class DisplayController extends JBaseController
 {
+    protected $default_view = 'dashboard';
 }
