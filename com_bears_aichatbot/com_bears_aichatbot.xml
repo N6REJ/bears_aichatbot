@@ -12,7 +12,7 @@
   <administration>
     <menu>COM_BEARS_AICHATBOT</menu>
     <metadata>
-      <layout title="Bears AI Chatbot"/>
+      <layout title="COM_BEARS_AICHATBOT"/>
     </metadata>
     <files folder="">
       <filename>com_bears_aichatbot.xml</filename>
@@ -23,6 +23,7 @@
     </files>
     <languages folder="language">
       <language tag="en-GB">en-GB/en-GB.com_bears_aichatbot.ini</language>
+      <language tag="en-GB">en-GB/en-GB.com_bears_aichatbot.sys.ini</language>
     </languages>
   </administration>
 </extension>

@@ -17,23 +17,8 @@ class DisplayController extends BaseController
 
     public function display($cachable = false, $urlparams = [])
     {
-        $app   = $this->getApplication() instanceof AdministratorApplication
-            ? $this->getApplication()
-            : Factory::getApplication();
-
-        $input = $app->getInput();
-        $viewName = $input->getCmd('view', $this->default_view);
-
-        // Resolve the view with the Administrator prefix
-        $prefix   = 'Joomla\\Component\\BearsAichatbot\\Administrator';
-        $view     = $this->getView($viewName, 'html', $prefix, [
-            'base_path' => JPATH_COMPONENT_ADMINISTRATOR,
-        ]);
-
-        $view->document = Factory::getDocument();
-        $view->setLayout('default');
-        $view->display();
-
-        return $this;
+        // Use Joomla 5 BaseController::display which resolves view/layout automatically
+        $this->input->set('view', $this->input->getCmd('view', $this->default_view));
+        return parent::display($cachable, $urlparams);
     }
 }

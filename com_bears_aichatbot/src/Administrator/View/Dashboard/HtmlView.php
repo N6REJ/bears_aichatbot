@@ -8,6 +8,7 @@ namespace Joomla\Component\BearsAichatbot\Administrator\View\Dashboard;
 \defined('_JEXEC') or die;
 
 use Joomla\CMS\Language\Text;
+use Joomla\CMS\Language\LanguageHelper;
 use Joomla\CMS\MVC\View\HtmlView as BaseHtmlView;
 
 class HtmlView extends BaseHtmlView
@@ -17,6 +18,10 @@ class HtmlView extends BaseHtmlView
 
     public function display($tpl = null)
     {
+        // Ensure component language file is loaded (standard Joomla 5 behavior)
+        $lang = $this->getLanguage();
+        $lang->load('com_bears_aichatbot', JPATH_ADMINISTRATOR) || $lang->load('com_bears_aichatbot', JPATH_COMPONENT_ADMINISTRATOR);
+
         $this->title = Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE');
         $this->panels = [
             [
