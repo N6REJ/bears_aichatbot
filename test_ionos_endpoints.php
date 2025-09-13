@@ -8,14 +8,26 @@
 $token = 'YOUR_TOKEN_HERE';  // Replace with your actual token
 $tokenId = 'YOUR_TOKEN_ID_HERE';  // Replace with your actual token ID
 
-// Test endpoints
-$endpoints = [
+// Test endpoints for document collections
+$documentEndpoints = [
     'Cloud API v6 (AI Model Hub)' => 'https://api.ionos.com/cloudapi/v6/ai/modelhub/document-collections',
     'Inference Model Hub v1' => 'https://api.ionos.com/inference-modelhub/v1/document-collections',
     'Cloud API v6 (Direct)' => 'https://api.ionos.com/cloudapi/v6/document-collections',
     'Inference Direct' => 'https://inference.de-txl.ionos.com/v1/document-collections',
     'AI API v1' => 'https://api.ionos.com/ai/v1/document-collections',
-    'Model Hub API' => 'https://api.ionos.com/modelhub/v1/document-collections'
+    'Model Hub API' => 'https://api.ionos.com/modelhub/v1/document-collections',
+    'Cloud API v6 (Collections)' => 'https://api.ionos.com/cloudapi/v6/collections',
+    'AI Model Hub (Alt)' => 'https://api.ionos.com/cloudapi/v6/ai/model-hub/document-collections',
+    'Inference API (Alt)' => 'https://inference.de-txl.ionos.com/v1/collections',
+    'Model Hub Direct' => 'https://modelhub.de-txl.ionos.com/v1/document-collections'
+];
+
+// Test basic API connectivity first
+$basicEndpoints = [
+    'Chat Completions (OpenAI)' => 'https://openai.inference.de-txl.ionos.com/v1/models',
+    'Chat Completions (Inference)' => 'https://inference.de-txl.ionos.com/v1/models',
+    'Cloud API Root' => 'https://api.ionos.com/cloudapi/v6',
+    'AI Model Hub Root' => 'https://api.ionos.com/cloudapi/v6/ai/modelhub'
 ];
 
 function testEndpoint($url, $token, $tokenId) {
@@ -56,10 +68,54 @@ if ($token === 'YOUR_TOKEN_HERE' || $tokenId === 'YOUR_TOKEN_ID_HERE') {
     exit;
 }
 
+// Test basic connectivity first
+echo "<h2>Basic API Connectivity Test</h2>\n";
 echo "<table border='1' style='border-collapse: collapse; width: 100%;'>\n";
 echo "<tr><th>Endpoint Name</th><th>URL</th><th>HTTP Code</th><th>Response</th></tr>\n";
 
-foreach ($endpoints as $name => $url) {
+foreach ($basicEndpoints as $name => $url) {
+    echo "<tr>\n";
+    echo "<td>" . htmlspecialchars($name) . "</td>\n";
+    echo "<td>" . htmlspecialchars($url) . "</td>\n";
+    
+    $result = testEndpoint($url, $token, $tokenId);
+    
+    $statusColor = 'red';
+    if ($result['code'] >= 200 && $result['code'] < 300) {
+        $statusColor = 'green';
+    } elseif ($result['code'] >= 400 && $result['code'] < 500) {
+        $statusColor = 'orange';
+    }
+    
+    echo "<td style='color: {$statusColor};'>" . $result['code'] . "</td>\n";
+    
+    $responseText = $result['response'];
+    if ($result['error']) {
+        $responseText = "CURL Error: " . $result['error'];
+    } elseif ($responseText) {
+        // Pretty print JSON if possible
+        $json = json_decode($responseText, true);
+        if ($json) {
+            $responseText = json_encode($json, JSON_PRETTY_PRINT);
+        }
+        // Truncate long responses
+        if (strlen($responseText) > 500) {
+            $responseText = substr($responseText, 0, 500) . "...";
+        }
+    }
+    
+    echo "<td><pre>" . htmlspecialchars($responseText) . "</pre></td>\n";
+    echo "</tr>\n";
+}
+
+echo "</table>\n";
+
+// Test document collection endpoints
+echo "<h2>Document Collection Endpoints Test</h2>\n";
+echo "<table border='1' style='border-collapse: collapse; width: 100%;'>\n";
+echo "<tr><th>Endpoint Name</th><th>URL</th><th>HTTP Code</th><th>Response</th></tr>\n";
+
+foreach ($documentEndpoints as $name => $url) {
     echo "<tr>\n";
     echo "<td>" . htmlspecialchars($name) . "</td>\n";
     echo "<td>" . htmlspecialchars($url) . "</td>\n";

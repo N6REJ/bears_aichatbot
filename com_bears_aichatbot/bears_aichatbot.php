@@ -92,7 +92,13 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                 'https://api.ionos.com/cloudapi/v6/ai/modelhub/document-collections',
                 'https://api.ionos.com/inference-modelhub/v1/document-collections',
                 'https://api.ionos.com/cloudapi/v6/document-collections',
-                'https://inference.de-txl.ionos.com/v1/document-collections'
+                'https://inference.de-txl.ionos.com/v1/document-collections',
+                'https://api.ionos.com/ai/v1/document-collections',
+                'https://api.ionos.com/modelhub/v1/document-collections',
+                'https://api.ionos.com/cloudapi/v6/collections',
+                'https://api.ionos.com/cloudapi/v6/ai/model-hub/document-collections',
+                'https://inference.de-txl.ionos.com/v1/collections',
+                'https://modelhub.de-txl.ionos.com/v1/document-collections'
             ];
             
             // Enhanced debugging info
@@ -109,6 +115,36 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
             ];
             if ($tokenId) {
                 $headers['X-IONOS-Token-Id'] = $tokenId;
+            }
+            
+            // First test basic connectivity to verify token works
+            $info[] = "🔍 Testing basic API connectivity...";
+            $basicTests = [
+                'https://openai.inference.de-txl.ionos.com/v1/models',
+                'https://inference.de-txl.ionos.com/v1/models',
+                'https://api.ionos.com/cloudapi/v6',
+                'https://api.ionos.com/cloudapi/v6/ai/modelhub'
+            ];
+            
+            $tokenWorks = false;
+            foreach ($basicTests as $testUrl) {
+                try {
+                    $testResponse = $http->get($testUrl, $headers, 5);
+                    if ($testResponse->code < 400) {
+                        $tokenWorks = true;
+                        $info[] = "✅ Token works with: {$testUrl} (HTTP {$testResponse->code})";
+                        break;
+                    } elseif ($testResponse->code === 401) {
+                        $info[] = "❌ Token authentication failed: {$testUrl} (HTTP 401)";
+                    }
+                } catch (\Throwable $e) {
+                    // Continue testing
+                }
+            }
+            
+            if (!$tokenWorks) {
+                $info[] = "❌ Token doesn't work with any basic endpoints - check token validity";
+                return implode('<br>', $info);
             }
             
             $info[] = "Headers: Authorization=Bearer [HIDDEN], X-IONOS-Token-Id=" . substr($tokenId, 0, 8) . "...";
