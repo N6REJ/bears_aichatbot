@@ -17,9 +17,9 @@ use Joomla\DI\ServiceProviderInterface;
 return new class implements ServiceProviderInterface {
     public function register(Container $container): void
     {
-        // Register MVC factory and dispatcher factory for our base namespace
-        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\BearsAichatbot'));
-        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\BearsAichatbot'));
+        // Register MVC factory and dispatcher factory for Administrator namespace
+        $container->registerServiceProvider(new MVCFactory('Joomla\\Component\\BearsAichatbot\\Administrator'));
+        $container->registerServiceProvider(new ComponentDispatcherFactory('Joomla\\Component\\BearsAichatbot\\Administrator'));
 
         // Register the component service (Administrator only)
         $container->set(
