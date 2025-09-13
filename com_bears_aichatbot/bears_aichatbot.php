@@ -47,13 +47,18 @@ function getModuleConfig(): array
         // Get collection ID from state table if not in module params
         $collectionId = trim((string)$params->get('ionos_collection_id', ''));
         if ($collectionId === '') {
-            $stateQuery = $db->getQuery(true)
-                ->select($db->quoteName('collection_id'))
-                ->from($db->quoteName('#__aichatbot_state'))
-                ->where($db->quoteName('id') . ' = 1')
-                ->setLimit(1);
-            $db->setQuery($stateQuery);
-            $collectionId = (string)($db->loadResult() ?? '');
+            try {
+                $stateQuery = $db->getQuery(true)
+                    ->select($db->quoteName('collection_id'))
+                    ->from($db->quoteName('#__aichatbot_state'))
+                    ->where($db->quoteName('id') . ' = 1')
+                    ->setLimit(1);
+                $db->setQuery($stateQuery);
+                $collectionId = (string)($db->loadResult() ?? '');
+            } catch (\Throwable $e) {
+                // State table might not exist yet
+                $collectionId = '';
+            }
         }
         
         return [
