@@ -8,7 +8,6 @@
   <description>Bears AI Chatbot administrator component with a simple dashboard.</description>
 
   <namespace path="src">Joomla\Component\BearsAichatbot</namespace>
-  <namespace path="src/Administrator">Joomla\Component\BearsAichatbot\Administrator</namespace>
 
   <administration>
     <menu>COM_BEARS_AICHATBOT</menu>

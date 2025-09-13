@@ -1,6 +1,6 @@
 <?php
 \defined('_JEXEC') or die;
-/** @var Joomla\Component\BearsAichatbot\Administrator\View\Dashboard\HtmlView $this */
+/** @var Joomla\Component\BearsAichatbot\View\Dashboard\HtmlView $this */
 use Joomla\CMS\Language\Text;
 ?>
 <div class="com-bears-aichatbot">
