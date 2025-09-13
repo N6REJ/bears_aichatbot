@@ -4,10 +4,12 @@
  */
 \defined('_JEXEC') or die;
 
+use Joomla\CMS\Application\AdministratorApplication;
+use Joomla\CMS\Dispatcher\ComponentDispatcherFactoryInterface;
 use Joomla\CMS\Extension\ComponentInterface;
+use Joomla\CMS\Extension\MVCComponent;
 use Joomla\CMS\Extension\Service\Provider\ComponentDispatcherFactory;
 use Joomla\CMS\Extension\Service\Provider\MVCFactory;
-use Joomla\CMS\HTML\Registry;
 use Joomla\CMS\MVC\Factory\MVCFactoryInterface;
 use Joomla\DI\Container;
 use Joomla\DI\ServiceProviderInterface;
@@ -21,15 +23,11 @@ return new class implements ServiceProviderInterface {
         $container->set(
             ComponentInterface::class,
             function (Container $container) {
-                $component = new \Joomla\CMS\Extension\MVCComponent(
-                    $container->get(\Joomla\CMS\Dispatcher\ComponentDispatcherFactoryInterface::class),
+                $component = new MVCComponent(
+                    $container->get(ComponentDispatcherFactoryInterface::class),
                     $container->get(MVCFactoryInterface::class),
-                    $container->get(\Joomla\CMS\Application\CMSApplicationInterface::class)
+                    $container->get(AdministratorApplication::class)
                 );
-
-                if ($component instanceof \Joomla\CMS\Extension\BootableExtensionInterface) {
-                    $component->boot($container);
-                }
 
                 return $component;
             }
