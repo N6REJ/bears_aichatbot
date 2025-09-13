@@ -87,8 +87,8 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
     // Query IONOS API for collections
     if ($token && $tokenId) {
         try {
-            // Use the correct IONOS Cloud API endpoint for document collections
-            $apiBase = 'https://api.ionos.com/cloudapi/v6';
+            // Use the correct IONOS Inference Model Hub API endpoint for document collections
+            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
             
             // Enhanced debugging info
             $info[] = "🔍 Debug Info:";
@@ -103,9 +103,12 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                 'Accept' => 'application/json',
                 'Content-Type' => 'application/json'
             ];
+            if ($tokenId) {
+                $headers['X-IONOS-Token-Id'] = $tokenId;
+            }
             
-            $info[] = "Headers: Authorization=Bearer [HIDDEN]";
-            $info[] = "Note: Using IONOS Cloud API (not inference API)";
+            $info[] = "Headers: Authorization=Bearer [HIDDEN], X-IONOS-Token-Id=" . substr($tokenId, 0, 8) . "...";
+            $info[] = "Note: Using IONOS Inference Model Hub API";
             
             $response = $http->get($apiBase . '/document-collections', $headers, 10);
             
@@ -166,15 +169,17 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Use the correct IONOS Cloud API endpoint for document collections
-        $apiBase = 'https://api.ionos.com/cloudapi/v6';
+        // Use the correct IONOS Inference Model Hub API endpoint for document collections
+        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
         
         $http = HttpFactory::getHttp();
         $headers = [
             'Authorization' => 'Bearer ' . $token,
             'Accept' => 'application/json'
         ];
-        // Note: IONOS Cloud API doesn't use X-IONOS-Token-Id header
+        if ($tokenId) {
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
         
         $response = $http->get($apiBase . '/document-collections', $headers, 30);
         
