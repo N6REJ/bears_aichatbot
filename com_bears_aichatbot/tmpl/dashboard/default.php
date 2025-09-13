@@ -12,17 +12,25 @@
  */
 
 \defined('_JEXEC') or die;
-/** @var Joomla\Component\BearsAichatbot\View\Dashboard\HtmlView $this */
+
 use Joomla\CMS\Language\Text;
+
+// Variables passed from the main component file
+/** @var string $title */
+/** @var array $panels */
+
+// Provide defaults in case variables aren't set
+$title = $title ?? Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE');
+$panels = $panels ?? [];
 ?>
 <div class="com-bears-aichatbot">
   <div class="container-fluid">
     <h1 class="page-title">
-      <?php echo htmlspecialchars($this->title ?: Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'), ENT_QUOTES, 'UTF-8'); ?>
+      <?php echo htmlspecialchars($title ?: Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'), ENT_QUOTES, 'UTF-8'); ?>
     </h1>
 
     <div class="row g-3">
-      <?php foreach ($this->panels as $panel) : ?>
+      <?php foreach ($panels as $panel) : ?>
         <div class="col-12 col-md-6">
           <div class="card">
             <div class="card-header">
