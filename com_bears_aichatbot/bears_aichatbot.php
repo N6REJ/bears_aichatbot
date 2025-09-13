@@ -87,8 +87,9 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
     // Query IONOS API for collections
     if ($token && $tokenId) {
         try {
-            // Use the correct IONOS Inference Model Hub API endpoint for document collections
-            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+            // Use the correct IONOS Cloud API v6 endpoint for document collections
+            // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+            $apiBase = 'https://api.ionos.com/cloudapi/v6';
             
             // Enhanced debugging info
             $info[] = "🔍 Debug Info:";
@@ -108,9 +109,9 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
             }
             
             $info[] = "Headers: Authorization=Bearer [HIDDEN], X-IONOS-Token-Id=" . substr($tokenId, 0, 8) . "...";
-            $info[] = "Note: Using IONOS Inference Model Hub API";
+            $info[] = "Note: Using IONOS Cloud API v6 for Document Collections";
             
-            $response = $http->get($apiBase . '/document-collections', $headers, 10);
+            $response = $http->get($apiBase . '/ai/modelhub/document-collections', $headers, 10);
             
             if ($response->code >= 200 && $response->code < 300) {
                 $data = json_decode($response->body, true);
@@ -169,8 +170,9 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Use the correct IONOS Inference Model Hub API endpoint for document collections
-        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        // Use the correct IONOS Cloud API v6 endpoint for document collections
+        // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+        $apiBase = 'https://api.ionos.com/cloudapi/v6';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -181,7 +183,7 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        $response = $http->get($apiBase . '/document-collections', $headers, 30);
+        $response = $http->get($apiBase . '/ai/modelhub/document-collections', $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             $data = json_decode($response->body, true);
@@ -195,7 +197,7 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
                         if ($collectionId) {
                             try {
                                 // Get detailed collection info
-                                $detailResponse = $http->get($apiBase . '/document-collections/' . rawurlencode($collectionId), $headers, 10);
+                                $detailResponse = $http->get($apiBase . '/ai/modelhub/document-collections/' . rawurlencode($collectionId), $headers, 10);
                                 if ($detailResponse->code >= 200 && $detailResponse->code < 300) {
                                     $detailData = json_decode($detailResponse->body, true);
                                     if (is_array($detailData)) {
@@ -242,8 +244,9 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
 function deleteCollection(string $collectionId, string $token, string $tokenId): array
 {
     try {
-        // Use the correct IONOS Inference Model Hub API endpoint for document collections
-        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        // Use the correct IONOS Cloud API v6 endpoint for document collections
+        // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+        $apiBase = 'https://api.ionos.com/cloudapi/v6';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -255,7 +258,7 @@ function deleteCollection(string $collectionId, string $token, string $tokenId):
         }
         
         // Delete collection from IONOS API
-        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
+        $response = $http->delete($apiBase . '/ai/modelhub/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Successfully deleted from IONOS, now clean up local database

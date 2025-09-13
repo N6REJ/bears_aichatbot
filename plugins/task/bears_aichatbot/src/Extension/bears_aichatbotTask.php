@@ -420,7 +420,9 @@ class BearsAichatbotTask extends CMSPlugin
                 if ($mendpoint === '') { $mendpoint = 'https://openai.inference.de-txl.ionos.com/v1/chat/completions'; }
                 if ($mtoken !== '') {
                     // Use the correct IONOS Inference Model Hub API endpoint for document collections
-                    $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+                    // Use the correct IONOS Cloud API v6 endpoint for document collections
+                    // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+                    $apiBase = 'https://api.ionos.com/cloudapi/v6';
                     $this->params->set('ionos_token', $mtoken);
                     $this->params->set('ionos_token_id', $mtokenId);
                     $this->params->set('ionos_endpoint', $apiBase);
@@ -464,11 +466,12 @@ class BearsAichatbotTask extends CMSPlugin
 
             $token = trim((string)$this->params->get('ionos_token', ''));
             $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
-            $base = trim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'));
+            // Use the correct IONOS Cloud API v6 endpoint for document collections
+            // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+            $base = 'https://api.ionos.com/cloudapi/v6';
             if ($existing !== '' || $token === '') {
                 return;
             }
-            if ($base === '') { $base = 'https://api.ionos.com/inference-modelhub/v1'; }
             $base = rtrim($base, '/');
 
             $site = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
@@ -479,7 +482,7 @@ class BearsAichatbotTask extends CMSPlugin
             $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
             if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
             $http = \Joomla\CMS\Http\HttpFactory::getHttp();
-            $resp = $http->post($base . '/document-collections', json_encode($payload), $headers, 30);
+            $resp = $http->post($base . '/ai/modelhub/document-collections', json_encode($payload), $headers, 30);
             if ($resp->code >= 200 && $resp->code < 300) {
                 $data = json_decode((string)$resp->body, true);
                 $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
@@ -506,12 +509,14 @@ class BearsAichatbotTask extends CMSPlugin
     {
         $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
         $token   = trim((string)$this->params->get('ionos_token', ''));
-        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'), '/');
+        // Use the correct IONOS Cloud API v6 endpoint for document collections
+        // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+        $base = 'https://api.ionos.com/cloudapi/v6';
         $collectionId = trim((string)$this->params->get('collection_id', ''));
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');
         }
-        $url = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents';
+        $url = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents';
 
         $payload = [
             'id'       => (string)$remoteId,
@@ -536,7 +541,7 @@ class BearsAichatbotTask extends CMSPlugin
         }
         // 409 might mean update vs create; try PUT to upsert by id
         if ($resp->code === 409) {
-            $urlPut = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
+            $urlPut = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
             $resp2 = $http->put($urlPut, json_encode($payload), $headers, 30);
             if ($resp2->code >= 200 && $resp2->code < 300) {
                 return true;
@@ -550,12 +555,14 @@ class BearsAichatbotTask extends CMSPlugin
     {
         $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
         $token   = trim((string)$this->params->get('ionos_token', ''));
-        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'), '/');
+        // Use the correct IONOS Cloud API v6 endpoint for document collections
+        // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+        $base = 'https://api.ionos.com/cloudapi/v6';
         $collectionId = trim((string)$this->params->get('collection_id', ''));
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');
         }
-        $url = $base . '/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
+        $url = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
         $headers = [
             'Authorization' => 'Bearer ' . $token,
             'Accept'        => 'application/json',

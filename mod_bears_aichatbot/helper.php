@@ -118,8 +118,9 @@ class ModBearsAichatbotHelper
         // Auto-create a document collection on first use if missing but credentials are present
         if ($collectionId === '' && $token !== '') {
             try {
-                // Use the correct IONOS Inference Model Hub API endpoint for document collections
-                $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+                // Use the correct IONOS Cloud API v6 endpoint for document collections
+                // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+                $apiBase = 'https://api.ionos.com/cloudapi/v6';
 
                 $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
                 $root   = \Joomla\CMS\Uri\Uri::root();
@@ -130,7 +131,7 @@ class ModBearsAichatbotHelper
                 if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
 
                 $http = HttpFactory::getHttp();
-                $resp = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
+                $resp = $http->post($apiBase . '/ai/modelhub/document-collections', json_encode($payload), $headers, 30);
                 if ($resp->code >= 200 && $resp->code < 300) {
                     $data = json_decode((string)$resp->body, true);
                     $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
@@ -155,11 +156,12 @@ class ModBearsAichatbotHelper
         
         // Try Document Collection retrieval if configured and no context yet
         if ($context === '' && $collectionId !== '' && $token !== '') {
-            // Use the correct IONOS Inference Model Hub API endpoint for document collections
-            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+            // Use the correct IONOS Cloud API v6 endpoint for document collections
+            // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+            $apiBase = 'https://api.ionos.com/cloudapi/v6';
             try {
                 $http = HttpFactory::getHttp();
-                $url = rtrim($apiBase, '/') . '/document-collections/' . rawurlencode($collectionId) . '/query';
+                $url = rtrim($apiBase, '/') . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/query';
                 $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore, 'topK' => $topK, 'scoreThreshold' => $minScore ];
                 $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
                 if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
@@ -259,9 +261,9 @@ class ModBearsAichatbotHelper
             }
         }
 
-        // Build sitemap if enabled
+        // Build sitemap if enabled - but prioritize knowledge base content over sitemap links
         $sitemapInfo = '';
-        if ((int) $params->get('include_sitemap', 1) === 1) {
+        if ((int) $params->get('include_sitemap', 0) === 1) {
             $sitemapUrl = trim((string) $params->get('sitemap_url', ''));
             
             // Preferred: use external sitemap when URL provided; Fallback: use menu-based sitemap
@@ -277,7 +279,7 @@ class ModBearsAichatbotHelper
             }
             
             if (!empty($sitemap)) {
-                $sitemapInfo = "\n\nSITE STRUCTURE (use these actual URLs when referencing pages):\n" . $sitemap . "\n";
+                $sitemapInfo = "\n\nSITE STRUCTURE (for reference only - prioritize knowledge base content):\n" . $sitemap . "\n";
             }
         }
         
@@ -295,18 +297,19 @@ class ModBearsAichatbotHelper
             "You are a knowledge base assistant for this Joomla site. Answer using ONLY the content inside <kb>. If the information is not fully supported by <kb>, respond exactly: 'I don't know based on the provided dataset.' Do not use prior knowledge, do not browse the web, and do not guess.\n\n"
             . "IMPORTANT INSTRUCTIONS:\n"
             . "1. Use only the <kb> content for facts and instructions.\n"
-            . "2. When referencing pages, only use URLs present in the site structure below.\n"
-            . "3. The website URL is: " . $siteUrl . "\n"
-            . "4. Format links as clickable Markdown: [Link Text](URL)\n"
-            . "5. NEVER make up URLs or content not present in <kb> or the site structure.\n"
+            . "2. PRIORITIZE answering from the knowledge base content over providing links.\n"
+            . "3. Only provide links if they are specifically mentioned in the <kb> content or if the user explicitly asks for page references.\n"
+            . "4. The website URL is: " . $siteUrl . "\n"
+            . "5. Format links as clickable Markdown: [Link Text](URL) only when necessary.\n"
+            . "6. Focus on providing helpful information from the knowledge base rather than directing users to pages.\n"
         ) : (
             "You are a helpful AI assistant for this Joomla site. Use ONLY the provided knowledge base context when possible. If the context lacks the answer, say you don't know and suggest related topics.\n\n"
             . "IMPORTANT INSTRUCTIONS:\n"
-            . "1. When referencing pages, use the actual URLs from the site structure provided below.\n"
-            . "2. The website URL is: " . $siteUrl . "\n"
-            . "3. Format links as clickable Markdown: [Link Text](URL)\n"
-            . "4. NEVER make up URLs. Only use URLs from the site structure or knowledge base.\n"
-            . "5. When you mention a topic that appears in the site structure, provide the actual link.\n"
+            . "1. PRIORITIZE answering from the knowledge base content over providing links.\n"
+            . "2. Only provide links if they are specifically mentioned in the knowledge base or if the user explicitly asks for page references.\n"
+            . "3. The website URL is: " . $siteUrl . "\n"
+            . "4. Format links as clickable Markdown: [Link Text](URL) only when necessary.\n"
+            . "5. Focus on providing helpful information from the knowledge base rather than directing users to pages.\n"
         ));
         $systemPrompt .= $sitemapInfo . "\nKnowledge base context follows between <kb> tags.\n<kb>" . $context . '</kb>';
 
