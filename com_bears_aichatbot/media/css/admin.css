@@ -1,0 +1,50 @@
+/*
+ * Bears AI Chatbot - Admin Dashboard
+ * Version: 2025.09.13
+ * Created by: N6REJ
+ * Email: programming@hallhome.us
+ * URL: http://www.hallhome.us
+ * License GPLv3.0 - http://www.gnu.org/licenses/gpl-3.0.html
+ */
+
+.com-bears-aichatbot {
+    padding: 20px;
+}
+
+.com-bears-aichatbot .page-title {
+    color: #333;
+    margin-bottom: 30px;
+    font-weight: 600;
+}
+
+.com-bears-aichatbot .card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+    transition: box-shadow 0.3s ease;
+}
+
+.com-bears-aichatbot .card:hover {
+    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+}
+
+.com-bears-aichatbot .card-header {
+    background-color: #f8f9fa;
+    border-bottom: 1px solid #dee2e6;
+    font-weight: 600;
+    color: #495057;
+}
+
+.com-bears-aichatbot .card-body {
+    padding: 1.25rem;
+}
+
+.com-bears-aichatbot .row {
+    margin: 0 -15px;
+}
+
+.com-bears-aichatbot .col-12,
+.com-bears-aichatbot .col-md-6 {
+    padding: 0 15px;
+    margin-bottom: 20px;
+}
