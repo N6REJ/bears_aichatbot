@@ -118,10 +118,8 @@ class ModBearsAichatbotHelper
         // Auto-create a document collection on first use if missing but credentials are present
         if ($collectionId === '' && $token !== '') {
             try {
-                // Derive API base from chat endpoint if needed
-                $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
-                if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
-                $apiBase = rtrim($apiBase, '/');
+                // Use the correct IONOS Inference Model Hub API endpoint for document collections
+                $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
 
                 $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
                 $root   = \Joomla\CMS\Uri\Uri::root();
@@ -157,8 +155,8 @@ class ModBearsAichatbotHelper
         
         // Try Document Collection retrieval if configured and no context yet
         if ($context === '' && $collectionId !== '' && $token !== '') {
-            $apiBase = preg_replace('#/v1/.*$#', '/v1', $endpoint);
-            if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
+            // Use the correct IONOS Inference Model Hub API endpoint for document collections
+            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
             try {
                 $http = HttpFactory::getHttp();
                 $url = rtrim($apiBase, '/') . '/document-collections/' . rawurlencode($collectionId) . '/query';

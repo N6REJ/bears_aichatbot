@@ -237,6 +237,89 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
 }
 
 /**
+ * Delete a collection from IONOS API and clean up local database
+ */
+function deleteCollection(string $collectionId, string $token, string $tokenId): array
+{
+    try {
+        // Use the correct IONOS Inference Model Hub API endpoint for document collections
+        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        
+        $http = HttpFactory::getHttp();
+        $headers = [
+            'Authorization' => 'Bearer ' . $token,
+            'Accept' => 'application/json'
+        ];
+        if ($tokenId) {
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
+        
+        // Delete collection from IONOS API
+        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
+        
+        if ($response->code >= 200 && $response->code < 300) {
+            // Successfully deleted from IONOS, now clean up local database
+            try {
+                $db = Factory::getContainer()->get('DatabaseDriver');
+                
+                // Clear collection ID from state table if it matches
+                $stateQuery = $db->getQuery(true)
+                    ->select($db->quoteName('collection_id'))
+                    ->from($db->quoteName('#__aichatbot_state'))
+                    ->where($db->quoteName('id') . ' = 1')
+                    ->setLimit(1);
+                $db->setQuery($stateQuery);
+                $currentCollectionId = (string)($db->loadResult() ?? '');
+                
+                if ($currentCollectionId === $collectionId) {
+                    $updateQuery = $db->getQuery(true)
+                        ->update($db->quoteName('#__aichatbot_state'))
+                        ->set($db->quoteName('collection_id') . ' = NULL')
+                        ->where($db->quoteName('id') . ' = 1');
+                    $db->setQuery($updateQuery)->execute();
+                }
+                
+                // Delete all document mappings for this collection
+                $deleteDocsQuery = $db->getQuery(true)
+                    ->delete($db->quoteName('#__aichatbot_docs'));
+                $db->setQuery($deleteDocsQuery)->execute();
+                
+                // Delete any pending jobs
+                $deleteJobsQuery = $db->getQuery(true)
+                    ->delete($db->quoteName('#__aichatbot_jobs'));
+                $db->setQuery($deleteJobsQuery)->execute();
+                
+            } catch (\Throwable $e) {
+                // Log database cleanup error but don't fail the operation
+                error_log('Bears AI Chatbot: Database cleanup error after collection deletion: ' . $e->getMessage());
+            }
+            
+            return ['success' => true, 'message' => 'Collection deleted successfully'];
+            
+        } elseif ($response->code === 404) {
+            // Collection not found, consider it already deleted
+            return ['success' => true, 'message' => 'Collection was already deleted'];
+            
+        } else {
+            $errorBody = substr($response->body, 0, 500);
+            $errorMsg = "Failed to delete collection (HTTP {$response->code})";
+            if ($errorBody) {
+                $errorData = json_decode($errorBody, true);
+                if (is_array($errorData) && isset($errorData['error'])) {
+                    $errorMsg .= ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                } else {
+                    $errorMsg .= ': ' . $errorBody;
+                }
+            }
+            return ['success' => false, 'message' => $errorMsg];
+        }
+        
+    } catch (\Throwable $e) {
+        return ['success' => false, 'message' => 'Failed to connect to IONOS API: ' . $e->getMessage()];
+    }
+}
+
+/**
  * Get IONOS configuration from the first published Bears AI Chatbot module
  */
 function getModuleConfig(): array
@@ -451,8 +534,38 @@ $lang->load('com_bears_aichatbot', JPATH_ADMINISTRATOR);
 // Load component CSS
 HTMLHelper::_('stylesheet', 'com_bears_aichatbot/admin.css', ['version' => 'auto', 'relative' => true]);
 
-// Get the requested view
+// Handle AJAX requests
 $input = Factory::getApplication()->input;
+$task = $input->getCmd('task', '');
+
+if ($task === 'deleteCollection') {
+    // Handle AJAX delete collection request
+    $collectionId = $input->getString('collection_id', '');
+    
+    if (empty($collectionId)) {
+        echo json_encode(['success' => false, 'message' => 'Collection ID is required']);
+        exit;
+    }
+    
+    // Get IONOS configuration
+    $moduleConfig = getModuleConfig();
+    $ionosToken = $moduleConfig['token'] ?? '';
+    $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    
+    if (empty($ionosToken) || empty($ionosTokenId)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
+        exit;
+    }
+    
+    // Delete the collection
+    $result = deleteCollection($collectionId, $ionosToken, $ionosTokenId);
+    
+    header('Content-Type: application/json');
+    echo json_encode($result);
+    exit;
+}
+
+// Get the requested view
 $view = $input->getCmd('view', 'status');
 
 // Validate view

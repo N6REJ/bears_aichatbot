@@ -419,11 +419,11 @@ class BearsAichatbotTask extends CMSPlugin
                 $mendpoint = trim((string)$reg->get('ionos_endpoint', ''));
                 if ($mendpoint === '') { $mendpoint = 'https://openai.inference.de-txl.ionos.com/v1/chat/completions'; }
                 if ($mtoken !== '') {
-                    // Derive API base for collections from chat endpoint
-                    $apiBase = preg_replace('#/v1/.*$#', '/v1', $mendpoint) ?: 'https://api.inference.ionos.com/v1';
+                    // Use the correct IONOS Inference Model Hub API endpoint for document collections
+                    $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
                     $this->params->set('ionos_token', $mtoken);
                     $this->params->set('ionos_token_id', $mtokenId);
-                    $this->params->set('ionos_endpoint', rtrim($apiBase, '/'));
+                    $this->params->set('ionos_endpoint', $apiBase);
                     return;
                 }
             }
@@ -464,11 +464,11 @@ class BearsAichatbotTask extends CMSPlugin
 
             $token = trim((string)$this->params->get('ionos_token', ''));
             $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
-            $base = trim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'));
+            $base = trim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'));
             if ($existing !== '' || $token === '') {
                 return;
             }
-            if ($base === '') { $base = 'https://api.inference.ionos.com/v1'; }
+            if ($base === '') { $base = 'https://api.ionos.com/inference-modelhub/v1'; }
             $base = rtrim($base, '/');
 
             $site = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
@@ -506,7 +506,7 @@ class BearsAichatbotTask extends CMSPlugin
     {
         $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
         $token   = trim((string)$this->params->get('ionos_token', ''));
-        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'), '/');
+        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'), '/');
         $collectionId = trim((string)$this->params->get('collection_id', ''));
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');
@@ -550,7 +550,7 @@ class BearsAichatbotTask extends CMSPlugin
     {
         $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
         $token   = trim((string)$this->params->get('ionos_token', ''));
-        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.inference.ionos.com/v1'), '/');
+        $base    = rtrim((string)$this->params->get('ionos_endpoint', 'https://api.ionos.com/inference-modelhub/v1'), '/');
         $collectionId = trim((string)$this->params->get('collection_id', ''));
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');

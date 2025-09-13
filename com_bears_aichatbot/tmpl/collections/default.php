@@ -262,8 +262,48 @@ function testQuery(collectionId) {
 
 function deleteCollection(collectionId) {
     if (confirm('<?php echo Text::_('COM_BEARS_AICHATBOT_CONFIRM_DELETE'); ?>')) {
-        // This would trigger collection deletion
-        alert('Collection deletion functionality would be implemented here');
+        // Show loading state
+        const deleteButton = document.querySelector(`[onclick="deleteCollection('${collectionId}')"]`);
+        if (deleteButton) {
+            deleteButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_DELETING'); ?>';
+            deleteButton.disabled = true;
+        }
+        
+        // Make AJAX request to delete collection
+        fetch('index.php?option=com_bears_aichatbot&task=deleteCollection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'collection_id=' + encodeURIComponent(collectionId)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                // Show success message
+                alert('<?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_SUCCESS'); ?>: ' + data.message);
+                // Reload the page to refresh the collections list
+                window.location.reload();
+            } else {
+                // Show error message
+                alert('<?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_ERROR'); ?>: ' + data.message);
+                // Restore button state
+                if (deleteButton) {
+                    deleteButton.innerHTML = '<i class="fas fa-trash"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_COLLECTION'); ?>';
+                    deleteButton.disabled = false;
+                }
+            }
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            alert('<?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_ERROR'); ?>: ' + error.message);
+            // Restore button state
+            if (deleteButton) {
+                deleteButton.innerHTML = '<i class="fas fa-trash"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_COLLECTION'); ?>';
+                deleteButton.disabled = false;
+            }
+        });
     }
 }
 
