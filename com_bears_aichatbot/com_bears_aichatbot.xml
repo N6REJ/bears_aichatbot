@@ -2,13 +2,15 @@
 <extension type="component" method="upgrade" version="5.0">
   <name>com_bears_aichatbot</name>
   <author>N6REJ</author>
-  <creationDate>2025-09-12</creationDate>
-  <version>2025.09.12.63</version>
+  <creationDate>2025-09-13</creationDate>
+  <version>2025.09.13.01</version>
   <license>GNU General Public License version 3 or later; see LICENSE</license>
-  <description>Administrator-only component with a simple Hello World view.</description>
+  <description>Bears AI Chatbot administrator component with a simple dashboard.</description>
+
+  <namespace path="src">Joomla\Component\BearsAichatbot</namespace>
 
   <administration>
-    <menu>Bears AI Chatbot</menu>
+    <menu>COM_BEARS_AICHATBOT</menu>
     <metadata>
       <layout title="Bears AI Chatbot"/>
     </metadata>
@@ -17,6 +19,10 @@
       <folder>services</folder>
       <folder>src</folder>
       <folder>tmpl</folder>
+      <folder>language</folder>
     </files>
+    <languages folder="language">
+      <language tag="en-GB">en-GB/en-GB.com_bears_aichatbot.ini</language>
+    </languages>
   </administration>
 </extension>

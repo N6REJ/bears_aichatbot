@@ -1,6 +1,6 @@
 <?php
 /**
- * Joomla 5 native service provider for com_bears_aichatbot (Administrator only)
+ * Joomla 5 service provider for com_bears_aichatbot
  */
 \defined('_JEXEC') or die;
 
