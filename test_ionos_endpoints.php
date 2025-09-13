@@ -5,8 +5,8 @@
  */
 
 // Configuration - replace with your actual values
-$token = 'YOUR_TOKEN_HERE';  // Replace with your actual token
-$tokenId = 'YOUR_TOKEN_ID_HERE';  // Replace with your actual token ID
+$token = 'eyJ0eXAiOiJKV1QiLCJraWQiOiI3MzY3ZmY3OS0wMWFjLTRiYTItYTRlZS1iNTA3ZGIwNTY1NjEiLCJhbGciOiJSUzI1NiJ9.eyJpc3MiOiJpb25vc2Nsb3VkIiwiaWF0IjoxNzU2OTg3NTUyLCJjbGllbnQiOiJVU0VSIiwiaWRlbnRpdHkiOnsicm9sZSI6InVzZXIiLCJyZWdEb21haW4iOiJpb25vcy5jb20iLCJyZXNlbGxlcklkIjoxLCJ1dWlkIjoiYWE4NTFmNWYtNWMyMC00M2Q4LTk4ZDItOTkzM2FhNjY1M2E1IiwicHJpdmlsZWdlcyI6WyJBQ0NFU1NfQU5EX01BTkFHRV9JQU1fUkVTT1VSQ0VTIiwiQUNDRVNTX0FORF9NQU5BR0VfQUlfTU9ERUxfSFVCIl0sImlzUGFyZW50IjpmYWxzZSwiY29udHJhY3ROdW1iZXIiOjM2MjM3ODExfSwiZXhwIjoxNzg4NTIzNTUyfQ.LUEQAF3NypXiJitmzHVdhxBu7qWl0T9p94YduJew2yu8zPDhf03-5SOIL7s8lDFHydbTMubeoLbjRlrOP6Hjyt8eJgV1A86nE_v7hPzq1MZqBIniTjapYVkEv_DmxWKjWgMxEdwXysC9t9zpuxtN5nq2PXMXOLGkb8uDH5O9Ex7ggrzXENxJPYqhF1WE6emn_oabKNPQaoV4bS9tArSnF6PGON33SDJawRJHv-dH7N0ZFzgD1RS_Cxnu1JIwko9SRmtIToRmATPDzZUvIsYX7K-1UG1YPytJFKL8UAWmN1qvnvgDbVcW8v4Ct46ZDYVglvRx-35IIDWzebX7QzS89w';  // Replace with your actual token
+$tokenId = '7367ff79-01ac-4ba2-a4ee-b507db056561';  // Replace with your actual token ID
 
 // Test endpoints for document collections
 $documentEndpoints = [
