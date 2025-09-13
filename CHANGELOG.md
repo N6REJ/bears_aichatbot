@@ -13,4 +13,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Bump version to 2025.09.13.01 ([1417a97](https://github.com/N6REJ/bears_aichatbot/commit/1417a97))
 * Merge remote-tracking branch 'origin/main' ([08052ad](https://github.com/N6REJ/bears_aichatbot/commit/08052ad))
 * Update version to 2025.09.13 [skip ci] ([2c46fa4](https://github.com/N6REJ/bears_aichatbot/commit/2c46fa4))
+* Update version to 2025.09.13.1 [skip ci] ([d3fae1d](https://github.com/N6REJ/bears_aichatbot/commit/d3fae1d))
+* Update version to 2025.09.13.01 and simplify component architecture by removing custom controller/dispatcher resolution logic, adding proper language file loading in HtmlView, and fixing menu title translation key in manifest ([7a94345](https://github.com/N6REJ/bears_aichatbot/commit/7a94345))
+* Merge remote-tracking branch 'origin/main' ([8460484](https://github.com/N6REJ/bears_aichatbot/commit/8460484))
 
