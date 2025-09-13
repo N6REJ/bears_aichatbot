@@ -87,13 +87,16 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
     // Query IONOS API for collections
     if ($token && $tokenId) {
         try {
-            // Use the correct IONOS Cloud API v6 endpoint for document collections
-            // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
-            $apiBase = 'https://api.ionos.com/cloudapi/v6';
+            // Try multiple IONOS API endpoints to find the correct one
+            $endpoints = [
+                'https://api.ionos.com/cloudapi/v6/ai/modelhub/document-collections',
+                'https://api.ionos.com/inference-modelhub/v1/document-collections',
+                'https://api.ionos.com/cloudapi/v6/document-collections',
+                'https://inference.de-txl.ionos.com/v1/document-collections'
+            ];
             
             // Enhanced debugging info
             $info[] = "🔍 Debug Info:";
-            $info[] = "API Base: {$apiBase}";
             $info[] = "Token length: " . strlen($token) . " chars";
             $info[] = "Token ID: " . substr($tokenId, 0, 8) . "...";
             $info[] = "Token starts with: " . substr($token, 0, 10) . "...";
@@ -109,9 +112,81 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
             }
             
             $info[] = "Headers: Authorization=Bearer [HIDDEN], X-IONOS-Token-Id=" . substr($tokenId, 0, 8) . "...";
-            $info[] = "Note: Using IONOS Cloud API v6 for Document Collections";
+            $info[] = "Note: Testing multiple IONOS API endpoints";
             
-            $response = $http->get($apiBase . '/ai/modelhub/document-collections', $headers, 10);
+            $response = null;
+            $workingEndpoint = null;
+            
+            foreach ($endpoints as $testEndpoint) {
+                $info[] = "Testing: {$testEndpoint}";
+                try {
+                    $response = $http->get($testEndpoint, $headers, 10);
+                    if ($response->code < 400) {
+                        $workingEndpoint = $testEndpoint;
+                        $info[] = "✅ Working endpoint found: {$testEndpoint}";
+                        break;
+                    } else {
+                        $info[] = "❌ HTTP {$response->code}: " . substr($response->body, 0, 100);
+                    }
+                } catch (\Throwable $e) {
+                    $info[] = "❌ Error: " . $e->getMessage();
+                }
+            }
+            
+            if (!$workingEndpoint) {
+                $info[] = "❌ No working endpoint found";
+                $info[] = "🔧 Troubleshooting suggestions:";
+                $info[] = "- Verify your IONOS token has AI Model Hub permissions";
+                $info[] = "- Check if your IONOS account has access to document collections";
+                $info[] = "- Try regenerating your API token in the IONOS console";
+                $info[] = "- Ensure you're using the correct data center region";
+                $info[] = "- Contact IONOS support if the issue persists";
+                return implode('<br>', $info);
+            }
+            
+            // Try to create a test collection to verify write permissions
+            $info[] = "🧪 Testing collection creation...";
+            try {
+                $testPayload = [
+                    'name' => 'bears-test-' . time(),
+                    'description' => 'Test collection for Bears AI Chatbot - can be deleted'
+                ];
+                
+                $createHeaders = $headers;
+                $createHeaders['Content-Type'] = 'application/json';
+                
+                $createResponse = $http->post($workingEndpoint, json_encode($testPayload), $createHeaders, 10);
+                
+                if ($createResponse->code >= 200 && $createResponse->code < 300) {
+                    $createData = json_decode($createResponse->body, true);
+                    $testCollectionId = $createData['id'] ?? $createData['collection_id'] ?? null;
+                    
+                    if ($testCollectionId) {
+                        $info[] = "✅ Collection creation successful (ID: " . substr($testCollectionId, 0, 12) . "...)";
+                        
+                        // Clean up test collection
+                        try {
+                            $deleteUrl = str_replace('/document-collections', '/document-collections/' . rawurlencode($testCollectionId), $workingEndpoint);
+                            $deleteResponse = $http->delete($deleteUrl, [], $headers, 10);
+                            if ($deleteResponse->code >= 200 && $deleteResponse->code < 300) {
+                                $info[] = "🧹 Test collection cleaned up successfully";
+                            }
+                        } catch (\Throwable $e) {
+                            $info[] = "⚠️ Test collection created but cleanup failed - you may need to delete it manually";
+                        }
+                    } else {
+                        $info[] = "⚠️ Collection created but no ID returned";
+                    }
+                } else {
+                    $info[] = "❌ Collection creation failed (HTTP {$createResponse->code})";
+                    $createError = substr($createResponse->body, 0, 200);
+                    if ($createError) {
+                        $info[] = "Create error: {$createError}";
+                    }
+                }
+            } catch (\Throwable $e) {
+                $info[] = "❌ Collection creation test failed: " . $e->getMessage();
+            }
             
             if ($response->code >= 200 && $response->code < 300) {
                 $data = json_decode($response->body, true);
