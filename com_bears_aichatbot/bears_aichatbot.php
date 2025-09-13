@@ -260,14 +260,34 @@ $usageTrends = calculateUsageTrends($tokenUsage);
 
 // Build status content with configuration details
 $statusContent = '';
-if ($ionosToken && $ionosTokenId && $ionosCollectionId) {
+if ($ionosToken && $ionosTokenId) {
     $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_CONNECTED') . '<br><br>';
     $statusContent .= '<strong>' . Text::_('COM_BEARS_AICHATBOT_CONFIG_DETAILS') . '</strong><br>';
     $statusContent .= Text::_('COM_BEARS_AICHATBOT_TOKEN_ID') . ': ' . htmlspecialchars(substr($ionosTokenId, 0, 8) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
-    $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': ' . htmlspecialchars(substr($ionosCollectionId, 0, 12) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
+    if ($ionosCollectionId) {
+        $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': ' . htmlspecialchars(substr($ionosCollectionId, 0, 12) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
+    } else {
+        $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': <em>Not created yet (will be auto-created)</em><br>';
+    }
     $statusContent .= Text::_('COM_BEARS_AICHATBOT_MODEL') . ': ' . htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') . '<br>';
+    
+    // Add debug info
+    $statusContent .= '<br><small><strong>Debug Info:</strong><br>';
+    $statusContent .= 'Module ID: ' . ($moduleConfig['module_id'] ?? 'Not found') . '<br>';
+    $statusContent .= 'Token length: ' . strlen($ionosToken) . ' chars<br>';
+    $statusContent .= 'Token ID length: ' . strlen($ionosTokenId) . ' chars<br>';
+    $statusContent .= 'Collection ID length: ' . strlen($ionosCollectionId) . ' chars<br>';
+    $statusContent .= 'Endpoint: ' . htmlspecialchars($ionosEndpoint, ENT_QUOTES, 'UTF-8') . '</small>';
 } else {
     $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_NOT_CONFIGURED');
+    
+    // Add debug info for troubleshooting
+    $statusContent .= '<br><br><small><strong>Debug Info:</strong><br>';
+    $statusContent .= 'Module found: ' . (isset($moduleConfig['module_id']) ? 'Yes (ID: ' . $moduleConfig['module_id'] . ')' : 'No') . '<br>';
+    $statusContent .= 'Token present: ' . ($ionosToken ? 'Yes (' . strlen($ionosToken) . ' chars)' : 'No') . '<br>';
+    $statusContent .= 'Token ID present: ' . ($ionosTokenId ? 'Yes (' . strlen($ionosTokenId) . ' chars)' : 'No') . '<br>';
+    $statusContent .= 'Collection ID present: ' . ($ionosCollectionId ? 'Yes (' . strlen($ionosCollectionId) . ' chars)' : 'No') . '<br>';
+    $statusContent .= 'Model: ' . ($ionosModel ? htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') : 'Not set') . '</small>';
 }
 
 $panels = [
