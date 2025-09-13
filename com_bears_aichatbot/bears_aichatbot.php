@@ -91,14 +91,24 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
             if (!$apiBase) { $apiBase = 'https://api.inference.ionos.com/v1'; }
             $apiBase = rtrim($apiBase, '/');
             
+            // Enhanced debugging info
+            $info[] = "🔍 Debug Info:";
+            $info[] = "API Base: {$apiBase}";
+            $info[] = "Token length: " . strlen($token) . " chars";
+            $info[] = "Token ID: " . substr($tokenId, 0, 8) . "...";
+            $info[] = "Token starts with: " . substr($token, 0, 10) . "...";
+            
             $http = HttpFactory::getHttp();
             $headers = [
                 'Authorization' => 'Bearer ' . $token,
-                'Accept' => 'application/json'
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
             ];
             if ($tokenId) {
                 $headers['X-IONOS-Token-Id'] = $tokenId;
             }
+            
+            $info[] = "Headers: Authorization=Bearer [HIDDEN], X-IONOS-Token-Id=" . substr($tokenId, 0, 8) . "...";
             
             $response = $http->get($apiBase . '/document-collections', $headers, 10);
             
@@ -127,9 +137,18 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                 }
             } else {
                 $info[] = "❌ IONOS API error (HTTP {$response->code})";
-                $errorBody = substr($response->body, 0, 200);
+                $errorBody = substr($response->body, 0, 500);
                 if ($errorBody) {
                     $info[] = "Error: {$errorBody}";
+                }
+                
+                // Additional debugging for 401 errors
+                if ($response->code === 401) {
+                    $info[] = "🔧 401 Troubleshooting:";
+                    $info[] = "- Check if token is valid and not expired";
+                    $info[] = "- Verify Token ID matches the token";
+                    $info[] = "- Ensure token has document-collections permissions";
+                    $info[] = "- Try regenerating the token in IONOS console";
                 }
             }
         } catch (\Throwable $e) {
@@ -137,6 +156,8 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
         }
     } else {
         $info[] = '⚠️ No token/token_id for IONOS API check';
+        if (!$token) $info[] = "Missing: IONOS Token";
+        if (!$tokenId) $info[] = "Missing: IONOS Token ID";
     }
     
     return implode('<br>', $info);
@@ -433,13 +454,53 @@ HTMLHelper::_('stylesheet', 'com_bears_aichatbot/admin.css', ['version' => 'auto
 
 // Get the requested view
 $input = Factory::getApplication()->input;
-$view = $input->getCmd('view', 'dashboard');
+$view = $input->getCmd('view', 'status');
 
 // Validate view
-$allowedViews = ['dashboard', 'collections'];
+$allowedViews = ['status', 'usage', 'collections'];
 if (!in_array($view, $allowedViews)) {
-    $view = 'dashboard';
+    $view = 'status';
 }
+
+// Add navigation tabs
+$app = Factory::getApplication();
+$currentView = $view;
+$tabs = [
+    'status' => [
+        'title' => Text::_('COM_BEARS_AICHATBOT_TAB_STATUS'),
+        'icon' => 'fas fa-heartbeat',
+        'url' => 'index.php?option=com_bears_aichatbot&view=status'
+    ],
+    'usage' => [
+        'title' => Text::_('COM_BEARS_AICHATBOT_TAB_USAGE'),
+        'icon' => 'fas fa-chart-line',
+        'url' => 'index.php?option=com_bears_aichatbot&view=usage'
+    ],
+    'collections' => [
+        'title' => Text::_('COM_BEARS_AICHATBOT_TAB_COLLECTIONS'),
+        'icon' => 'fas fa-database',
+        'url' => 'index.php?option=com_bears_aichatbot&view=collections'
+    ]
+];
+
+// Add navigation HTML to document head
+$document = Factory::getDocument();
+$navHtml = '<div class="com-bears-aichatbot-nav mb-4">
+    <ul class="nav nav-tabs" role="tablist">';
+
+foreach ($tabs as $tabView => $tab) {
+    $activeClass = ($tabView === $currentView) ? ' active' : '';
+    $navHtml .= '<li class="nav-item" role="presentation">
+        <a class="nav-link' . $activeClass . '" href="' . \Joomla\CMS\Router\Route::_($tab['url']) . '" role="tab">
+            <i class="' . $tab['icon'] . '"></i> ' . $tab['title'] . '
+        </a>
+    </li>';
+}
+
+$navHtml .= '</ul></div>';
+
+// Store navigation for templates
+$navigationHtml = $navHtml;
 
 // Get IONOS configuration from the module (needed for all views)
 $moduleConfig = getModuleConfig();
@@ -449,9 +510,11 @@ $ionosCollectionId = $moduleConfig['collection_id'] ?? '';
 $ionosModel = $moduleConfig['model'] ?? '';
 $ionosEndpoint = $moduleConfig['endpoint'] ?? '';
 
+// Add navigation to all templates
+echo $navigationHtml;
+
 if ($view === 'collections') {
     // Collections View
-    $document = Factory::getDocument();
     $document->setTitle(Text::_('COM_BEARS_AICHATBOT_COLLECTIONS_TITLE'));
     
     // Fetch collections from IONOS API
@@ -476,36 +539,15 @@ if ($view === 'collections') {
     // Include collections template
     require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/collections/default.php';
     
-} else {
-    // Dashboard View (default)
-    $document = Factory::getDocument();
-    $document->setTitle(Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'));
+} elseif ($view === 'usage') {
+    // Token Usage View
+    $document->setTitle(Text::_('COM_BEARS_AICHATBOT_USAGE_TITLE'));
     
     // Get real token usage data from database
     $tokenUsage = getTokenUsageData();
     
     // Calculate usage trends (percentage change from previous period)
     $usageTrends = calculateUsageTrends($tokenUsage);
-    
-    // Build status content with configuration details
-    $statusContent = '';
-    if ($ionosToken && $ionosTokenId) {
-        $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_CONNECTED') . '<br><br>';
-        $statusContent .= '<strong>' . Text::_('COM_BEARS_AICHATBOT_CONFIG_DETAILS') . '</strong><br>';
-        $statusContent .= Text::_('COM_BEARS_AICHATBOT_TOKEN_ID') . ': ' . htmlspecialchars(substr($ionosTokenId, 0, 8) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
-        if ($ionosCollectionId) {
-            $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': ' . htmlspecialchars(substr($ionosCollectionId, 0, 12) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
-        } else {
-            $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': <em>Not created yet (will be auto-created)</em><br>';
-        }
-        $statusContent .= Text::_('COM_BEARS_AICHATBOT_MODEL') . ': ' . htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') . '<br>';
-        $statusContent .= Text::_('COM_BEARS_AICHATBOT_ENDPOINT') . ': ' . htmlspecialchars($ionosEndpoint, ENT_QUOTES, 'UTF-8') . '<br>';
-    } else {
-        $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_NOT_CONFIGURED');
-    }
-    
-    // Diagnostic: Check database and IONOS for collections
-    $diagnosticInfo = checkCollectionStatus($ionosToken, $ionosTokenId, $ionosEndpoint);
     
     // Build usage summary content
     $summaryContent = '';
@@ -526,8 +568,56 @@ if ($view === 'collections') {
         $summaryContent = Text::_('COM_BEARS_AICHATBOT_NO_USAGE_YET');
     }
     
-    // Add diagnostic info to summary
-    $summaryContent .= '<br><br><strong>Collection Diagnostic:</strong><br>' . $diagnosticInfo;
+    // Prepare variables for usage template
+    $title = Text::_('COM_BEARS_AICHATBOT_USAGE_TITLE');
+    
+    // Include usage template
+    require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/usage/default.php';
+    
+} else {
+    // System Status View (default)
+    $document->setTitle(Text::_('COM_BEARS_AICHATBOT_STATUS_TITLE'));
+    
+    // Build status content with configuration details
+    $statusContent = '';
+    if ($ionosToken && $ionosTokenId) {
+        $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_CONNECTED') . '<br><br>';
+        $statusContent .= '<strong>' . Text::_('COM_BEARS_AICHATBOT_CONFIG_DETAILS') . '</strong><br>';
+        $statusContent .= Text::_('COM_BEARS_AICHATBOT_TOKEN_ID') . ': ' . htmlspecialchars(substr($ionosTokenId, 0, 8) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
+        if ($ionosCollectionId) {
+            $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': ' . htmlspecialchars(substr($ionosCollectionId, 0, 12) . '...', ENT_QUOTES, 'UTF-8') . '<br>';
+        } else {
+            $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': <em>Not created yet (will be auto-created)</em><br>';
+        }
+        $statusContent .= Text::_('COM_BEARS_AICHATBOT_MODEL') . ': ' . htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') . '<br>';
+        $statusContent .= Text::_('COM_BEARS_AICHATBOT_ENDPOINT') . ': ' . htmlspecialchars($ionosEndpoint, ENT_QUOTES, 'UTF-8') . '<br>';
+    } else {
+        $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_NOT_CONFIGURED');
+    }
+    
+    // Get token usage data for quick stats
+    $tokenUsage = getTokenUsageData();
+    $totalTokensAllTime = array_sum(array_column($tokenUsage, 'total_tokens'));
+    $todayTokens = $tokenUsage['today']['total_tokens'] ?? 0;
+    $weekTokens = $tokenUsage['7day']['total_tokens'] ?? 0;
+    
+    // Build quick stats content
+    $quickStatsContent = '';
+    if ($totalTokensAllTime > 0) {
+        $quickStatsContent = '<strong>' . Text::_('COM_BEARS_AICHATBOT_QUICK_STATS') . '</strong><br>';
+        $quickStatsContent .= Text::_('COM_BEARS_AICHATBOT_TODAY_USAGE') . ': ' . number_format($todayTokens) . ' tokens<br>';
+        $quickStatsContent .= Text::_('COM_BEARS_AICHATBOT_WEEK_USAGE') . ': ' . number_format($weekTokens) . ' tokens<br>';
+        $quickStatsContent .= Text::_('COM_BEARS_AICHATBOT_TOTAL_TRACKED') . ': ' . number_format($totalTokensAllTime) . ' tokens<br>';
+        
+        // Calculate estimated cost (using IONOS standard pricing)
+        $estimatedCost = ($totalTokensAllTime / 1000) * 0.0005; // Rough estimate
+        $quickStatsContent .= Text::_('COM_BEARS_AICHATBOT_ESTIMATED_COST') . ': ~$' . number_format($estimatedCost, 4);
+    } else {
+        $quickStatsContent = Text::_('COM_BEARS_AICHATBOT_NO_USAGE_YET');
+    }
+    
+    // Diagnostic: Check database and IONOS for collections
+    $diagnosticInfo = checkCollectionStatus($ionosToken, $ionosTokenId, $ionosEndpoint);
     
     $panels = [
         [
@@ -536,15 +626,15 @@ if ($view === 'collections') {
             'is_html' => true,
         ],
         [
-            'title' => Text::_('COM_BEARS_AICHATBOT_PANEL_USAGE_SUMMARY'),
-            'content' => $summaryContent,
+            'title' => Text::_('COM_BEARS_AICHATBOT_QUICK_STATS'),
+            'content' => $quickStatsContent,
             'is_html' => true,
         ],
     ];
     
-    // Prepare variables for dashboard template
-    $title = Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE');
+    // Prepare variables for status template
+    $title = Text::_('COM_BEARS_AICHATBOT_STATUS_TITLE');
     
-    // Include dashboard template
-    require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/dashboard/default.php';
+    // Include status template
+    require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/status/default.php';
 }
