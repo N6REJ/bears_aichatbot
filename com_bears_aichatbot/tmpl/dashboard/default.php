@@ -49,9 +49,16 @@ function formatNumber($number) {
 ?>
 <div class="com-bears-aichatbot">
   <div class="container-fluid">
-    <h1 class="page-title">
-      <?php echo htmlspecialchars($title ?: Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'), ENT_QUOTES, 'UTF-8'); ?>
-    </h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="page-title mb-0">
+        <?php echo htmlspecialchars($title ?: Text::_('COM_BEARS_AICHATBOT_DASHBOARD_TITLE'), ENT_QUOTES, 'UTF-8'); ?>
+      </h1>
+      <div class="page-actions">
+        <a href="<?php echo \Joomla\CMS\Router\Route::_('index.php?option=com_bears_aichatbot&view=collections'); ?>" class="btn btn-primary">
+          <i class="fas fa-database"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_VIEW_COLLECTIONS'); ?>
+        </a>
+      </div>
+    </div>
 
     <!-- System Status Section -->
     <div class="system-status-section mb-4">
