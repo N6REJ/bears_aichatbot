@@ -16,6 +16,7 @@
     </metadata>
     <files folder="">
       <filename>com_bears_aichatbot.xml</filename>
+      <filename>bears_aichatbot.php</filename>
       <folder>services</folder>
       <folder>src</folder>
       <folder>tmpl</folder>
