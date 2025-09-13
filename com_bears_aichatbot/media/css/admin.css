@@ -238,3 +238,82 @@
     border-radius: 8px;
     margin-bottom: 30px;
 }
+
+/* Chart Styles */
+.mini-chart-container {
+    height: 80px;
+    margin-top: 15px;
+    position: relative;
+}
+
+.chart-section .card {
+    border: 1px solid #dee2e6;
+    border-radius: 8px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+}
+
+.chart-section .card-header {
+    background: linear-gradient(135deg, #007cba 0%, #0056b3 100%);
+    color: white;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.chart-section .card-header h3 {
+    color: white;
+    font-size: 1.25rem;
+    font-weight: 600;
+}
+
+.chart-controls .form-select {
+    min-width: 150px;
+    background-color: rgba(255, 255, 255, 0.9);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+    color: #333;
+}
+
+.chart-controls .form-select:focus {
+    background-color: white;
+    border-color: #80bdff;
+    box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+}
+
+.chart-container {
+    position: relative;
+    height: 400px;
+    margin: 20px 0;
+}
+
+.chart-container canvas {
+    max-height: 400px;
+}
+
+/* Responsive chart adjustments */
+@media (max-width: 768px) {
+    .chart-container {
+        height: 300px;
+    }
+    
+    .chart-section .card-header {
+        flex-direction: column;
+        gap: 10px;
+        align-items: flex-start !important;
+    }
+    
+    .chart-controls {
+        width: 100%;
+    }
+    
+    .chart-controls .form-select {
+        width: 100%;
+    }
+    
+    .mini-chart-container {
+        height: 60px;
+    }
+}
+
+@media (max-width: 576px) {
+    .chart-container {
+        height: 250px;
+    }
+}

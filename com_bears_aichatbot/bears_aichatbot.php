@@ -96,9 +96,9 @@ function getTokenUsageData(): array
         $now = new DateTime();
         $periods = [
             'today' => $now->format('Y-m-d') . ' 00:00:00',
-            '7day' => $now->modify('-7 days')->format('Y-m-d H:i:s'),
-            '30day' => $now->modify('-23 days')->format('Y-m-d H:i:s'), // -7 already applied
-            '6mo' => $now->modify('-5 months -23 days')->format('Y-m-d H:i:s'), // -30 days already applied
+            '7day' => (clone $now)->modify('-7 days')->format('Y-m-d H:i:s'),
+            '30day' => (clone $now)->modify('-30 days')->format('Y-m-d H:i:s'),
+            '6mo' => (clone $now)->modify('-6 months')->format('Y-m-d H:i:s'),
             'ytd' => $now->format('Y') . '-01-01 00:00:00',
         ];
         
@@ -270,24 +270,28 @@ if ($ionosToken && $ionosTokenId) {
         $statusContent .= Text::_('COM_BEARS_AICHATBOT_COLLECTION_ID') . ': <em>Not created yet (will be auto-created)</em><br>';
     }
     $statusContent .= Text::_('COM_BEARS_AICHATBOT_MODEL') . ': ' . htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') . '<br>';
-    
-    // Add debug info
-    $statusContent .= '<br><small><strong>Debug Info:</strong><br>';
-    $statusContent .= 'Module ID: ' . ($moduleConfig['module_id'] ?? 'Not found') . '<br>';
-    $statusContent .= 'Token length: ' . strlen($ionosToken) . ' chars<br>';
-    $statusContent .= 'Token ID length: ' . strlen($ionosTokenId) . ' chars<br>';
-    $statusContent .= 'Collection ID length: ' . strlen($ionosCollectionId) . ' chars<br>';
-    $statusContent .= 'Endpoint: ' . htmlspecialchars($ionosEndpoint, ENT_QUOTES, 'UTF-8') . '</small>';
+    $statusContent .= Text::_('COM_BEARS_AICHATBOT_ENDPOINT') . ': ' . htmlspecialchars($ionosEndpoint, ENT_QUOTES, 'UTF-8') . '<br>';
 } else {
     $statusContent = Text::_('COM_BEARS_AICHATBOT_PANEL_STATUS_NOT_CONFIGURED');
+}
+
+// Build usage summary content
+$summaryContent = '';
+$totalTokensAllTime = array_sum(array_column($tokenUsage, 'total_tokens'));
+$todayTokens = $tokenUsage['today']['total_tokens'] ?? 0;
+$weekTokens = $tokenUsage['7day']['total_tokens'] ?? 0;
+
+if ($totalTokensAllTime > 0) {
+    $summaryContent = '<strong>' . Text::_('COM_BEARS_AICHATBOT_USAGE_SUMMARY') . '</strong><br>';
+    $summaryContent .= Text::_('COM_BEARS_AICHATBOT_TODAY_USAGE') . ': ' . number_format($todayTokens) . ' tokens<br>';
+    $summaryContent .= Text::_('COM_BEARS_AICHATBOT_WEEK_USAGE') . ': ' . number_format($weekTokens) . ' tokens<br>';
+    $summaryContent .= Text::_('COM_BEARS_AICHATBOT_TOTAL_TRACKED') . ': ' . number_format($totalTokensAllTime) . ' tokens<br>';
     
-    // Add debug info for troubleshooting
-    $statusContent .= '<br><br><small><strong>Debug Info:</strong><br>';
-    $statusContent .= 'Module found: ' . (isset($moduleConfig['module_id']) ? 'Yes (ID: ' . $moduleConfig['module_id'] . ')' : 'No') . '<br>';
-    $statusContent .= 'Token present: ' . ($ionosToken ? 'Yes (' . strlen($ionosToken) . ' chars)' : 'No') . '<br>';
-    $statusContent .= 'Token ID present: ' . ($ionosTokenId ? 'Yes (' . strlen($ionosTokenId) . ' chars)' : 'No') . '<br>';
-    $statusContent .= 'Collection ID present: ' . ($ionosCollectionId ? 'Yes (' . strlen($ionosCollectionId) . ' chars)' : 'No') . '<br>';
-    $statusContent .= 'Model: ' . ($ionosModel ? htmlspecialchars($ionosModel, ENT_QUOTES, 'UTF-8') : 'Not set') . '</small>';
+    // Calculate estimated cost (using IONOS standard pricing)
+    $estimatedCost = ($totalTokensAllTime / 1000) * 0.0005; // Rough estimate
+    $summaryContent .= Text::_('COM_BEARS_AICHATBOT_ESTIMATED_COST') . ': ~$' . number_format($estimatedCost, 4);
+} else {
+    $summaryContent = Text::_('COM_BEARS_AICHATBOT_NO_USAGE_YET');
 }
 
 $panels = [
@@ -297,9 +301,9 @@ $panels = [
         'is_html' => true,
     ],
     [
-        'title' => Text::_('COM_BEARS_AICHATBOT_PANEL_API_OVERVIEW'),
-        'content' => Text::_('COM_BEARS_AICHATBOT_PANEL_API_OVERVIEW_DESC'),
-        'is_html' => false,
+        'title' => Text::_('COM_BEARS_AICHATBOT_PANEL_USAGE_SUMMARY'),
+        'content' => $summaryContent,
+        'is_html' => true,
     ],
 ];
 
