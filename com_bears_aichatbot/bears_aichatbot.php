@@ -177,8 +177,25 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
             $info[] = "🧪 Testing collection creation...";
             try {
                 $testPayload = [
-                    'name' => 'bears-test-' . time(),
-                    'description' => 'Test collection for Bears AI Chatbot - can be deleted'
+                    'properties' => [
+                        'name' => 'bears-test-' . time(),
+                        'description' => 'Test collection for Bears AI Chatbot - can be deleted',
+                        'chunking' => [
+                            'enabled' => true,
+                            'strategy' => [
+                                'config' => [
+                                    'chunk_overlap' => 50,
+                                    'chunk_size' => 512
+                                ]
+                            ]
+                        ],
+                        'embedding' => [
+                            'model' => 'BAAI/bge-large-en-v1.5'
+                        ],
+                        'engine' => [
+                            'db_type' => 'pgvector'
+                        ]
+                    ]
                 ];
                 
                 $createHeaders = $headers;
