@@ -1165,27 +1165,27 @@ class ModBearsAichatbotHelper
         // Get configuration from module params or use defaults
         $minLength = 3;
         $maxLength = 50;
-        $stopWords = [];
+        $ignoreWords = [];
         
         if ($params) {
             $minLength = (int)$params->get('keyword_min_length', 3);
             $maxLength = (int)$params->get('keyword_max_length', 50);
-            $stopWordsString = trim((string)$params->get('stop_words', ''));
+            $ignoreWordsString = trim((string)$params->get('ignore_words', ''));
             
-            // If no custom stop words configured, use the default from language file
-            if ($stopWordsString === '') {
-                $stopWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT');
+            // If no custom ignore words configured, use the default from language file
+            if ($ignoreWordsString === '') {
+                $ignoreWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_IGNORE_WORDS_DEFAULT');
             }
             
-            if ($stopWordsString !== '' && $stopWordsString !== 'MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT') {
-                $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
-                $stopWords = array_filter($stopWords); // Remove empty strings
+            if ($ignoreWordsString !== '' && $ignoreWordsString !== 'MOD_BEARS_AICHATBOT_IGNORE_WORDS_DEFAULT') {
+                $ignoreWords = array_map('trim', explode(',', mb_strtolower($ignoreWordsString, 'UTF-8')));
+                $ignoreWords = array_filter($ignoreWords); // Remove empty strings
             }
         }
         
-        // If still no stop words, use minimal fallback
-        if (empty($stopWords)) {
-            $stopWords = [
+        // If still no ignore words, use minimal fallback
+        if (empty($ignoreWords)) {
+            $ignoreWords = [
                 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
                 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
                 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
@@ -1218,8 +1218,8 @@ class ModBearsAichatbotHelper
                 continue;
             }
             
-            // Skip if it's a stop word
-            if (in_array($word, $stopWords)) {
+            // Skip if it's a ignore word
+            if (in_array($word, $ignoreWords)) {
                 continue;
             }
             
@@ -1228,7 +1228,7 @@ class ModBearsAichatbotHelper
                 continue;
             }
             
-            // Skip very common words that might not be in stop words
+            // Skip very common words that might not be in ignore words
             if (in_array($word, ['tell', 'know', 'need', 'want', 'get', 'use', 'work', 'make', 'find', 'help'])) {
                 continue;
             }
@@ -1277,19 +1277,19 @@ class ModBearsAichatbotHelper
             // Get params for debugging
             $minLength = $params ? (int)$params->get('keyword_min_length', 3) : 3;
             $maxLength = $params ? (int)$params->get('keyword_max_length', 50) : 50;
-            $stopWordsString = $params ? trim((string)$params->get('stop_words', '')) : '';
-            if ($stopWordsString === '') {
-                $stopWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT');
+            $ignoreWordsString = $params ? trim((string)$params->get('ignore_words', '')) : '';
+            if ($ignoreWordsString === '') {
+                $ignoreWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_IGNORE_WORDS_DEFAULT');
             }
-            $stopWordsCount = 0;
-            if ($stopWordsString !== '' && $stopWordsString !== 'MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT') {
-                $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
-                $stopWordsCount = count(array_filter($stopWords));
+            $ignoreWordsCount = 0;
+            if ($ignoreWordsString !== '' && $ignoreWordsString !== 'MOD_BEARS_AICHATBOT_IGNORE_WORDS_DEFAULT') {
+                $ignoreWords = array_map('trim', explode(',', mb_strtolower($ignoreWordsString, 'UTF-8')));
+                $ignoreWordsCount = count(array_filter($ignoreWords));
             }
             
             // Debug logging to help troubleshoot keyword extraction
             error_log('Bears AI Chatbot: Message "' . $message . '" extracted keywords: ' . json_encode($keywords));
-            error_log('Bears AI Chatbot: Keyword extraction params - minLength: ' . $minLength . ', maxLength: ' . $maxLength . ', stopWords count: ' . $stopWordsCount);
+            error_log('Bears AI Chatbot: Keyword extraction params - minLength: ' . $minLength . ', maxLength: ' . $maxLength . ', ignoreWords count: ' . $ignoreWordsCount);
             
             if (empty($keywords)) {
                 error_log('Bears AI Chatbot: No keywords extracted from message: "' . $message . '"');

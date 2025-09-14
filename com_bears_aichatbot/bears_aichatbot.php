@@ -626,20 +626,20 @@ function extractKeywords(string $message, ?Registry $params = null): array
     // Get configuration from module params or use defaults
     $minLength = 3;
     $maxLength = 50;
-    $stopWords = [];
+    $ignoreWords = [];
     
     if ($params) {
         $minLength = (int)$params->get('keyword_min_length', 3);
         $maxLength = (int)$params->get('keyword_max_length', 50);
-        $stopWordsString = trim((string)$params->get('stop_words', ''));
+        $ignoreWordsString = trim((string)$params->get('ignore_words', ''));
         
-        if ($stopWordsString !== '') {
-            $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
-            $stopWords = array_filter($stopWords); // Remove empty strings
+        if ($ignoreWordsString !== '') {
+            $ignoreWords = array_map('trim', explode(',', mb_strtolower($ignoreWordsString, 'UTF-8')));
+            $ignoreWords = array_filter($ignoreWords); // Remove empty strings
         }
     } else {
-        // Fallback to default English stop words if no params provided
-        $stopWords = [
+        // Fallback to default English ignore words if no params provided
+        $ignoreWords = [
             'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
             'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
             'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
@@ -656,7 +656,7 @@ function extractKeywords(string $message, ?Registry $params = null): array
     
     // Debug logging
     error_log('Bears AI Chatbot Component: Starting keyword extraction for message: "' . $message . '"');
-    error_log('Bears AI Chatbot Component: Using minLength=' . $minLength . ', maxLength=' . $maxLength . ', stopWords=' . count($stopWords));
+    error_log('Bears AI Chatbot Component: Using minLength=' . $minLength . ', maxLength=' . $maxLength . ', ignoreWords=' . count($ignoreWords));
     
     // Convert to lowercase and remove special characters
     $originalMessage = $message;
@@ -678,7 +678,7 @@ function extractKeywords(string $message, ?Registry $params = null): array
         $word = trim($word);
         error_log('Bears AI Chatbot Component: Processing word "' . $word . '"');
         
-        // Skip if too short, too long, or is a stop word
+        // Skip if too short, too long, or is a ignore word
         if (mb_strlen($word) < $minLength) {
             error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - too short (< ' . $minLength . ')');
             continue;
@@ -689,8 +689,8 @@ function extractKeywords(string $message, ?Registry $params = null): array
             continue;
         }
         
-        if (in_array($word, $stopWords)) {
-            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - stop word');
+        if (in_array($word, $ignoreWords)) {
+            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - ignore word');
             continue;
         }
         

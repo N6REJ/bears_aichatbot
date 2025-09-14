@@ -34,11 +34,11 @@ Features
   - CSV export (filters respected)
 - Keyword extraction and analytics
   - Configurable keyword extraction from user messages
-  - Customizable stop words list (300+ English words by default)
+  - Customizable ignore words list (300+ English words by default)
   - Adjustable minimum/maximum keyword length
   - Keyword usage statistics and success rates
   - Trending keywords dashboard
-  - Multi-language support for stop words
+  - Multi-language support for ignore words
 
 
 Requirements
@@ -89,7 +89,7 @@ Module configuration (frontend chat)
 - Keyword extraction
   - Minimum keyword length (1-10, default: 3)
   - Maximum keyword length (10-100, default: 50)
-  - Stop words list (customizable, 300+ English words by default)
+  - Ignore words list (customizable, 300+ English words by default)
 
 Notes on retrieval
 - Top K controls the number of highest‑scoring snippets included.
@@ -227,7 +227,7 @@ The Bears AI Chatbot is fully accessible and provides an inclusive experience fo
 - 15+ accessibility-specific language strings for screen reader announcements
 - Translatable ARIA labels and status messages
 - Support for right-to-left (RTL) languages through template inheritance
-- Customizable stop words for keyword extraction in any language
+- Customizable ignore words for keyword extraction in any language
 
 **Technical Implementation:**
 - Uses semantic HTML5 elements (nav, section, article, dialog)

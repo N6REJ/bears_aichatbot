@@ -118,7 +118,7 @@
             </div>
             <div class="bears-feature-card">
                 <h4>🔍 Keyword Extraction <span class="bears-badge">NEW</span></h4>
-                <p>Intelligent keyword extraction from user messages with configurable stop words and multi-language support.</p>
+                <p>Intelligent keyword extraction from user messages with configurable ignore words and multi-language support.</p>
             </div>
             <div class="bears-feature-card">
                 <h4>♿ Full Accessibility <span class="bears-badge">WCAG 2.1 AA</span></h4>
@@ -787,15 +787,15 @@ MOD_BEARS_AICHATBOT_THINKING="AI is researching your question"
                     <td>Maximum characters for a word to be considered (10-100)</td>
                 </tr>
                 <tr>
-                    <td>Stop Words</td>
+                    <td>Ignore Words</td>
                     <td>300+ English words</td>
                     <td>Comma-separated list of words to ignore during extraction</td>
                 </tr>
             </tbody>
         </table>
 
-        <h3>Default Stop Words</h3>
-        <p>The system includes a comprehensive list of 300+ common English stop words including:</p>
+        <h3>Default Ignore Words</h3>
+        <p>The system includes a comprehensive list of 300+ common English ignore words including:</p>
         <div class="code-block">
 a, able, about, above, across, act, actually, add, after, again, against, age, ago, agree, all, almost, alone, along, already, also, although, always, am, among, an, and, anger, angry, animal, another, answer, any, anyone, anything, anyway, appear, are, area, around, as, ask, at, attack, away...
         </div>
@@ -804,8 +804,8 @@ a, able, about, above, across, act, actually, add, after, again, against, age, a
         <p>To support other languages, create language-specific overrides:</p>
         <ol>
             <li>Go to <strong>System → Manage → Language Overrides</strong></li>
-            <li>Create override for <code>MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT</code></li>
-            <li>Add comma-separated stop words for your language</li>
+            <li>Create override for <code>MOD_BEARS_AICHATBOT_IGNORE_WORDS_DEFAULT</code></li>
+            <li>Add comma-separated ignore words for your language</li>
         </ol>
 
         <h2 id="admin-component">Administrator Component</h2>
@@ -933,7 +933,7 @@ a, able, about, above, across, act, actually, add, after, again, against, age, a
         <ul>
             <li>Check keyword extraction settings in module configuration</li>
             <li>Verify minimum/maximum length settings</li>
-            <li>Review stop words list for your language</li>
+            <li>Review ignore words list for your language</li>
             <li>Check error logs for extraction failures</li>
         </ul>
 
