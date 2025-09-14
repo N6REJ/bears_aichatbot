@@ -97,7 +97,7 @@
             <fieldset name="keywords" label="MOD_BEARS_AICHATBOT_FIELDSET_KEYWORDS">
                 <field name="keyword_min_length" type="number" default="3" min="1" max="10" label="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_LABEL" description="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_DESC" />
                 <field name="keyword_max_length" type="number" default="50" min="10" max="100" label="MOD_BEARS_AICHATBOT_KEYWORD_MAX_LENGTH_LABEL" description="MOD_BEARS_AICHATBOT_KEYWORD_MAX_LENGTH_DESC" />
-                <field name="stop_words" type="textarea" label="MOD_BEARS_AICHATBOT_STOP_WORDS_LABEL" description="MOD_BEARS_AICHATBOT_STOP_WORDS_DESC" filter="raw" rows="8" cols="50" default="the,tell,a,an,and,or,but,in,on,at,to,for,of,with,by,is,are,was,were,be,been,being,have,has,had,do,does,did,will,would,could,should,may,might,can,must,shall,i,you,he,she,it,we,they,me,him,her,us,them,my,your,his,her,its,our,their,this,that,these,those,what,where,when,why,how,who,which,whose,whom,about,above,across,after,against,along,among,around,as,before,behind,below,beneath,beside,between,beyond,during,except,from,inside,into,like,near,off,outside,over,since,through,throughout,till,toward,under,until,up,upon,within,without,please,thanks,thank,hello,hi,hey" />
+                <field name="stop_words" type="textarea" label="MOD_BEARS_AICHATBOT_STOP_WORDS_LABEL" description="MOD_BEARS_AICHATBOT_STOP_WORDS_DESC" filter="raw" rows="8" cols="50" default="MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT" />
             </fieldset>
         </fields>
     </config>
