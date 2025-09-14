@@ -19,6 +19,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add collections view with IONOS API integration and enhanced diagnostic capabilities ([250c017](https://github.com/N6REJ/bears_aichatbot/commit/250c017))
 * Implement multi-endpoint testing and collection creation verification for IONOS API integration ([0872e2d](https://github.com/N6REJ/bears_aichatbot/commit/0872e2d))
 * Add configurable keyword extraction settings and improve template documentation ([d60fd2f](https://github.com/N6REJ/bears_aichatbot/commit/d60fd2f))
+* Implement comprehensive accessibility features for WCAG 2.1 AA compliance ([cb73720](https://github.com/N6REJ/bears_aichatbot/commit/cb73720))
+* Add comprehensive scheduler tasks documentation and improve keyword extraction with language constant fallback ([8978325](https://github.com/N6REJ/bears_aichatbot/commit/8978325))
+* Add comprehensive uninstall cleanup functionality with database table and scheduler task removal ([a739fa1](https://github.com/N6REJ/bears_aichatbot/commit/a739fa1))
 
 ### Changed
 
@@ -85,6 +88,12 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Merge remote-tracking branch 'origin/main' ([cebdb2f](https://github.com/N6REJ/bears_aichatbot/commit/cebdb2f))
 * Update version to 2025.09.14.2 [skip ci] ([97f4d47](https://github.com/N6REJ/bears_aichatbot/commit/97f4d47))
 * Merge remote-tracking branch 'origin/main' ([c5069a1](https://github.com/N6REJ/bears_aichatbot/commit/c5069a1))
+* Update version to 2025.09.14 [skip ci] ([ae40a5b](https://github.com/N6REJ/bears_aichatbot/commit/ae40a5b))
+* Replace hardcoded stop words with language constant reference in module configuration ([ee9d5e8](https://github.com/N6REJ/bears_aichatbot/commit/ee9d5e8))
+* Merge remote-tracking branch 'origin/main' ([9a821a8](https://github.com/N6REJ/bears_aichatbot/commit/9a821a8))
+* Update scheduler task descriptions with consistent Bears AI Chatbot branding ([886d794](https://github.com/N6REJ/bears_aichatbot/commit/886d794))
+* fix uninstall manifest ([33e9dd0](https://github.com/N6REJ/bears_aichatbot/commit/33e9dd0))
+* Merge pull request #6 ([2293af2](https://github.com/N6REJ/bears_aichatbot/commit/2293af2))
 
 ### Fixed
 
