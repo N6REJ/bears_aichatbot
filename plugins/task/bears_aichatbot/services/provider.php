@@ -1,40 +1,46 @@
 <?php
 /**
- * Service Provider for plg_task_bears_aichatbot
+ * @package     Joomla.Plugin
+ * @subpackage  Task.bears_aichatbot
+ *
+ * @copyright   (C) 2025
+ * @license     GNU General Public License version 2 or later
  */
-\defined('_JEXEC') or die;
 
-use Joomla\DI\ServiceProviderInterface;
+defined('_JEXEC') or die;
+
+use Joomla\CMS\Extension\PluginInterface;
+use Joomla\CMS\Extension\Service\Provider\MVCFactory;
+use Joomla\CMS\Extension\Service\Provider\PluginDispatcherFactory;
+use Joomla\CMS\Factory;
+use Joomla\CMS\Plugin\PluginHelper;
 use Joomla\DI\Container;
+use Joomla\DI\ServiceProviderInterface;
+use Joomla\Event\DispatcherInterface;
+use Joomla\Plugin\Task\BearsAichatbot\Extension\BearsAichatbot;
 
-return new class implements ServiceProviderInterface {
+return new class implements ServiceProviderInterface
+{
+    /**
+     * Registers the service provider with a DI container.
+     *
+     * @param   Container  $container  The DI container.
+     *
+     * @return  void
+     */
     public function register(Container $container): void
     {
-        // Support both Joomla 4.3+/5 namespaces for the Plugin provider
-        $providerClass = null;
-        if (class_exists('\\Joomla\\Extension\\Service\\Provider\\Plugin')) {
-            $providerClass = '\\Joomla\\Extension\\Service\\Provider\\Plugin';
-        } elseif (class_exists('\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin')) {
-            $providerClass = '\\Joomla\\CMS\\Extension\\Service\\Provider\\Plugin';
-        } else {
-            // Gracefully no-op if provider class is unavailable to avoid breaking the Plugin Manager
-            return;
-        }
+        $container->set(
+            PluginInterface::class,
+            function (Container $container) {
+                $plugin = new BearsAichatbot(
+                    $container->get(DispatcherInterface::class),
+                    (array) PluginHelper::getPlugin('task', 'bears_aichatbot')
+                );
+                $plugin->setApplication(Factory::getApplication());
 
-        // Register by group/element and optionally path, depending on constructor signature
-        if ($providerClass !== null) {
-            try {
-                $ref  = new \ReflectionClass($providerClass);
-                $ctor = $ref->getConstructor();
-                $n    = $ctor ? $ctor->getNumberOfParameters() : 0;
-                if ($n >= 3) {
-                    $container->registerServiceProvider(new $providerClass('task', 'bears_aichatbot', dirname(__DIR__)));
-                } else {
-                    $container->registerServiceProvider(new $providerClass('task', 'bears_aichatbot'));
-                }
-            } catch (\Throwable $e) {
-                // Graceful no-op to avoid breaking the Plugin Manager
+                return $plugin;
             }
-        }
+        );
     }
 };

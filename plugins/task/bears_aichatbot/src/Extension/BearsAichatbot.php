@@ -1,90 +1,80 @@
 <?php
 /**
- * Joomla 5 Task plugin: processes AI Chatbot document collection sync.
+ * @package     Joomla.Plugin
+ * @subpackage  Task.bears_aichatbot
+ *
+ * @copyright   (C) 2025
+ * @license     GNU General Public License version 2 or later
  */
 
 namespace Joomla\Plugin\Task\BearsAichatbot\Extension;
 
-use Joomla\CMS\Application\CMSApplicationInterface;
-use Joomla\CMS\Factory;
+defined('_JEXEC') or die;
+
 use Joomla\CMS\Plugin\CMSPlugin;
-use Joomla\CMS\Scheduler\Task\TaskOption;
-use Joomla\CMS\Scheduler\Task\TaskStatus;
-use Joomla\CMS\Scheduler\TaskInterface;
-use Joomla\CMS\Scheduler\TaskResult;
+use Joomla\Component\Scheduler\Administrator\Event\ExecuteTaskEvent;
+use Joomla\Component\Scheduler\Administrator\Task\Status;
+use Joomla\Component\Scheduler\Administrator\Traits\TaskPluginTrait;
 use Joomla\Database\DatabaseInterface;
 use Joomla\Event\SubscriberInterface;
+use Joomla\CMS\Factory;
 
-// phpcs:disable PSR1.Files.SideEffects
-\defined('_JEXEC') or die;
-// phpcs:enable PSR1.Files.SideEffects
-
-class BearsAichatbot extends CMSPlugin implements SubscriberInterface
+/**
+ * Task plugin for Bears AI Chatbot
+ */
+final class BearsAichatbot extends CMSPlugin implements SubscriberInterface
 {
-    /** @var CMSApplicationInterface */
-    protected $app;
+    use TaskPluginTrait;
 
+    /**
+     * @var string[]
+     */
+    protected const TASKS_MAP = [
+        'bears_aichatbot.queue'     => [
+            'langConstPrefix' => 'PLG_TASK_BEARS_AICHATBOT_QUEUE',
+            'method'          => 'processQueueTask',
+        ],
+        'bears_aichatbot.reconcile' => [
+            'langConstPrefix' => 'PLG_TASK_BEARS_AICHATBOT_RECONCILE',
+            'method'          => 'reconcileTask',
+        ],
+    ];
+
+    /**
+     * @var boolean
+     */
     protected $autoloadLanguage = true;
 
+    /**
+     * @inheritDoc
+     */
     public static function getSubscribedEvents(): array
     {
         return [
-            'onRegisterTasks' => 'onRegisterTasks',
-            'onExecuteTask'   => 'onExecuteTask',
+            'onTaskOptionsList'    => 'advertiseRoutines',
+            'onExecuteTask'        => 'standardRoutineHandler',
         ];
-    }
-
-    /**
-     * Register scheduler tasks exposed by this plugin
-     */
-    public function onRegisterTasks(): array
-    {
-        return [
-            // Current types
-            TaskOption::create('bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', self::class),
-            TaskOption::create('bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', self::class),
-            // Backward-compatible legacy types to resolve existing tasks
-            TaskOption::create('aichatbot.queue', 'Bears AI Chatbot: Process queue', self::class),
-            TaskOption::create('aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', self::class),
-        ];
-    }
-
-    public function onExecuteTask(TaskInterface $task): TaskResult
-    {
-        $name = $task->getName();
-        try {
-            // Load credentials from Module params so admin config lives in one place
-            $this->loadCredentialsFromModule();
-            // Ensure document collection exists before running tasks
-            $this->ensureCollectionExists();
-            // Load collection id from centralized state for this run
-            $this->loadCollectionFromState();
-
-            if ($name === 'bears_aichatbot.queue' || $name === 'aichatbot.queue') {
-                [$ok, $info] = $this->processQueue();
-                return new TaskResult($ok ? TaskStatus::OK : TaskStatus::KNOCKOUT, $info);
-            }
-            if ($name === 'bears_aichatbot.reconcile' || $name === 'aichatbot.reconcile') {
-                [$ok, $info] = $this->reconcile();
-                return new TaskResult($ok ? TaskStatus::OK : TaskStatus::KNOCKOUT, $info);
-            }
-            return new TaskResult(TaskStatus::NO_RUN, 'Unknown task: ' . $name);
-        } catch (\Throwable $e) {
-            return new TaskResult(TaskStatus::KNOCKOUT, 'Error: ' . $e->getMessage());
-        }
     }
 
     /**
      * Process queued upsert/delete jobs.
-     * @return array{0:bool,1:string}
+     *
+     * @param   ExecuteTaskEvent  $event  The event
+     *
+     * @return  integer  The exit code
      */
-    protected function processQueue(): array
+    private function processQueueTask(ExecuteTaskEvent $event): int
     {
+        $this->loadCredentialsFromModule();
+        $this->ensureCollectionExists();
+        $this->loadCollectionFromState();
+
         $startedAt = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
         $db = Factory::getContainer()->get(DatabaseInterface::class);
         $batch = (int) $this->params->get('batch_size', 50);
         $maxAttempts = (int) $this->params->get('max_attempts', 5);
-        $processed = 0; $failed = 0;
+        $processed = 0; 
+        $failed = 0;
 
         // Fetch jobs
         $q = $db->getQuery(true)
@@ -100,19 +90,26 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             $id = (int) $job['id'];
             $contentId = (int) $job['content_id'];
             $action = (string) $job['action'];
-            $ok = false; $err = '';
+            $ok = false; 
+            $err = '';
+            
             try {
                 if ($action === 'upsert') {
                     $ok = $this->handleUpsert($db, $contentId);
-                    if (!$ok) { $err = 'Upsert returned false'; }
+                    if (!$ok) { 
+                        $err = 'Upsert returned false'; 
+                    }
                 } elseif ($action === 'delete') {
                     $ok = $this->handleDelete($db, $contentId);
-                    if (!$ok) { $err = 'Delete returned false'; }
+                    if (!$ok) { 
+                        $err = 'Delete returned false'; 
+                    }
                 } else {
                     $ok = true; // ignore unknown
                 }
             } catch (\Throwable $e) {
-                $ok = false; $err = $e->getMessage();
+                $ok = false; 
+                $err = $e->getMessage();
             }
 
             $upd = $db->getQuery(true)
@@ -123,39 +120,107 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
                 ->where($db->quoteName('id') . ' = ' . (int)$id);
             $db->setQuery($upd)->execute();
 
-            $processed += (int) $ok; $failed += (int) (!$ok);
+            $processed += (int) $ok; 
+            $failed += (int) (!$ok);
         }
 
-        // Mark last successful queue run in centralized state table
+        // Mark last successful queue run
         try {
-            $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
-            $upd = $dbExt->getQuery(true)
-                ->update($dbExt->quoteName('#__aichatbot_state'))
-                ->set($dbExt->quoteName('last_run_queue') . ' = ' . $dbExt->quote($startedAt))
-                ->where($dbExt->quoteName('id') . ' = 1');
-            $dbExt->setQuery($upd)->execute();
+            $upd = $db->getQuery(true)
+                ->update($db->quoteName('#__aichatbot_state'))
+                ->set($db->quoteName('last_run_queue') . ' = ' . $db->quote($startedAt))
+                ->where($db->quoteName('id') . ' = 1');
+            $db->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
 
-        // Upsert a daily snapshot of current docs_count
         $this->snapshotCollectionCount();
 
-        return [true, sprintf('Queue processed: %d ok, %d failed', $processed, $failed)];
+        $this->logTask(sprintf('Queue processed: %d ok, %d failed', $processed, $failed));
+        
+        return Status::OK;
     }
 
     /**
-     * Reconcile mapping with current Joomla articles in selected categories.
+     * Reconcile mapping with current Joomla articles.
+     *
+     * @param   ExecuteTaskEvent  $event  The event
+     *
+     * @return  integer  The exit code
      */
-    protected function reconcile(): array
+    private function reconcileTask(ExecuteTaskEvent $event): int
     {
+        $this->loadCredentialsFromModule();
+        $this->ensureCollectionExists();
+        $this->loadCollectionFromState();
+
         $db = Factory::getContainer()->get(DatabaseInterface::class);
-        $processed = 0; $deleted = 0;
+        $processed = 0; 
+        $deleted = 0;
         $startedAt = (new \DateTimeImmutable('now'))->format('Y-m-d H:i:s');
 
         $catIds = $this->params->get('selected_categories', []);
-        if (is_string($catIds)) { $catIds = array_filter(array_map('intval', explode(',', $catIds))); }
-        elseif (!is_array($catIds)) { $catIds = []; }
+        if (is_string($catIds)) { 
+            $catIds = array_filter(array_map('intval', explode(',', $catIds))); 
+        } elseif (!is_array($catIds)) { 
+            $catIds = []; 
+        }
 
         // Expand category tree
+        $allCatIds = $this->expandCategoryTree($db, $catIds);
+
+        // Get last run time
+        $lastRun = $this->getLastRunTime($db, 'reconcile');
+
+        // Fetch currently published articles
+        $articles = $this->fetchArticles($db, $allCatIds, $lastRun);
+
+        // Map existing docs
+        $docs = $this->getExistingDocs($db);
+
+        // Process articles
+        foreach ($articles as $id => $a) {
+            $hash = $this->computeHash($a['title'], $a['introtext'], $a['fulltext'], (int)$a['state']);
+            $row  = $docs[(int)$id] ?? null;
+            if (!$row || $row['content_hash'] !== $hash || (int)$row['state'] !== 1) {
+                $ok = $this->handleUpsert($db, (int)$id, $a, $hash);
+                if ($ok) { 
+                    $processed++; 
+                }
+            }
+        }
+
+        // Handle deletions
+        $currentInScopeIds = $this->getCurrentInScopeIds($db, $allCatIds);
+        foreach ($docs as $contentId => $row) {
+            $shouldExist = $currentInScopeIds !== null 
+                ? in_array((int)$contentId, $currentInScopeIds, true) 
+                : isset($articles[$contentId]);
+            if (!$shouldExist) {
+                $ok = $this->handleDelete($db, (int)$contentId);
+                if ($ok) { 
+                    $deleted++; 
+                }
+            }
+        }
+
+        // Mark last successful run
+        try {
+            $upd = $db->getQuery(true)
+                ->update($db->quoteName('#__aichatbot_state'))
+                ->set($db->quoteName('last_run_reconcile') . ' = ' . $db->quote($startedAt))
+                ->where($db->quoteName('id') . ' = 1');
+            $db->setQuery($upd)->execute();
+        } catch (\Throwable $ignore) {}
+
+        $this->snapshotCollectionCount();
+
+        $this->logTask(sprintf('Reconcile: %d upserts, %d deletes', $processed, $deleted));
+        
+        return Status::OK;
+    }
+
+    private function expandCategoryTree($db, $catIds)
+    {
         $allCatIds = [];
         if (!empty($catIds)) {
             try {
@@ -181,37 +246,31 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
                     $db->setQuery($dcq);
                     $allCatIds = array_map('intval', (array) $db->loadColumn());
                 }
-            } catch (\Throwable $e) { $allCatIds = $catIds; }
+            } catch (\Throwable $e) { 
+                $allCatIds = $catIds; 
+            }
         }
-        if (empty($allCatIds)) { $allCatIds = $catIds; }
+        return empty($allCatIds) ? $catIds : $allCatIds;
+    }
 
-        // Determine incremental window
-        // Load last run from centralized state table
+    private function getLastRunTime($db, $type)
+    {
         $lastRun = '';
         try {
+            $field = $type === 'reconcile' ? 'last_run_reconcile' : 'last_run_queue';
             $qState = $db->getQuery(true)
-                ->select($db->quoteName('last_run_reconcile'))
+                ->select($db->quoteName($field))
                 ->from($db->quoteName('#__aichatbot_state'))
                 ->where($db->quoteName('id') . ' = 1')
                 ->setLimit(1);
             $db->setQuery($qState);
             $lastRun = (string)($db->loadResult() ?? '');
         } catch (\Throwable $ignore) {}
-        if ($lastRun === '') {
-            // Bootstrap from scheduler last_execution for this task type if available
-            try {
-                $qLast = $db->getQuery(true)
-                    ->select($db->quoteName('last_execution'))
-                    ->from($db->quoteName('#__scheduler_tasks'))
-                    ->where($db->quoteName('type') . ' = ' . $db->quote('bears_aichatbot.reconcile'))
-                    ->setLimit(1);
-                $db->setQuery($qLast);
-                $lastExec = (string)($db->loadResult() ?? '');
-                if ($lastExec !== '') { $lastRun = $lastExec; }
-            } catch (\Throwable $ignore) {}
-        }
+        return $lastRun;
+    }
 
-        // Fetch currently published articles in scope (incremental if lastRun available)
+    private function fetchArticles($db, $allCatIds, $lastRun)
+    {
         $q = $db->getQuery(true)
             ->select($db->quoteName(['id','title','introtext','fulltext','state','modified','created']))
             ->from($db->quoteName('#__content'))
@@ -223,26 +282,24 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             $q->where('(' . $db->quoteName('modified') . ' >= ' . $db->quote($lastRun) . ' OR ' . $db->quoteName('created') . ' >= ' . $db->quote($lastRun) . ')');
         }
         $db->setQuery($q);
-        $articles = (array) $db->loadAssocList('id');
+        return (array) $db->loadAssocList('id');
+    }
 
-        // Map existing docs
+    private function getExistingDocs($db)
+    {
         $dq = $db->getQuery(true)
             ->select($db->quoteName(['content_id','content_hash','remote_id','state']))
             ->from($db->quoteName('#__aichatbot_docs'));
         $db->setQuery($dq);
         $docs = [];
-        foreach ((array)$db->loadAssocList() as $row) { $docs[(int)$row['content_id']] = $row; }
-
-        // Upsert changed/new (incremental if lastRun set)
-        foreach ($articles as $id => $a) {
-            $hash = $this->computeHash($a['title'], $a['introtext'], $a['fulltext'], (int)$a['state']);
-            $row  = $docs[(int)$id] ?? null;
-            if (!$row || $row['content_hash'] !== $hash || (int)$row['state'] !== 1) {
-                $ok = $this->handleUpsert($db, (int)$id, $a, $hash);
-                if ($ok) { $processed++; }
-            }
+        foreach ((array)$db->loadAssocList() as $row) { 
+            $docs[(int)$row['content_id']] = $row; 
         }
-        // Deletions/out-of-scope detection must consider full current scope to avoid false deletes during incremental mode
+        return $docs;
+    }
+
+    private function getCurrentInScopeIds($db, $allCatIds)
+    {
         $currentInScopeIds = null;
         try {
             $qIds = $db->getQuery(true)
@@ -254,36 +311,12 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             }
             $db->setQuery($qIds);
             $currentInScopeIds = array_map('intval', (array)$db->loadColumn());
-        } catch (\Throwable $ignore) {
-            $currentInScopeIds = null;
-        }
-        foreach ($docs as $contentId => $row) {
-            $shouldExist = $currentInScopeIds !== null ? in_array((int)$contentId, $currentInScopeIds, true) : isset($articles[$contentId]);
-            if (!$shouldExist) {
-                $ok = $this->handleDelete($db, (int)$contentId);
-                if ($ok) { $deleted++; }
-            }
-        }
-
-        // Mark last successful reconcile run in centralized state table
-        try {
-            $dbExt = Factory::getContainer()->get(DatabaseInterface::class);
-            $upd = $dbExt->getQuery(true)
-                ->update($dbExt->quoteName('#__aichatbot_state'))
-                ->set($dbExt->quoteName('last_run_reconcile') . ' = ' . $dbExt->quote($startedAt))
-                ->where($dbExt->quoteName('id') . ' = 1');
-            $dbExt->setQuery($upd)->execute();
         } catch (\Throwable $ignore) {}
-
-        // Upsert a daily snapshot of current docs_count
-        $this->snapshotCollectionCount();
-
-        return [true, sprintf('Reconcile: %d upserts, %d deletes', $processed, $deleted)];
+        return $currentInScopeIds;
     }
 
     protected function handleUpsert(DatabaseInterface $db, int $contentId, ?array $article = null, ?string $hash = null): bool
     {
-        // Load article if not provided
         if ($article === null) {
             $q = $db->getQuery(true)
                 ->select($db->quoteName(['id','title','introtext','fulltext','state']))
@@ -292,20 +325,24 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
                 ->setLimit(1);
             $db->setQuery($q);
             $row = $db->loadAssoc();
-            if (!$row) { return false; }
+            if (!$row) { 
+                return false; 
+            }
             $article = $row;
         }
+        
         if ((int)$article['state'] !== 1) {
-            // If not published, ensure remote deletion
             return $this->handleDelete($db, $contentId);
         }
 
         $title = (string)$article['title'];
         $intro = (string)$article['introtext'];
         $full  = (string)$article['fulltext'];
-        if ($hash === null) { $hash = $this->computeHash($title, $intro, $full, 1); }
+        if ($hash === null) { 
+            $hash = $this->computeHash($title, $intro, $full, 1); 
+        }
 
-        // Determine remote id
+        // Get or create remote id
         $dq = $db->getQuery(true)
             ->select($db->quoteName(['remote_id']))
             ->from($db->quoteName('#__aichatbot_docs'))
@@ -313,20 +350,22 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             ->setLimit(1);
         $db->setQuery($dq);
         $remoteId = (string) ($db->loadResult() ?? '');
-        if ($remoteId === '') { $remoteId = 'article-' . $contentId; }
+        if ($remoteId === '') { 
+            $remoteId = 'article-' . $contentId; 
+        }
 
-        // Prepare payload (simple text merge; real impl should chunk and include metadata)
         $text = $this->normalize($title) . "\n\n" . $this->normalize($intro) . "\n\n" . $this->normalize($full);
 
         // Call external API
         $ok = $this->apiUpsert($remoteId, $text, [ 'content_id' => $contentId, 'title' => $title ]);
-        if (!$ok) { return false; }
+        if (!$ok) { 
+            return false; 
+        }
 
-        // Update mapping row (portable upsert without MySQL-specific onDuplicate)
+        // Update mapping
         $now = (new \DateTime())->format('Y-m-d H:i:s');
         $db->transactionStart();
         try {
-            // Check if a row already exists for this content_id
             $chk = $db->getQuery(true)
                 ->select($db->quoteName('content_id'))
                 ->from($db->quoteName('#__aichatbot_docs'))
@@ -336,14 +375,12 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             $exists = (int) ($db->loadResult() ?? 0) > 0;
 
             if (!$exists) {
-                // Insert new mapping row
                 $ins = $db->getQuery(true)
                     ->insert($db->quoteName('#__aichatbot_docs'))
                     ->columns($db->quoteName(['content_id','remote_id','content_hash','last_synced','state']))
                     ->values(implode(',', [ (int)$contentId, $db->quote($remoteId), $db->quote($hash), $db->quote($now), 1 ]));
                 $db->setQuery($ins)->execute();
             } else {
-                // Update existing mapping row
                 $upd = $db->getQuery(true)
                     ->update($db->quoteName('#__aichatbot_docs'))
                     ->set($db->quoteName('remote_id') . ' = ' . $db->quote($remoteId))
@@ -363,7 +400,6 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
 
     protected function handleDelete(DatabaseInterface $db, int $contentId): bool
     {
-        // Get remote id
         $dq = $db->getQuery(true)
             ->select($db->quoteName('remote_id'))
             ->from($db->quoteName('#__aichatbot_docs'))
@@ -373,7 +409,9 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
         $remoteId = (string) ($db->loadResult() ?? 'article-' . $contentId);
 
         $ok = $this->apiDelete($remoteId);
-        if (!$ok) { return false; }
+        if (!$ok) { 
+            return false; 
+        }
 
         $del = $db->getQuery(true)
             ->delete($db->quoteName('#__aichatbot_docs'))
@@ -398,15 +436,14 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
     protected function loadCredentialsFromModule(): void
     {
         try {
-            // If plugin already has token, keep it; otherwise try module
             $token = trim((string)$this->params->get('ionos_token', ''));
             $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
             $endpoint = (string)$this->params->get('ionos_endpoint', '');
             if ($token !== '' && $endpoint !== '') {
-                return; // already configured
+                return;
             }
+            
             $db = Factory::getContainer()->get(DatabaseInterface::class);
-            // Find a published module instance with credentials
             $q = $db->getQuery(true)
                 ->select($db->quoteName(['id','params','published']))
                 ->from($db->quoteName('#__modules'))
@@ -416,12 +453,11 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
                 ->setLimit(10);
             $db->setQuery($q);
             $mods = (array)$db->loadAssocList();
+            
             foreach ($mods as $m) {
                 $reg = new \Joomla\Registry\Registry((string)($m['params'] ?? ''));
                 $mtoken = trim((string)$reg->get('ionos_token', ''));
                 $mtokenId = trim((string)$reg->get('ionos_token_id', ''));
-                $mendpoint = trim((string)$reg->get('ionos_endpoint', ''));
-                if ($mendpoint === '') { $mendpoint = 'https://openai.inference.de-txl.ionos.com/v1/chat/completions'; }
                 if ($mtoken !== '') {
                     $apiBase = 'https://api.ionos.com/cloudapi/v6';
                     $this->params->set('ionos_token', $mtoken);
@@ -430,9 +466,7 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
                     return;
                 }
             }
-        } catch (\Throwable $e) {
-            // ignore, scheduler will just run without creds
-        }
+        } catch (\Throwable $e) {}
     }
 
     protected function loadCollectionFromState(): void
@@ -455,7 +489,6 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
     protected function ensureCollectionExists(): void
     {
         try {
-            // Attempt to read existing collection from centralized state
             $db = Factory::getContainer()->get(DatabaseInterface::class);
             $qState = $db->getQuery(true)
                 ->select($db->quoteName('collection_id'))
@@ -471,7 +504,6 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             if ($existing !== '' || $token === '') {
                 return;
             }
-            $base = rtrim($base, '/');
 
             $site = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
             $root = \Joomla\CMS\Uri\Uri::root();
@@ -479,31 +511,30 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             $name = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
             $payload = [ 'name' => $name, 'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')' ];
             $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
-            if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
+            if ($tokenId !== '') { 
+                $headers['X-IONOS-Token-Id'] = $tokenId; 
+            }
+            
             $http = \Joomla\CMS\Http\HttpFactory::getHttp();
             $resp = $http->post($base . '/ai/modelhub/document-collections', json_encode($payload), $headers, 30);
             if ($resp->code >= 200 && $resp->code < 300) {
                 $data = json_decode((string)$resp->body, true);
                 $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
                 if ($newId !== '') {
-                    // Persist into centralized state table only
                     $upd = $db->getQuery(true)
                         ->update($db->quoteName('#__aichatbot_state'))
                         ->set($db->quoteName('collection_id') . ' = ' . $db->quote($newId))
                         ->where($db->quoteName('id') . ' = 1');
                     $db->setQuery($upd)->execute();
-                    // Enqueue backend notice for admins
+                    
                     try {
                         \Joomla\CMS\Factory::getApplication()->enqueueMessage('AI Chatbot: Created IONOS document collection (ID: ' . $newId . ').', 'message');
                     } catch (\Throwable $ignore) {}
                 }
             }
-        } catch (\Throwable $e) {
-            // silent
-        }
+        } catch (\Throwable $e) {}
     }
 
-    // IONOS Document Collection API calls
     protected function apiUpsert(string $remoteId, string $text, array $metadata): bool
     {
         $tokenId = trim((string)$this->params->get('ionos_token_id', ''));
@@ -513,8 +544,8 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');
         }
+        
         $url = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents';
-
         $payload = [
             'id'       => (string)$remoteId,
             'text'     => (string)$text,
@@ -527,7 +558,6 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
             'Content-Type'  => 'application/json',
         ];
         if ($tokenId !== '') {
-            // Some deployments require additional token id header
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
 
@@ -536,7 +566,7 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
         if ($resp->code >= 200 && $resp->code < 300) {
             return true;
         }
-        // 409 might mean update vs create; try PUT to upsert by id
+        
         if ($resp->code === 409) {
             $urlPut = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
             $resp2 = $http->put($urlPut, json_encode($payload), $headers, 30);
@@ -557,6 +587,7 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
         if ($token === '' || $collectionId === '') {
             throw new \RuntimeException('Missing IONOS credentials or collection_id');
         }
+        
         $url = $base . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/documents/' . rawurlencode($remoteId);
         $headers = [
             'Authorization' => 'Bearer ' . $token,
@@ -565,13 +596,13 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
         if ($tokenId !== '') {
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
+        
         $http = \Joomla\CMS\Http\HttpFactory::getHttp();
         $resp = $http->delete($url, [], $headers, 30);
         if ($resp->code >= 200 && $resp->code < 300) {
             return true;
         }
         if ($resp->code === 404) {
-            // Treat as success (already gone)
             return true;
         }
         throw new \RuntimeException('IONOS delete failed: HTTP ' . $resp->code . ' ' . mb_substr((string)$resp->body, 0, 500));
@@ -595,20 +626,22 @@ class BearsAichatbot extends CMSPlugin implements SubscriberInterface
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             $db->setQuery($ddl)->execute();
 
-            $q = $db->getQuery(true)
-                ->insert($db->quoteName('#__aichatbot_collection_stats'))
-                ->columns([$db->quoteName('stat_date'), $db->quoteName('docs_count')])
-                ->values($db->quote($today) . ',' . (int)$count)
-                ->onDuplicate($db->quoteName('docs_count') . ' = VALUES(' . $db->quoteName('docs_count') . ')');
-            // If onDuplicate is unavailable, fallback to update
+            // Try MySQL-specific ON DUPLICATE KEY UPDATE first
             try {
-                $db->setQuery($q)->execute();
+                $sql = sprintf(
+                    "INSERT INTO `#__aichatbot_collection_stats` (`stat_date`, `docs_count`) VALUES (%s, %d) ON DUPLICATE KEY UPDATE `docs_count` = VALUES(`docs_count`)",
+                    $db->quote($today),
+                    $count
+                );
+                $db->setQuery($sql)->execute();
             } catch (\Throwable $e) {
+                // Fallback to update/insert
                 $upd = $db->getQuery(true)
                     ->update($db->quoteName('#__aichatbot_collection_stats'))
                     ->set($db->quoteName('docs_count') . ' = ' . (int)$count)
                     ->where($db->quoteName('stat_date') . ' = ' . $db->quote($today));
                 $db->setQuery($upd)->execute();
+                
                 if ($db->getAffectedRows() === 0) {
                     $ins = $db->getQuery(true)
                         ->insert($db->quoteName('#__aichatbot_collection_stats'))
