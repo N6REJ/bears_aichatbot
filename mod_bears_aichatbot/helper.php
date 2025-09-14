@@ -406,7 +406,7 @@ class ModBearsAichatbotHelper
                 
                 // Track keywords for this interaction
                 $totalTokens = (int)($usage['total_tokens'] ?? $usage['totalTokens'] ?? 0);
-                self::updateKeywordStats($message, $totalTokens, $outcome);
+                self::updateKeywordStats($message, $totalTokens, $outcome, $params);
                 
             } catch (\Throwable $ignore) {}
 
@@ -1158,10 +1158,41 @@ class ModBearsAichatbotHelper
     }
 
     /**
-     * Extract and normalize keywords from a message
+     * Extract and normalize keywords from a message using configurable settings
      */
-    protected static function extractKeywords(string $message): array
+    protected static function extractKeywords(string $message, ?Registry $params = null): array
     {
+        // Get configuration from module params or use defaults
+        $minLength = 3;
+        $maxLength = 50;
+        $stopWords = [];
+        
+        if ($params) {
+            $minLength = (int)$params->get('keyword_min_length', 3);
+            $maxLength = (int)$params->get('keyword_max_length', 50);
+            $stopWordsString = trim((string)$params->get('stop_words', ''));
+            
+            if ($stopWordsString !== '') {
+                $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
+                $stopWords = array_filter($stopWords); // Remove empty strings
+            }
+        } else {
+            // Fallback to default English stop words if no params provided
+            $stopWords = [
+                'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+                'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+                'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
+                'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+                'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+                'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
+                'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
+                'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
+                'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
+                'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
+                'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+            ];
+        }
+        
         // Convert to lowercase and remove special characters
         $message = mb_strtolower($message, 'UTF-8');
         $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
@@ -1169,28 +1200,13 @@ class ModBearsAichatbotHelper
         // Split into words
         $words = preg_split('/\s+/', trim($message));
         
-        // Common stop words to filter out
-        $stopWords = [
-            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
-            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-            'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
-            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
-            'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
-            'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
-            'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
-            'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
-            'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
-            'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
-            'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
-        ];
-        
         // Filter and process words
         $keywords = [];
         foreach ($words as $word) {
             $word = trim($word);
             
             // Skip if too short, too long, or is a stop word
-            if (mb_strlen($word) < 3 || mb_strlen($word) > 50 || in_array($word, $stopWords)) {
+            if (mb_strlen($word) < $minLength || mb_strlen($word) > $maxLength || in_array($word, $stopWords)) {
                 continue;
             }
             
@@ -1212,7 +1228,7 @@ class ModBearsAichatbotHelper
     /**
      * Update keyword statistics based on a chat interaction
      */
-    protected static function updateKeywordStats(string $message, int $totalTokens, string $outcome): void
+    protected static function updateKeywordStats(string $message, int $totalTokens, string $outcome, ?Registry $params = null): void
     {
         try {
             $db = Factory::getContainer()->get('DatabaseDriver');
@@ -1236,16 +1252,22 @@ class ModBearsAichatbotHelper
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             $db->setQuery($ddl)->execute();
             
-            // Extract keywords from the message
-            $keywords = self::extractKeywords($message);
+            // Extract keywords from the message using configurable settings
+            $keywords = self::extractKeywords($message, $params);
+            
+            // Debug logging to help troubleshoot keyword extraction
+            error_log('Bears AI Chatbot: Message "' . $message . '" extracted keywords: ' . json_encode($keywords));
             
             if (empty($keywords)) {
+                error_log('Bears AI Chatbot: No keywords extracted from message: "' . $message . '"');
                 return;
             }
             
             // Determine if this was a successful interaction
             $wasAnswered = ($outcome === 'answered') ? 1 : 0;
             $wasRefused = ($outcome === 'refused') ? 1 : 0;
+            
+            error_log('Bears AI Chatbot: Processing keywords with outcome: ' . $outcome . ' (answered=' . $wasAnswered . ', refused=' . $wasRefused . ')');
             
             foreach ($keywords as $keyword) {
                 // Check if keyword exists
@@ -1279,6 +1301,7 @@ class ModBearsAichatbotHelper
                         ->where($db->quoteName('id') . ' = ' . (int)$existing->id);
                     
                     $db->setQuery($updateQuery)->execute();
+                    error_log('Bears AI Chatbot: Updated existing keyword "' . $keyword . '" (usage: ' . $newUsageCount . ')');
                     
                 } else {
                     // Insert new keyword
@@ -1307,12 +1330,13 @@ class ModBearsAichatbotHelper
                         ]));
                     
                     $db->setQuery($insertQuery)->execute();
+                    error_log('Bears AI Chatbot: Inserted new keyword "' . $keyword . '" (success_rate: ' . $successRate . '%)');
                 }
             }
             
         } catch (\Throwable $e) {
-            // Silently fail - keyword tracking shouldn't break the main functionality
-            error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage());
+            // Log the error for debugging
+            error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
         }
     }
 }

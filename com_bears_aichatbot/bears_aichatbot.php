@@ -19,6 +19,14 @@ use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\Registry\Registry;
 use Joomla\CMS\Http\HttpFactory;
 
+// Define Joomla constants for IDE support (these are normally defined by Joomla core)
+if (!defined('JPATH_ADMINISTRATOR')) {
+    define('JPATH_ADMINISTRATOR', JPATH_ROOT . '/administrator');
+}
+if (!defined('JPATH_COMPONENT_ADMINISTRATOR')) {
+    define('JPATH_COMPONENT_ADMINISTRATOR', JPATH_ADMINISTRATOR . '/components/com_bears_aichatbot');
+}
+
 /**
  * Check collection status in database and IONOS API
  */
@@ -611,47 +619,88 @@ function getKeywordStats(string $period = 'all'): array
 }
 
 /**
- * Extract and normalize keywords from a message
+ * Extract and normalize keywords from a message using configurable settings
  */
-function extractKeywords(string $message): array
+function extractKeywords(string $message, ?Registry $params = null): array
 {
+    // Get configuration from module params or use defaults
+    $minLength = 3;
+    $maxLength = 50;
+    $stopWords = [];
+    
+    if ($params) {
+        $minLength = (int)$params->get('keyword_min_length', 3);
+        $maxLength = (int)$params->get('keyword_max_length', 50);
+        $stopWordsString = trim((string)$params->get('stop_words', ''));
+        
+        if ($stopWordsString !== '') {
+            $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
+            $stopWords = array_filter($stopWords); // Remove empty strings
+        }
+    } else {
+        // Fallback to default English stop words if no params provided
+        $stopWords = [
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+            'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+            'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
+            'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
+            'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
+            'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
+            'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
+            'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+        ];
+    }
+    
+    // Debug logging
+    error_log('Bears AI Chatbot Component: Starting keyword extraction for message: "' . $message . '"');
+    error_log('Bears AI Chatbot Component: Using minLength=' . $minLength . ', maxLength=' . $maxLength . ', stopWords=' . count($stopWords));
+    
     // Convert to lowercase and remove special characters
+    $originalMessage = $message;
     $message = mb_strtolower($message, 'UTF-8');
+    error_log('Bears AI Chatbot Component: After lowercase: "' . $message . '"');
+    
     $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
+    error_log('Bears AI Chatbot Component: After removing special chars: "' . $message . '"');
     
     // Split into words
     $words = preg_split('/\s+/', trim($message));
-    
-    // Common stop words to filter out
-    $stopWords = [
-        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
-        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
-        'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
-        'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
-        'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
-        'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
-        'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
-        'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
-        'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
-        'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
-        'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
-    ];
+    error_log('Bears AI Chatbot Component: Split into words: ' . json_encode($words));
     
     // Filter and process words
     $keywords = [];
+    error_log('Bears AI Chatbot Component: Starting word filtering...');
+    
     foreach ($words as $word) {
         $word = trim($word);
+        error_log('Bears AI Chatbot Component: Processing word "' . $word . '"');
         
         // Skip if too short, too long, or is a stop word
-        if (mb_strlen($word) < 3 || mb_strlen($word) > 50 || in_array($word, $stopWords)) {
+        if (mb_strlen($word) < $minLength) {
+            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - too short (< ' . $minLength . ')');
+            continue;
+        }
+        
+        if (mb_strlen($word) > $maxLength) {
+            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - too long (> ' . $maxLength . ')');
+            continue;
+        }
+        
+        if (in_array($word, $stopWords)) {
+            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - stop word');
             continue;
         }
         
         // Skip if it's just numbers
         if (is_numeric($word)) {
+            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - numeric');
             continue;
         }
         
+        error_log('Bears AI Chatbot Component: Keeping "' . $word . '" as keyword');
         $keywords[] = $word;
     }
     
@@ -659,7 +708,10 @@ function extractKeywords(string $message): array
     $keywordCounts = array_count_values($keywords);
     arsort($keywordCounts);
     
-    return array_slice(array_keys($keywordCounts), 0, 10);
+    $finalKeywords = array_slice(array_keys($keywordCounts), 0, 10);
+    error_log('Bears AI Chatbot Component: Final keywords for "' . $originalMessage . '": ' . json_encode($finalKeywords));
+    
+    return $finalKeywords;
 }
 
 /**
@@ -670,8 +722,30 @@ function updateKeywordStats(string $message, int $totalTokens, string $outcome):
     try {
         $db = Factory::getContainer()->get('DatabaseDriver');
         
-        // Extract keywords from the message
-        $keywords = extractKeywords($message);
+        // Get module configuration for keyword settings
+        $moduleConfig = getModuleConfig();
+        $moduleId = $moduleConfig['module_id'] ?? 0;
+        $params = null;
+        
+        if ($moduleId > 0) {
+            try {
+                $query = $db->getQuery(true)
+                    ->select($db->quoteName('params'))
+                    ->from($db->quoteName('#__modules'))
+                    ->where($db->quoteName('id') . ' = ' . (int)$moduleId)
+                    ->setLimit(1);
+                $db->setQuery($query);
+                $rawParams = (string)$db->loadResult();
+                if ($rawParams !== '') {
+                    $params = new Registry($rawParams);
+                }
+            } catch (\Throwable $e) {
+                // Ignore error, will use defaults
+            }
+        }
+        
+        // Extract keywords from the message using configurable settings
+        $keywords = extractKeywords($message, $params);
         
         if (empty($keywords)) {
             return;
@@ -1087,6 +1161,9 @@ if ($view === 'collections') {
     
     // Prepare variables for keywords template
     $title = Text::_('COM_BEARS_AICHATBOT_KEYWORDS_TITLE');
+    
+    // Ensure all variables are available in template scope
+    // (selectedPeriod, keywords, totals, trending, title are all defined above)
     
     // Include keywords template
     require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/keywords/default.php';

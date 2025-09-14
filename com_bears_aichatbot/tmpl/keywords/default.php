@@ -16,8 +16,26 @@
 use Joomla\CMS\Language\Text;
 use Joomla\CMS\HTML\HTMLHelper;
 
+// Ensure classes are available for IDE
+if (!class_exists('Text')) {
+    class_alias('Joomla\CMS\Language\Text', 'Text');
+}
+
 // Load Bootstrap for better styling
 HTMLHelper::_('bootstrap.framework');
+
+/**
+ * Variables available in this template (passed from parent scope):
+ * @var string $selectedPeriod - Selected time period for filtering
+ * @var array $keywords - Array of keyword data
+ * @var array $totals - Summary statistics
+ * @var array $trending - Trending keywords data  
+ * @var string $title - Page title
+ * 
+ * Available classes (imported above):
+ * @var Text - Joomla\CMS\Language\Text for translations
+ * @var HTMLHelper - Joomla\CMS\HTML\HTMLHelper for HTML utilities
+ */
 ?>
 
 <div class="com-bears-aichatbot-keywords">
