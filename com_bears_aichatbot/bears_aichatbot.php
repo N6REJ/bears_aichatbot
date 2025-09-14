@@ -467,21 +467,19 @@ function getModuleConfig(): array
         
         $params = new Registry($module->params);
         
-        // Get collection ID from state table if not in module params
-        $collectionId = trim((string)$params->get('ionos_collection_id', ''));
-        if ($collectionId === '') {
-            try {
-                $stateQuery = $db->getQuery(true)
-                    ->select($db->quoteName('collection_id'))
-                    ->from($db->quoteName('#__aichatbot_state'))
-                    ->where($db->quoteName('id') . ' = 1')
-                    ->setLimit(1);
-                $db->setQuery($stateQuery);
-                $collectionId = (string)($db->loadResult() ?? '');
-            } catch (\Throwable $e) {
-                // State table might not exist yet
-                $collectionId = '';
-            }
+        // Get collection ID from centralized state table
+        $collectionId = '';
+        try {
+            $stateQuery = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($stateQuery);
+            $collectionId = (string)($db->loadResult() ?? '');
+        } catch (\Throwable $e) {
+            // State table might not exist yet
+            $collectionId = '';
         }
         
         return [
@@ -494,6 +492,261 @@ function getModuleConfig(): array
         ];
     } catch (\Throwable $e) {
         return [];
+    }
+}
+
+/**
+ * Get keyword usage statistics from the database with time period filtering
+ */
+function getKeywordStats(string $period = 'all'): array
+{
+    try {
+        $db = Factory::getContainer()->get('DatabaseDriver');
+        
+        // Ensure keywords table exists
+        $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_keywords` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `keyword` VARCHAR(100) NOT NULL,
+  `usage_count` INT DEFAULT 1,
+  `first_used` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `avg_tokens` DECIMAL(8,2) DEFAULT 0,
+  `total_tokens` INT DEFAULT 0,
+  `success_rate` DECIMAL(5,2) DEFAULT 0,
+  `answered_count` INT DEFAULT 0,
+  `refused_count` INT DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_keyword` (`keyword`),
+  KEY `idx_usage_count` (`usage_count`),
+  KEY `idx_last_used` (`last_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+        $db->setQuery($ddl)->execute();
+        
+        // Build time period filter
+        $timeFilter = '';
+        if ($period !== 'all') {
+            if ($period === 'ytd') {
+                $timeFilter = $db->quoteName('last_used') . ' >= ' . $db->quote(date('Y') . '-01-01 00:00:00');
+            } elseif (is_numeric($period)) {
+                $days = (int)$period;
+                $timeFilter = $db->quoteName('last_used') . ' >= DATE_SUB(NOW(), INTERVAL ' . $days . ' DAY)';
+            }
+        }
+        
+        // Get top keywords by usage with time filtering
+        $query = $db->getQuery(true)
+            ->select([
+                $db->quoteName('keyword'),
+                $db->quoteName('usage_count'),
+                $db->quoteName('first_used'),
+                $db->quoteName('last_used'),
+                $db->quoteName('avg_tokens'),
+                $db->quoteName('total_tokens'),
+                $db->quoteName('success_rate'),
+                $db->quoteName('answered_count'),
+                $db->quoteName('refused_count')
+            ])
+            ->from($db->quoteName('#__aichatbot_keywords'));
+        
+        if ($timeFilter) {
+            $query->where($timeFilter);
+        }
+        
+        $query->order($db->quoteName('usage_count') . ' DESC')
+              ->setLimit(50);
+        
+        $db->setQuery($query);
+        $keywords = $db->loadAssocList();
+        
+        // Get total stats with time filtering
+        $totalQuery = $db->getQuery(true)
+            ->select([
+                'COUNT(*) AS total_keywords',
+                'SUM(' . $db->quoteName('usage_count') . ') AS total_queries',
+                'AVG(' . $db->quoteName('success_rate') . ') AS avg_success_rate'
+            ])
+            ->from($db->quoteName('#__aichatbot_keywords'));
+        
+        if ($timeFilter) {
+            $totalQuery->where($timeFilter);
+        }
+        
+        $db->setQuery($totalQuery);
+        $totals = $db->loadObject();
+        
+        // Get recent trending keywords (always last 7 days for trending section)
+        $recentQuery = $db->getQuery(true)
+            ->select([
+                $db->quoteName('keyword'),
+                $db->quoteName('usage_count'),
+                $db->quoteName('success_rate')
+            ])
+            ->from($db->quoteName('#__aichatbot_keywords'))
+            ->where($db->quoteName('last_used') . ' >= DATE_SUB(NOW(), INTERVAL 7 DAY)')
+            ->order($db->quoteName('usage_count') . ' DESC')
+            ->setLimit(10);
+        
+        $db->setQuery($recentQuery);
+        $trending = $db->loadAssocList();
+        
+        return [
+            'keywords' => $keywords ?: [],
+            'totals' => [
+                'total_keywords' => (int)($totals->total_keywords ?? 0),
+                'total_queries' => (int)($totals->total_queries ?? 0),
+                'avg_success_rate' => round((float)($totals->avg_success_rate ?? 0), 1)
+            ],
+            'trending' => $trending ?: [],
+            'period' => $period
+        ];
+        
+    } catch (\Throwable $e) {
+        return [
+            'keywords' => [],
+            'totals' => ['total_keywords' => 0, 'total_queries' => 0, 'avg_success_rate' => 0],
+            'trending' => [],
+            'period' => $period
+        ];
+    }
+}
+
+/**
+ * Extract and normalize keywords from a message
+ */
+function extractKeywords(string $message): array
+{
+    // Convert to lowercase and remove special characters
+    $message = mb_strtolower($message, 'UTF-8');
+    $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
+    
+    // Split into words
+    $words = preg_split('/\s+/', trim($message));
+    
+    // Common stop words to filter out
+    $stopWords = [
+        'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+        'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+        'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
+        'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+        'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+        'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
+        'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
+        'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
+        'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
+        'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
+        'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+    ];
+    
+    // Filter and process words
+    $keywords = [];
+    foreach ($words as $word) {
+        $word = trim($word);
+        
+        // Skip if too short, too long, or is a stop word
+        if (mb_strlen($word) < 3 || mb_strlen($word) > 50 || in_array($word, $stopWords)) {
+            continue;
+        }
+        
+        // Skip if it's just numbers
+        if (is_numeric($word)) {
+            continue;
+        }
+        
+        $keywords[] = $word;
+    }
+    
+    // Return unique keywords, limited to top 10 by frequency in this message
+    $keywordCounts = array_count_values($keywords);
+    arsort($keywordCounts);
+    
+    return array_slice(array_keys($keywordCounts), 0, 10);
+}
+
+/**
+ * Update keyword statistics based on a chat interaction
+ */
+function updateKeywordStats(string $message, int $totalTokens, string $outcome): void
+{
+    try {
+        $db = Factory::getContainer()->get('DatabaseDriver');
+        
+        // Extract keywords from the message
+        $keywords = extractKeywords($message);
+        
+        if (empty($keywords)) {
+            return;
+        }
+        
+        // Determine if this was a successful interaction
+        $wasAnswered = ($outcome === 'answered') ? 1 : 0;
+        $wasRefused = ($outcome === 'refused') ? 1 : 0;
+        
+        foreach ($keywords as $keyword) {
+            // Check if keyword exists
+            $checkQuery = $db->getQuery(true)
+                ->select(['id', 'usage_count', 'total_tokens', 'answered_count', 'refused_count'])
+                ->from($db->quoteName('#__aichatbot_keywords'))
+                ->where($db->quoteName('keyword') . ' = ' . $db->quote($keyword))
+                ->setLimit(1);
+            
+            $db->setQuery($checkQuery);
+            $existing = $db->loadObject();
+            
+            if ($existing) {
+                // Update existing keyword
+                $newUsageCount = $existing->usage_count + 1;
+                $newTotalTokens = $existing->total_tokens + $totalTokens;
+                $newAnsweredCount = $existing->answered_count + $wasAnswered;
+                $newRefusedCount = $existing->refused_count + $wasRefused;
+                $newAvgTokens = $newTotalTokens / $newUsageCount;
+                $newSuccessRate = ($newAnsweredCount / $newUsageCount) * 100;
+                
+                $updateQuery = $db->getQuery(true)
+                    ->update($db->quoteName('#__aichatbot_keywords'))
+                    ->set($db->quoteName('usage_count') . ' = ' . (int)$newUsageCount)
+                    ->set($db->quoteName('total_tokens') . ' = ' . (int)$newTotalTokens)
+                    ->set($db->quoteName('avg_tokens') . ' = ' . number_format($newAvgTokens, 2))
+                    ->set($db->quoteName('success_rate') . ' = ' . number_format($newSuccessRate, 2))
+                    ->set($db->quoteName('answered_count') . ' = ' . (int)$newAnsweredCount)
+                    ->set($db->quoteName('refused_count') . ' = ' . (int)$newRefusedCount)
+                    ->set($db->quoteName('last_used') . ' = NOW()')
+                    ->where($db->quoteName('id') . ' = ' . (int)$existing->id);
+                
+                $db->setQuery($updateQuery)->execute();
+                
+            } else {
+                // Insert new keyword
+                $avgTokens = $totalTokens;
+                $successRate = $wasAnswered * 100; // 100% if answered, 0% if refused
+                
+                $insertQuery = $db->getQuery(true)
+                    ->insert($db->quoteName('#__aichatbot_keywords'))
+                    ->columns([
+                        $db->quoteName('keyword'),
+                        $db->quoteName('usage_count'),
+                        $db->quoteName('avg_tokens'),
+                        $db->quoteName('total_tokens'),
+                        $db->quoteName('success_rate'),
+                        $db->quoteName('answered_count'),
+                        $db->quoteName('refused_count')
+                    ])
+                    ->values(implode(',', [
+                        $db->quote($keyword),
+                        1,
+                        number_format($avgTokens, 2),
+                        (int)$totalTokens,
+                        number_format($successRate, 2),
+                        (int)$wasAnswered,
+                        (int)$wasRefused
+                    ]));
+                
+                $db->setQuery($insertQuery)->execute();
+            }
+        }
+        
+    } catch (\Throwable $e) {
+        // Silently fail - keyword tracking shouldn't break the main functionality
+        error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage());
     }
 }
 
@@ -691,7 +944,7 @@ if ($task === 'deleteCollection') {
 $view = $input->getCmd('view', 'status');
 
 // Validate view
-$allowedViews = ['status', 'usage', 'collections'];
+$allowedViews = ['status', 'usage', 'collections', 'keywords'];
 if (!in_array($view, $allowedViews)) {
     $view = 'status';
 }
@@ -714,6 +967,11 @@ $tabs = [
         'title' => Text::_('COM_BEARS_AICHATBOT_TAB_COLLECTIONS'),
         'icon' => 'fas fa-database',
         'url' => 'index.php?option=com_bears_aichatbot&view=collections'
+    ],
+    'keywords' => [
+        'title' => Text::_('COM_BEARS_AICHATBOT_TAB_KEYWORDS'),
+        'icon' => 'fas fa-tags',
+        'url' => 'index.php?option=com_bears_aichatbot&view=keywords'
     ]
 ];
 
@@ -807,6 +1065,31 @@ if ($view === 'collections') {
     
     // Include usage template
     require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/usage/default.php';
+    
+} elseif ($view === 'keywords') {
+    // Keywords View
+    $document->setTitle(Text::_('COM_BEARS_AICHATBOT_KEYWORDS_TITLE'));
+    
+    // Get selected time period from request
+    $selectedPeriod = $input->getCmd('period', '30'); // Default to 30 days
+    
+    // Validate period
+    $validPeriods = ['7', '30', '60', '90', 'ytd', 'all'];
+    if (!in_array($selectedPeriod, $validPeriods)) {
+        $selectedPeriod = '30';
+    }
+    
+    // Get keyword statistics with time filtering
+    $keywordStats = getKeywordStats($selectedPeriod);
+    $keywords = $keywordStats['keywords'];
+    $totals = $keywordStats['totals'];
+    $trending = $keywordStats['trending'];
+    
+    // Prepare variables for keywords template
+    $title = Text::_('COM_BEARS_AICHATBOT_KEYWORDS_TITLE');
+    
+    // Include keywords template
+    require JPATH_COMPONENT_ADMINISTRATOR . '/tmpl/keywords/default.php';
     
 } else {
     // System Status View (default)

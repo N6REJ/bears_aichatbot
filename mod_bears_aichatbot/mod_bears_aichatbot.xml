@@ -87,7 +87,6 @@
                 </field>
             </fieldset>
             <fieldset name="configuration" label="MOD_BEARS_AICHATBOT_FIELDSET_CONFIGURATION">
-                <field name="ionos_collection_id" type="text" label="MOD_BEARS_AICHATBOT_COLLECTION_ID_LABEL" description="MOD_BEARS_AICHATBOT_COLLECTION_ID_DESC" />
                 <field name="retrieval_top_k" type="number" default="6" min="1" max="20" label="MOD_BEARS_AICHATBOT_TOPK_LABEL" description="MOD_BEARS_AICHATBOT_TOPK_DESC" />
                 <field name="retrieval_min_score" type="number" default="0.2" min="0" max="1" step="0.01" label="MOD_BEARS_AICHATBOT_MINSCORE_LABEL" description="MOD_BEARS_AICHATBOT_MINSCORE_DESC" />
                 <field name="ionos_token_id" type="text" label="MOD_BEARS_AICHATBOT_TOKEN_ID_LABEL" description="MOD_BEARS_AICHATBOT_TOKEN_ID_DESC"/>

@@ -49,21 +49,19 @@ class ModBearsAichatbotHelper
         $strict = true;
         $kbStats = [];
         $context = '';
-        $collectionId = trim((string)$params->get('ionos_collection_id', ''));
-        if ($collectionId === '') {
-            // Read from centralized state table
-            try {
-                $db = Factory::getContainer()->get('DatabaseDriver');
-                $q  = $db->getQuery(true)
-                    ->select($db->quoteName('collection_id'))
-                    ->from($db->quoteName('#__aichatbot_state'))
-                    ->where($db->quoteName('id') . ' = 1')
-                    ->setLimit(1);
-                $db->setQuery($q);
-                $cid = (string)($db->loadResult() ?? '');
-                if ($cid !== '') { $collectionId = $cid; }
-            } catch (\Throwable $e) { /* ignore */ }
-        }
+        
+        // Read collection ID from centralized state table
+        $collectionId = '';
+        try {
+            $db = Factory::getContainer()->get('DatabaseDriver');
+            $q  = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($q);
+            $collectionId = (string)($db->loadResult() ?? '');
+        } catch (\Throwable $e) { /* ignore */ }
         $topK = (int)$params->get('retrieval_top_k', 6);
         $minScore = (float)$params->get('retrieval_min_score', 0.2);
         if ($topK < 1) { $topK = 6; }
@@ -405,6 +403,11 @@ class ModBearsAichatbotHelper
                     (string)$outcome,
                     $topScore
                 );
+                
+                // Track keywords for this interaction
+                $totalTokens = (int)($usage['total_tokens'] ?? $usage['totalTokens'] ?? 0);
+                self::updateKeywordStats($message, $totalTokens, $outcome);
+                
             } catch (\Throwable $ignore) {}
 
             return [
@@ -1151,6 +1154,165 @@ class ModBearsAichatbotHelper
             $db->setQuery($q)->execute();
         } catch (\Throwable $e) {
             // swallow logging errors
+        }
+    }
+
+    /**
+     * Extract and normalize keywords from a message
+     */
+    protected static function extractKeywords(string $message): array
+    {
+        // Convert to lowercase and remove special characters
+        $message = mb_strtolower($message, 'UTF-8');
+        $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
+        
+        // Split into words
+        $words = preg_split('/\s+/', trim($message));
+        
+        // Common stop words to filter out
+        $stopWords = [
+            'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
+            'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
+            'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
+            'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
+            'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
+            'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
+            'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
+            'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
+            'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
+            'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
+            'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+        ];
+        
+        // Filter and process words
+        $keywords = [];
+        foreach ($words as $word) {
+            $word = trim($word);
+            
+            // Skip if too short, too long, or is a stop word
+            if (mb_strlen($word) < 3 || mb_strlen($word) > 50 || in_array($word, $stopWords)) {
+                continue;
+            }
+            
+            // Skip if it's just numbers
+            if (is_numeric($word)) {
+                continue;
+            }
+            
+            $keywords[] = $word;
+        }
+        
+        // Return unique keywords, limited to top 10 by frequency in this message
+        $keywordCounts = array_count_values($keywords);
+        arsort($keywordCounts);
+        
+        return array_slice(array_keys($keywordCounts), 0, 10);
+    }
+
+    /**
+     * Update keyword statistics based on a chat interaction
+     */
+    protected static function updateKeywordStats(string $message, int $totalTokens, string $outcome): void
+    {
+        try {
+            $db = Factory::getContainer()->get('DatabaseDriver');
+            
+            // Ensure keywords table exists
+            $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_keywords` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `keyword` VARCHAR(100) NOT NULL,
+  `usage_count` INT DEFAULT 1,
+  `first_used` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `last_used` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  `avg_tokens` DECIMAL(8,2) DEFAULT 0,
+  `total_tokens` INT DEFAULT 0,
+  `success_rate` DECIMAL(5,2) DEFAULT 0,
+  `answered_count` INT DEFAULT 0,
+  `refused_count` INT DEFAULT 0,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `idx_keyword` (`keyword`),
+  KEY `idx_usage_count` (`usage_count`),
+  KEY `idx_last_used` (`last_used`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+            $db->setQuery($ddl)->execute();
+            
+            // Extract keywords from the message
+            $keywords = self::extractKeywords($message);
+            
+            if (empty($keywords)) {
+                return;
+            }
+            
+            // Determine if this was a successful interaction
+            $wasAnswered = ($outcome === 'answered') ? 1 : 0;
+            $wasRefused = ($outcome === 'refused') ? 1 : 0;
+            
+            foreach ($keywords as $keyword) {
+                // Check if keyword exists
+                $checkQuery = $db->getQuery(true)
+                    ->select(['id', 'usage_count', 'total_tokens', 'answered_count', 'refused_count'])
+                    ->from($db->quoteName('#__aichatbot_keywords'))
+                    ->where($db->quoteName('keyword') . ' = ' . $db->quote($keyword))
+                    ->setLimit(1);
+                
+                $db->setQuery($checkQuery);
+                $existing = $db->loadObject();
+                
+                if ($existing) {
+                    // Update existing keyword
+                    $newUsageCount = $existing->usage_count + 1;
+                    $newTotalTokens = $existing->total_tokens + $totalTokens;
+                    $newAnsweredCount = $existing->answered_count + $wasAnswered;
+                    $newRefusedCount = $existing->refused_count + $wasRefused;
+                    $newAvgTokens = $newTotalTokens / $newUsageCount;
+                    $newSuccessRate = ($newAnsweredCount / $newUsageCount) * 100;
+                    
+                    $updateQuery = $db->getQuery(true)
+                        ->update($db->quoteName('#__aichatbot_keywords'))
+                        ->set($db->quoteName('usage_count') . ' = ' . (int)$newUsageCount)
+                        ->set($db->quoteName('total_tokens') . ' = ' . (int)$newTotalTokens)
+                        ->set($db->quoteName('avg_tokens') . ' = ' . number_format($newAvgTokens, 2))
+                        ->set($db->quoteName('success_rate') . ' = ' . number_format($newSuccessRate, 2))
+                        ->set($db->quoteName('answered_count') . ' = ' . (int)$newAnsweredCount)
+                        ->set($db->quoteName('refused_count') . ' = ' . (int)$newRefusedCount)
+                        ->set($db->quoteName('last_used') . ' = NOW()')
+                        ->where($db->quoteName('id') . ' = ' . (int)$existing->id);
+                    
+                    $db->setQuery($updateQuery)->execute();
+                    
+                } else {
+                    // Insert new keyword
+                    $avgTokens = $totalTokens;
+                    $successRate = $wasAnswered * 100; // 100% if answered, 0% if refused
+                    
+                    $insertQuery = $db->getQuery(true)
+                        ->insert($db->quoteName('#__aichatbot_keywords'))
+                        ->columns([
+                            $db->quoteName('keyword'),
+                            $db->quoteName('usage_count'),
+                            $db->quoteName('avg_tokens'),
+                            $db->quoteName('total_tokens'),
+                            $db->quoteName('success_rate'),
+                            $db->quoteName('answered_count'),
+                            $db->quoteName('refused_count')
+                        ])
+                        ->values(implode(',', [
+                            $db->quote($keyword),
+                            1,
+                            number_format($avgTokens, 2),
+                            (int)$totalTokens,
+                            number_format($successRate, 2),
+                            (int)$wasAnswered,
+                            (int)$wasRefused
+                        ]));
+                    
+                    $db->setQuery($insertQuery)->execute();
+                }
+            }
+            
+        } catch (\Throwable $e) {
+            // Silently fail - keyword tracking shouldn't break the main functionality
+            error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage());
         }
     }
 }
