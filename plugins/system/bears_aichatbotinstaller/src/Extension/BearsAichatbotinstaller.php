@@ -50,8 +50,8 @@ final class BearsAichatbotinstaller extends CMSPlugin implements SubscriberInter
             $db->setQuery($q)->execute();
 
             // Seed scheduler tasks if missing
-            $this->ensureSchedulerTask($db, 'bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '0 0 * * *');
-            $this->ensureSchedulerTask($db, 'bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '0 0 * * *');
+            $this->ensureSchedulerTask($db, 'bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '0 * * * *');
+            $this->ensureSchedulerTask($db, 'bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '0 0 * * 0');
 
             // Optionally disable this system plugin after running once to reduce overhead
             try {

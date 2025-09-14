@@ -13,12 +13,13 @@ use Joomla\CMS\Scheduler\Task\TaskStatus;
 use Joomla\CMS\Scheduler\TaskInterface;
 use Joomla\CMS\Scheduler\TaskResult;
 use Joomla\Database\DatabaseInterface;
+use Joomla\Event\SubscriberInterface;
 
 // phpcs:disable PSR1.Files.SideEffects
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
-class BearsAichatbotTask extends CMSPlugin
+class BearsAichatbotTask extends CMSPlugin implements SubscriberInterface
 {
     /** @var CMSApplicationInterface */
     protected $app;
@@ -158,7 +159,7 @@ class BearsAichatbotTask extends CMSPlugin
                     ->select($db->quoteName(['id','lft','rgt']))
                     ->from($db->quoteName('#__categories'))
                     ->where($db->quoteName('extension') . ' = ' . $db->quote('com_content'))
-                    ->where($db->quoteName('published') . ' = 1)
+                    ->where($db->quoteName('published') . ' = 1')
                     ->where($db->quoteName('id') . ' IN (' . implode(',', array_map('intval', $catIds)) . ')');
                 $db->setQuery($cq);
                 $ranges = (array) $db->loadAssocList();
