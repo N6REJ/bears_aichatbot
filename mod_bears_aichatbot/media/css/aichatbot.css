@@ -13,6 +13,19 @@
   --bs-link-color: #0d6efd;
 }
 
+/* Screen reader only content */
+.bears-sr-only {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  padding: 0 !important;
+  margin: -1px !important;
+  overflow: hidden !important;
+  clip: rect(0, 0, 0, 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 .bears-aichatbot {
   position: fixed;
   z-index: 9999;
@@ -415,12 +428,61 @@
     margin: 0.25em 0;
 }
 
-/* Accessibility improvements */
+/* Enhanced accessibility improvements */
+.bears-aichatbot *:focus {
+  outline: 2px solid var(--bs-primary, #0d6efd) !important;
+  outline-offset: 2px !important;
+}
+
 .bears-aichatbot-toggle:focus,
 .bears-aichatbot-close:focus,
-.bears-aichatbot-send:focus {
-  outline: 2px solid var(--bs-primary, #0d6efd);
-  outline-offset: 2px;
+.bears-aichatbot-send:focus,
+.bears-aichatbot-text:focus {
+  outline: 2px solid var(--bs-primary, #0d6efd) !important;
+  outline-offset: 2px !important;
+}
+
+/* Focus visible for better keyboard navigation */
+.bears-aichatbot-toggle:focus-visible,
+.bears-aichatbot-close:focus-visible,
+.bears-aichatbot-send:focus-visible,
+.bears-aichatbot-text:focus-visible {
+  outline: 3px solid var(--bs-primary, #0d6efd) !important;
+  outline-offset: 2px !important;
+}
+
+/* Skip link for keyboard users */
+.bears-skip-link {
+  position: absolute;
+  top: -40px;
+  left: 6px;
+  background: var(--bs-primary, #0d6efd);
+  color: var(--bs-primary-text, #fff);
+  padding: 8px;
+  text-decoration: none;
+  border-radius: 4px;
+  z-index: 10000;
+  transition: top 0.3s;
+}
+
+.bears-skip-link:focus {
+  top: 6px;
+}
+
+/* High contrast improvements */
+@media (prefers-contrast: high) {
+  .bears-aichatbot-window {
+    border-width: 3px !important;
+  }
+  
+  .bubble {
+    border: 2px solid !important;
+  }
+  
+  .bears-aichatbot-toggle,
+  .bears-aichatbot-send {
+    border: 2px solid !important;
+  }
 }
 
 /* Error state for messages */

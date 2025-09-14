@@ -1172,28 +1172,30 @@ class ModBearsAichatbotHelper
             $maxLength = (int)$params->get('keyword_max_length', 50);
             $stopWordsString = trim((string)$params->get('stop_words', ''));
             
-            if ($stopWordsString !== '') {
+            // If no custom stop words configured, use the default from language file
+            if ($stopWordsString === '') {
+                $stopWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT');
+            }
+            
+            if ($stopWordsString !== '' && $stopWordsString !== 'MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT') {
                 $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
                 $stopWords = array_filter($stopWords); // Remove empty strings
             }
-        } else {
-            // Fallback to default English stop words if no params provided
+        }
+        
+        // If still no stop words, use minimal fallback
+        if (empty($stopWords)) {
             $stopWords = [
                 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by',
                 'is', 'are', 'was', 'were', 'be', 'been', 'being', 'have', 'has', 'had', 'do', 'does', 'did',
                 'will', 'would', 'could', 'should', 'may', 'might', 'can', 'must', 'shall',
                 'i', 'you', 'he', 'she', 'it', 'we', 'they', 'me', 'him', 'her', 'us', 'them',
                 'my', 'your', 'his', 'her', 'its', 'our', 'their', 'this', 'that', 'these', 'those',
-                'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom',
-                'about', 'above', 'across', 'after', 'against', 'along', 'among', 'around', 'as',
-                'before', 'behind', 'below', 'beneath', 'beside', 'between', 'beyond', 'during',
-                'except', 'from', 'inside', 'into', 'like', 'near', 'off', 'outside', 'over',
-                'since', 'through', 'throughout', 'till', 'toward', 'under', 'until', 'up', 'upon',
-                'within', 'without', 'please', 'thanks', 'thank', 'hello', 'hi', 'hey'
+                'what', 'where', 'when', 'why', 'how', 'who', 'which', 'whose', 'whom'
             ];
         }
         
-        // Convert to lowercase and remove special characters
+        // Convert to lowercase and remove special characters, but preserve alphanumeric
         $message = mb_strtolower($message, 'UTF-8');
         $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
         
@@ -1205,13 +1207,29 @@ class ModBearsAichatbotHelper
         foreach ($words as $word) {
             $word = trim($word);
             
-            // Skip if too short, too long, or is a stop word
-            if (mb_strlen($word) < $minLength || mb_strlen($word) > $maxLength || in_array($word, $stopWords)) {
+            // Skip empty words
+            if ($word === '') {
+                continue;
+            }
+            
+            // Check length constraints
+            $wordLength = mb_strlen($word, 'UTF-8');
+            if ($wordLength < $minLength || $wordLength > $maxLength) {
+                continue;
+            }
+            
+            // Skip if it's a stop word
+            if (in_array($word, $stopWords)) {
                 continue;
             }
             
             // Skip if it's just numbers
             if (is_numeric($word)) {
+                continue;
+            }
+            
+            // Skip very common words that might not be in stop words
+            if (in_array($word, ['tell', 'know', 'need', 'want', 'get', 'use', 'work', 'make', 'find', 'help'])) {
                 continue;
             }
             
@@ -1251,15 +1269,54 @@ class ModBearsAichatbotHelper
   KEY `idx_last_used` (`last_used`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             $db->setQuery($ddl)->execute();
+            error_log('Bears AI Chatbot: Keywords table created/verified successfully');
             
             // Extract keywords from the message using configurable settings
             $keywords = self::extractKeywords($message, $params);
             
+            // Get params for debugging
+            $minLength = $params ? (int)$params->get('keyword_min_length', 3) : 3;
+            $maxLength = $params ? (int)$params->get('keyword_max_length', 50) : 50;
+            $stopWordsString = $params ? trim((string)$params->get('stop_words', '')) : '';
+            if ($stopWordsString === '') {
+                $stopWordsString = \Joomla\CMS\Language\Text::_('MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT');
+            }
+            $stopWordsCount = 0;
+            if ($stopWordsString !== '' && $stopWordsString !== 'MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT') {
+                $stopWords = array_map('trim', explode(',', mb_strtolower($stopWordsString, 'UTF-8')));
+                $stopWordsCount = count(array_filter($stopWords));
+            }
+            
             // Debug logging to help troubleshoot keyword extraction
             error_log('Bears AI Chatbot: Message "' . $message . '" extracted keywords: ' . json_encode($keywords));
+            error_log('Bears AI Chatbot: Keyword extraction params - minLength: ' . $minLength . ', maxLength: ' . $maxLength . ', stopWords count: ' . $stopWordsCount);
             
             if (empty($keywords)) {
                 error_log('Bears AI Chatbot: No keywords extracted from message: "' . $message . '"');
+                // Let's also test the extraction process step by step
+                $testMessage = mb_strtolower($message, 'UTF-8');
+                $testMessage = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $testMessage);
+                $testWords = preg_split('/\s+/', trim($testMessage));
+                error_log('Bears AI Chatbot: Test words after processing: ' . json_encode($testWords));
+                
+                // Test each word against filters
+                foreach ($testWords as $word) {
+                    $word = trim($word);
+                    if ($word === '') continue;
+                    
+                    $wordLength = mb_strlen($word, 'UTF-8');
+                    $reasons = [];
+                    
+                    if ($wordLength < $minLength) $reasons[] = 'too short (' . $wordLength . ' < ' . $minLength . ')';
+                    if ($wordLength > $maxLength) $reasons[] = 'too long (' . $wordLength . ' > ' . $maxLength . ')';
+                    if (is_numeric($word)) $reasons[] = 'numeric';
+                    
+                    if (!empty($reasons)) {
+                        error_log('Bears AI Chatbot: Word "' . $word . '" filtered out: ' . implode(', ', $reasons));
+                    } else {
+                        error_log('Bears AI Chatbot: Word "' . $word . '" should have been kept (length: ' . $wordLength . ')');
+                    }
+                }
                 return;
             }
             

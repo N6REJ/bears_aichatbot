@@ -28,6 +28,46 @@ class pkg_pkg_bears_aichatbotInstallerScript
         $this->enablePlugin($db, 'task', 'bears_aichatbot');
     }
 
+    public function uninstall($parent)
+    {
+        // Clean up Bears AI Chatbot data during uninstallation
+        try {
+            $db = $parent->getParent()->getDbo();
+            
+            // Remove scheduler tasks
+            $query = $db->getQuery(true)
+                ->delete($db->quoteName('#__scheduler_tasks'))
+                ->where($db->quoteName('type') . ' LIKE ' . $db->quote('bears_aichatbot.%'));
+            $db->setQuery($query);
+            $db->execute();
+            
+            // Remove Bears AI Chatbot database tables
+            $tables = [
+                '#__aichatbot_usage',
+                '#__aichatbot_docs', 
+                '#__aichatbot_jobs',
+                '#__aichatbot_state',
+                '#__aichatbot_collection_stats',
+                '#__aichatbot_keywords'
+            ];
+            
+            foreach ($tables as $table) {
+                try {
+                    $db->setQuery("DROP TABLE IF EXISTS " . $db->quoteName($table));
+                    $db->execute();
+                } catch (\Throwable $e) {
+                    // Ignore individual table errors
+                }
+            }
+            
+        } catch (\Throwable $e) {
+            // Log error but don't fail uninstallation
+            \Joomla\CMS\Log\Log::add('Bears AI Chatbot uninstall cleanup error: ' . $e->getMessage(), \Joomla\CMS\Log\Log::WARNING, 'bears_aichatbot');
+        }
+        
+        return true;
+    }
+
     protected function enablePlugin(DatabaseInterface $db, string $folder, string $element): void
     {
         try {

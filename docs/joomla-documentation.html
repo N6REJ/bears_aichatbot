@@ -1,0 +1,1079 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Bears AI Chatbot for Joomla 5 - Complete Documentation</title>
+    <style>
+        /* Minimal styling - respect user's template */
+        .bears-toc {
+            padding: 1rem;
+            margin: 1rem 0;
+            border: 1px solid currentColor;
+        }
+        .bears-toc ul {
+            list-style-type: none;
+            padding-left: 0;
+        }
+        .bears-toc li {
+            margin: 0.5rem 0;
+        }
+        .bears-feature-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1rem;
+            margin: 1rem 0;
+        }
+        .bears-feature-card {
+            padding: 1rem;
+            border-left: 4px solid currentColor;
+        }
+        .bears-feature-card h4 {
+            margin-top: 0;
+        }
+        .bears-alert {
+            padding: 1rem;
+            margin: 1rem 0;
+            border-left: 4px solid currentColor;
+        }
+        .bears-code {
+            font-family: monospace;
+            padding: 1rem;
+            margin: 1rem 0;
+            overflow-x: auto;
+            border: 1px solid currentColor;
+        }
+        .bears-step-list {
+            counter-reset: step-counter;
+        }
+        .bears-step-list li {
+            counter-increment: step-counter;
+            margin: 1rem 0;
+            padding-left: 2rem;
+            position: relative;
+        }
+        .bears-step-list li::before {
+            content: counter(step-counter);
+            position: absolute;
+            left: 0;
+            top: 0;
+            font-weight: bold;
+        }
+        .bears-badge {
+            display: inline-block;
+            padding: 0.25rem 0.5rem;
+            font-size: 0.75rem;
+            font-weight: bold;
+            border: 1px solid currentColor;
+            margin: 0.125rem;
+        }
+        /* Let template handle tables, just ensure they're responsive */
+        .bears-table-responsive {
+            overflow-x: auto;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Bears AI Chatbot for Joomla 5 <span class="bears-badge">v2025.09.14</span></h1>
+        
+        <div class="bears-alert">
+            <strong>Complete Documentation:</strong> An AI knowledgebase chatbot solution for Joomla 5 with Retrieval-Augmented Generation (RAG) powered by IONOS AI Model Hub Document Collections, plus comprehensive analytics and keyword extraction.
+        </div>
+
+        <nav class="bears-toc">
+            <h3>Table of Contents</h3>
+            <ul>
+                <li><a href="#overview">Overview & Features</a></li>
+                <li><a href="#requirements">Requirements</a></li>
+                <li><a href="#installation">Installation Guide</a></li>
+                <li><a href="#configuration">Configuration</a></li>
+                <li><a href="#scheduler-tasks">Scheduler Tasks & Content Processing</a></li>
+                <li><a href="#accessibility">Accessibility Features</a></li>
+                <li><a href="#keyword-extraction">Keyword Extraction</a></li>
+                <li><a href="#admin-component">Administrator Component</a></li>
+                <li><a href="#analytics">Analytics & Reporting</a></li>
+                <li><a href="#troubleshooting">Troubleshooting</a></li>
+                <li><a href="#advanced">Advanced Topics</a></li>
+                <li><a href="#api-reference">API Reference</a></li>
+            </ul>
+        </nav>
+
+        <h2 id="overview">Overview & Features</h2>
+        
+        <p>Bears AI Chatbot is a comprehensive AI-powered knowledge base solution for Joomla 5 that combines modern AI chat capabilities with powerful analytics and content management features.</p>
+
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🤖 AI Chat Integration</h4>
+                <p>OpenAI-compatible chat via IONOS AI Model Hub with support for multiple models including Llama 3, Mixtral, and Mistral.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>📚 RAG (Retrieval-Augmented Generation)</h4>
+                <p>Automatic ingestion of Joomla articles and optional Kunena forum posts with intelligent document retrieval.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>📊 Advanced Analytics</h4>
+                <p>Comprehensive usage tracking, cost analysis, token consumption, and performance metrics.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🔍 Keyword Extraction <span class="bears-badge">NEW</span></h4>
+                <p>Intelligent keyword extraction from user messages with configurable stop words and multi-language support.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>♿ Full Accessibility <span class="bears-badge">WCAG 2.1 AA</span></h4>
+                <p>Complete accessibility support with screen reader compatibility, keyboard navigation, and ARIA labels.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🎨 Customizable UI</h4>
+                <p>Flexible positioning, dark mode support, and responsive design that works on all devices.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚙️ Automated Management</h4>
+                <p>Background processing with Joomla Scheduler integration for content synchronization.</p>
+            </div>
+        </div>
+
+        <h3>Package Components</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Component</th>
+                    <th>Type</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>mod_bears_aichatbot</strong></td>
+                    <td>Site Module</td>
+                    <td>Frontend chat UI and chat flow management</td>
+                </tr>
+                <tr>
+                    <td><strong>plg_task_bears_aichatbot</strong></td>
+                    <td>Task Plugin</td>
+                    <td>Background ingestion queue and reconcile jobs</td>
+                </tr>
+                <tr>
+                    <td><strong>plg_content_bears_aichatbot</strong></td>
+                    <td>Content Plugin</td>
+                    <td>Enqueues ingestion jobs on content changes</td>
+                </tr>
+                <tr>
+                    <td><strong>com_bears_aichatbot</strong></td>
+                    <td>Admin Component</td>
+                    <td>Analytics dashboard, usage tracking, collection management</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h2 id="requirements">Requirements</h2>
+        
+        <div class="warning">
+            <strong>System Requirements:</strong> Ensure your system meets these minimum requirements before installation.
+        </div>
+
+        <ul>
+            <li><strong>Joomla:</strong> Version 5.x or higher</li>
+            <li><strong>PHP:</strong> Version 8.1 or higher</li>
+            <li><strong>IONOS Account:</strong> AI Model Hub account with API token</li>
+            <li><strong>Optional:</strong> Kunena forum component (if you want forum posts included)</li>
+            <li><strong>Server:</strong> Outbound HTTPS connections enabled</li>
+            <li><strong>Database:</strong> MySQL 5.7+ or MariaDB 10.3+</li>
+        </ul>
+
+        <h2 id="installation">Installation Guide</h2>
+
+        <div class="success">
+            <strong>Quick Install:</strong> The package installer handles most configuration automatically.
+        </div>
+
+        <ol class="step-list">
+            <li>
+                <strong>Download the Package</strong><br>
+                Download <code>pkg_bears_aichatbot.zip</code> from the official repository.
+            </li>
+            <li>
+                <strong>Install via Joomla</strong><br>
+                Go to <strong>System → Install → Extensions</strong> and upload the package file.
+            </li>
+            <li>
+                <strong>Automatic Setup</strong><br>
+                The installer will automatically:
+                <ul>
+                    <li>Enable the Task and Content plugins</li>
+                    <li>Create Scheduler tasks (Reconcile: daily at midnight, Queue processor: manual)</li>
+                    <li>Create required database tables</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Publish Module</strong><br>
+                Go to <strong>Content → Site Modules</strong> and create a new "Bears AI Chatbot" module instance.
+            </li>
+            <li>
+                <strong>Configure IONOS Credentials</strong><br>
+                Configure your IONOS API token and model settings in the module parameters.
+            </li>
+        </ol>
+
+        <h2 id="configuration">Configuration</h2>
+
+        <h3>Module Configuration</h3>
+
+        <div class="info">
+            <strong>Primary Configuration:</strong> All main settings are configured through the module parameters.
+        </div>
+
+        <h4>IONOS API Settings</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Setting</th>
+                    <th>Required</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>IONOS Token</td>
+                    <td><span class="badge important">Required</span></td>
+                    <td>Your IONOS access token for API authentication</td>
+                </tr>
+                <tr>
+                    <td>IONOS Token ID</td>
+                    <td><span class="badge optional">Optional</span></td>
+                    <td>Token identifier for enhanced security</td>
+                </tr>
+                <tr>
+                    <td>IONOS Endpoint</td>
+                    <td><span class="badge important">Required</span></td>
+                    <td>Default: <code>https://openai.inference.de-txl.ionos.com/v1/chat/completions</code></td>
+                </tr>
+                <tr>
+                    <td>Model</td>
+                    <td><span class="badge important">Required</span></td>
+                    <td>Select from available models (Llama 3 70B/8B, Mixtral 8x7B, etc.)</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Knowledge Sources</h4>
+        <ul>
+            <li><strong>Article Categories:</strong> Select Joomla content categories to include</li>
+            <li><strong>Article Limit:</strong> Maximum articles to consider (default: 500)</li>
+            <li><strong>Additional URLs:</strong> External URLs to include (one per line)</li>
+            <li><strong>Kunena Integration:</strong> Include forum posts in knowledge base</li>
+            <li><strong>Sitemap Support:</strong> Include site structure for better navigation</li>
+        </ul>
+
+        <h4>Retrieval Settings</h4>
+        <ul>
+            <li><strong>Top K (default: 6):</strong> Number of most relevant document snippets to retrieve</li>
+            <li><strong>Min Score (default: 0.2):</strong> Minimum relevance threshold (0.0-1.0)</li>
+        </ul>
+
+        <h4>UI Customization</h4>
+        <ul>
+            <li><strong>Position:</strong> Bottom-right, bottom-left, middle-right, middle-left</li>
+            <li><strong>Dimensions:</strong> Width (default: 400px), Height (default: 500px)</li>
+            <li><strong>Offsets:</strong> Distance from edges in pixels</li>
+            <li><strong>Dark Mode:</strong> Enable dark theme</li>
+            <li><strong>Button Label:</strong> Custom text for side position buttons</li>
+        </ul>
+
+        <h2 id="scheduler-tasks">Scheduler Tasks & Content Processing</h2>
+
+        <div class="bears-alert">
+            <strong>Critical Setup Step:</strong> The scheduler tasks are essential for populating your document collection and enabling advanced AI retrieval. Without running these tasks, your chatbot will only use basic Joomla article search.
+        </div>
+
+        <h3>Understanding the Docs Table</h3>
+
+        <p>The <code>#__aichatbot_docs</code> table is the <strong>mapping table</strong> that tracks which Joomla articles have been uploaded to your IONOS Document Collection. It serves as:</p>
+
+        <ul>
+            <li><strong>Content Tracker:</strong> Maps Joomla article IDs to IONOS document IDs</li>
+            <li><strong>Change Detection:</strong> Uses content hashes to detect when articles are modified</li>
+            <li><strong>Sync Manager:</strong> Prevents duplicate uploads and manages deletions</li>
+            <li><strong>Status Monitor:</strong> Shows which content is successfully indexed</li>
+        </ul>
+
+        <div class="bears-alert">
+            <strong>Empty Docs Table (0 records):</strong> This means your content hasn't been processed yet. The chatbot is only using basic search instead of AI-powered document retrieval.
+        </div>
+
+        <h3>The Two Scheduler Tasks Explained</h3>
+
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🔄 "Bears AI Chatbot: Reconcile"</h4>
+                <p><strong>Purpose:</strong> Full content synchronization</p>
+                <p><strong>When to run:</strong> Initially (to populate docs table), then daily/weekly</p>
+                <p><strong>What it does:</strong></p>
+                <ul>
+                    <li>Scans ALL articles in selected categories</li>
+                    <li>Uploads new articles to IONOS</li>
+                    <li>Updates changed articles (detects via hash)</li>
+                    <li>Removes deleted/unpublished articles</li>
+                    <li>Populates the docs table with mappings</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ "Bears AI Chatbot: Process Queue"</h4>
+                <p><strong>Purpose:</strong> Incremental updates</p>
+                <p><strong>When to run:</strong> Frequently (every 15-30 minutes)</p>
+                <p><strong>What it does:</strong></p>
+                <ul>
+                    <li>Processes queued upload/delete jobs</li>
+                    <li>Handles real-time content changes</li>
+                    <li>Works on smaller batches for efficiency</li>
+                    <li>Triggered by content plugin events</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Initial Setup Process</h3>
+
+        <ol class="bears-step-list">
+            <li>
+                <strong>Verify Prerequisites</strong>
+                <ul>
+                    <li>IONOS credentials configured in module</li>
+                    <li>Content categories selected</li>
+                    <li>Published articles exist in those categories</li>
+                    <li>Task plugin is enabled</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Run Reconcile Task First</strong>
+                <ul>
+                    <li>Go to <strong>System → Scheduler</strong></li>
+                    <li>Find "Bears AI Chatbot: Reconcile"</li>
+                    <li>Click <strong>"Run Now"</strong></li>
+                    <li>Wait for completion (may take several minutes)</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Results</strong>
+                <ul>
+                    <li>Go to <strong>Components → Bears AI Chatbot → Status</strong></li>
+                    <li>Check "Docs table exists (X records)" where X > 0</li>
+                    <li>Verify collection ID exists</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Set Up Regular Schedules</strong>
+                <ul>
+                    <li><strong>Reconcile:</strong> Weekly at 2 AM Sunday (<code>0 2 * * 0</code>)</li>
+                    <li><strong>Process Queue:</strong> Every 30 minutes (<code>*/30 * * * *</code>)</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h3>Collection Diagnostics Explained</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Diagnostic</th>
+                    <th>Meaning</th>
+                    <th>Action Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>✅ Docs table exists (0 records)</td>
+                    <td>Table created but no content processed</td>
+                    <td><strong>Run Reconcile task</strong></td>
+                </tr>
+                <tr>
+                    <td>✅ Docs table exists (X records)</td>
+                    <td>X articles successfully mapped</td>
+                    <td>✅ Working correctly</td>
+                </tr>
+                <tr>
+                    <td>❌ Docs table missing</td>
+                    <td>Database table not created</td>
+                    <td>Reinstall package or run SQL manually</td>
+                </tr>
+                <tr>
+                    <td>✅ Collection ID exists</td>
+                    <td>IONOS collection created</td>
+                    <td>✅ Working correctly</td>
+                </tr>
+                <tr>
+                    <td>❌ No collection ID</td>
+                    <td>IONOS collection not created</td>
+                    <td>Check credentials, run Reconcile task</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Troubleshooting Empty Docs Table</h3>
+
+        <div class="bears-alert">
+            <strong>Problem:</strong> Collection diagnostics show "Docs table exists (0 records)"
+        </div>
+
+        <h4>Step-by-Step Resolution:</h4>
+
+        <ol class="bears-step-list">
+            <li>
+                <strong>Check Task Plugin Status</strong>
+                <ul>
+                    <li>Go to <strong>Extensions → Plugins</strong></li>
+                    <li>Search for "Task - Bears AI Chatbot"</li>
+                    <li>Ensure it's <strong>Published</strong></li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Module Configuration</strong>
+                <ul>
+                    <li>IONOS Token is configured</li>
+                    <li>Model is selected</li>
+                    <li>Content categories are selected</li>
+                    <li>Published articles exist in those categories</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Run Reconcile Task Manually</strong>
+                <ul>
+                    <li>Go to <strong>System → Scheduler</strong></li>
+                    <li>Find "Bears AI Chatbot: Reconcile"</li>
+                    <li>Click <strong>"Run Now"</strong></li>
+                    <li>Check execution log for errors</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Check Task Execution Results</strong>
+                <ul>
+                    <li>Look for success message like "Reconcile: X upserts, Y deletes"</li>
+                    <li>If errors, check IONOS credentials and API connectivity</li>
+                    <li>Verify articles are published and in selected categories</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Collection Population</strong>
+                <ul>
+                    <li>Return to <strong>Components → Bears AI Chatbot → Status</strong></li>
+                    <li>Should now show "Docs table exists (X records)" where X > 0</li>
+                    <li>Test chatbot - should now use enhanced AI retrieval</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h3>Common Task Execution Errors</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Error</th>
+                    <th>Cause</th>
+                    <th>Solution</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>"Missing IONOS credentials"</td>
+                    <td>Token not configured</td>
+                    <td>Configure IONOS token in module settings</td>
+                </tr>
+                <tr>
+                    <td>"No articles found"</td>
+                    <td>No published articles in selected categories</td>
+                    <td>Check category selection and article status</td>
+                </tr>
+                <tr>
+                    <td>"HTTP 401 Unauthorized"</td>
+                    <td>Invalid IONOS token</td>
+                    <td>Verify token is correct and active</td>
+                </tr>
+                <tr>
+                    <td>"Collection not found"</td>
+                    <td>Collection ID invalid</td>
+                    <td>Clear collection ID, let task recreate</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Performance Considerations</h3>
+
+        <ul>
+            <li><strong>Initial Reconcile:</strong> May take 5-15 minutes for large sites</li>
+            <li><strong>Batch Size:</strong> Default 50 articles per batch (configurable)</li>
+            <li><strong>Rate Limits:</strong> IONOS API has rate limits - tasks handle this automatically</li>
+            <li><strong>Memory Usage:</strong> Large articles may require increased PHP memory limit</li>
+        </ul>
+
+        <h3>Recommended Task Frequencies</h3>
+
+        <div class="bears-alert">
+            <strong>Optimal Schedule:</strong> For most Joomla sites, we recommend weekly reconcile and 30-minute queue processing for the best balance of performance, cost, and user experience.
+        </div>
+
+        <h4>Standard Recommendation (Most Sites)</h4>
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🔄 Reconcile Task: WEEKLY</h4>
+                <p><strong>Schedule:</strong> <code>0 2 * * 0</code> (Sunday 2 AM)</p>
+                <p><strong>Why Weekly:</strong></p>
+                <ul>
+                    <li>Heavy operation - scans ALL articles</li>
+                    <li>Resource intensive (5-15 minutes)</li>
+                    <li>Most sites don't change content daily</li>
+                    <li>Comprehensive cleanup and integrity checks</li>
+                    <li>Cost-effective API usage</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ Process Queue: EVERY 30 MINUTES</h4>
+                <p><strong>Schedule:</strong> <code>*/30 * * * *</code></p>
+                <p><strong>Why 30 Minutes:</strong></p>
+                <ul>
+                    <li>Lightweight operation (seconds to complete)</li>
+                    <li>Handles real-time content changes</li>
+                    <li>Good balance of timeliness vs efficiency</li>
+                    <li>Prevents queue buildup</li>
+                    <li>Maintains current chatbot responses</li>
+                </ul>
+            </div>
+        </div>
+
+        <h4>Alternative Schedules by Site Type</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Site Type</th>
+                    <th>Reconcile Task</th>
+                    <th>Process Queue</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>High-Activity Sites</strong><br><small>Multiple daily updates</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every 15 minutes<br><code>*/15 * * * *</code></td>
+                    <td>News sites, active blogs, e-commerce</td>
+                </tr>
+                <tr>
+                    <td><strong>Medium-Activity Sites</strong><br><small>Few updates per day</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every 30 minutes<br><code>*/30 * * * *</code></td>
+                    <td>Corporate sites, documentation, forums</td>
+                </tr>
+                <tr>
+                    <td><strong>Low-Activity Sites</strong><br><small>Updates few times per week</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every hour<br><code>0 * * * *</code></td>
+                    <td>Personal blogs, small business sites</td>
+                </tr>
+                <tr>
+                    <td><strong>Static/Archive Sites</strong><br><small>Rare updates</small></td>
+                    <td>Monthly (1st Sunday)<br><code>0 2 1-7 * 0</code></td>
+                    <td>Every 2 hours<br><code>0 */2 * * *</code></td>
+                    <td>Documentation archives, legacy sites</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Performance Considerations</h4>
+
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🚫 Why Not More Frequent Reconcile?</h4>
+                <ul>
+                    <li><strong>API Rate Limits:</strong> IONOS has limits that reconcile can hit</li>
+                    <li><strong>Server Load:</strong> Full scans are CPU/memory intensive</li>
+                    <li><strong>Unnecessary:</strong> Most content doesn't change daily</li>
+                    <li><strong>Cost:</strong> More API calls = higher expenses</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ Why Not Less Frequent Queue Processing?</h4>
+                <ul>
+                    <li><strong>User Experience:</strong> Delays in content appearing</li>
+                    <li><strong>Queue Buildup:</strong> Jobs accumulate, slowing processing</li>
+                    <li><strong>Real-time Expectation:</strong> Users expect current content</li>
+                    <li><strong>Search Relevance:</strong> Outdated results frustrate users</li>
+                </ul>
+            </div>
+        </div>
+
+        <h4>Monitoring & Adjustment Signs</h4>
+
+        <div class="bears-alert">
+            <strong>Monitor Your System:</strong> Watch for these indicators to adjust your schedule as needed.
+        </div>
+
+        <h5>Signs You Need More Frequent Reconcile:</h5>
+        <ul>
+            <li>Docs table count doesn't match article count</li>
+            <li>Old deleted articles still appearing in search results</li>
+            <li>Major content changes not reflected in chatbot</li>
+            <li>Collection diagnostics showing inconsistencies</li>
+        </ul>
+
+        <h5>Signs You Need More Frequent Queue Processing:</h5>
+        <ul>
+            <li>New articles not appearing in chatbot for hours</li>
+            <li>Queue jobs table (<code>#__aichatbot_jobs</code>) growing large</li>
+            <li>Users reporting outdated search results</li>
+            <li>Content plugin creating jobs faster than processing</li>
+        </ul>
+
+        <h5>Signs You Can Reduce Frequency:</h5>
+        <ul>
+            <li>Queue jobs table usually empty</li>
+            <li>Very low content change frequency</li>
+            <li>Server resource constraints</li>
+            <li>Budget concerns with API usage</li>
+        </ul>
+
+        <div class="bears-alert">
+            <strong>Success Indicator:</strong> Once the Reconcile task runs successfully, your chatbot will use AI-powered document retrieval instead of basic search, providing much more accurate and contextual responses.
+        </div>
+
+        <h2 id="accessibility">Accessibility Features <span class="bears-badge">WCAG 2.1 AA</span></h2>
+
+        <div class="bears-alert">
+            <strong>Fully Accessible:</strong> Bears AI Chatbot meets WCAG 2.1 AA standards and provides an inclusive experience for all users.
+        </div>
+
+        <h3>Screen Reader Support</h3>
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🔊 ARIA Labels & Live Regions</h4>
+                <p>Complete ARIA labeling for all interactive elements with live regions that announce new messages and state changes to screen readers.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>📢 Status Announcements</h4>
+                <p>Real-time announcements for chat open/close, loading states, AI processing, and error messages.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🏷️ Message Role Identification</h4>
+                <p>Clear distinction between user messages, AI responses, and error messages for screen reader users.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>📝 Semantic HTML Structure</h4>
+                <p>Proper use of HTML5 semantic elements (dialog, log, form, article) with appropriate roles.</p>
+            </div>
+        </div>
+
+        <h3>Keyboard Navigation</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Keyboard Shortcut</th>
+                    <th>Action</th>
+                    <th>Context</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><kbd>Ctrl+/</kbd> or <kbd>Cmd+/</kbd></td>
+                    <td>Open chat</td>
+                    <td>Anywhere on page</td>
+                </tr>
+                <tr>
+                    <td><kbd>Escape</kbd></td>
+                    <td>Close chat</td>
+                    <td>When chat is open</td>
+                </tr>
+                <tr>
+                    <td><kbd>Enter</kbd></td>
+                    <td>Send message</td>
+                    <td>In message input field</td>
+                </tr>
+                <tr>
+                    <td><kbd>Tab</kbd></td>
+                    <td>Navigate elements</td>
+                    <td>Full keyboard navigation</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Visual Accessibility</h3>
+        <ul>
+            <li><strong>High Contrast Mode:</strong> Enhanced borders and styling when high contrast is enabled</li>
+            <li><strong>Focus Indicators:</strong> Visible focus outlines that meet WCAG contrast requirements</li>
+            <li><strong>Dark Mode:</strong> Accessible dark theme with proper color contrast ratios</li>
+            <li><strong>Reduced Motion:</strong> Respects user's motion preferences and disables animations when requested</li>
+            <li><strong>Responsive Design:</strong> Works at all zoom levels up to 200% without horizontal scrolling</li>
+        </ul>
+
+        <h3>Multi-Language Accessibility</h3>
+        <p>The chatbot includes 15+ accessibility-specific language strings that can be translated:</p>
+        <div class="bears-code">
+MOD_BEARS_AICHATBOT_OPEN_CHAT="Open AI chatbot"
+MOD_BEARS_AICHATBOT_CLOSE_CHAT="Close chatbot"
+MOD_BEARS_AICHATBOT_CHAT_DESCRIPTION="AI-powered knowledge base assistant. Press Ctrl+/ to open, Escape to close."
+MOD_BEARS_AICHATBOT_USER_MESSAGE="Your message"
+MOD_BEARS_AICHATBOT_BOT_MESSAGE="AI assistant response"
+MOD_BEARS_AICHATBOT_THINKING="AI is researching your question"
+        </div>
+
+        <h3>Technical Implementation</h3>
+        <ul>
+            <li><strong>ARIA Live Regions:</strong> <code>aria-live="polite"</code> for messages, <code>aria-live="assertive"</code> for status</li>
+            <li><strong>Form Labels:</strong> Explicit <code>&lt;label&gt;</code> elements with <code>for</code> attributes</li>
+            <li><strong>Loading States:</strong> <code>aria-busy</code> attributes and status updates</li>
+            <li><strong>Screen Reader Only Content:</strong> <code>.bears-sr-only</code> class for hidden accessibility content</li>
+            <li><strong>Focus Management:</strong> Auto-focus on input when chat opens, proper focus indicators</li>
+        </ul>
+
+        <h3>WCAG 2.1 Compliance Status</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Level</th>
+                    <th>Status</th>
+                    <th>Details</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Level A</strong></td>
+                    <td><span class="bears-badge" style="background: green; color: white;">✅ Compliant</span></td>
+                    <td>Keyboard accessible, proper labels, skip links</td>
+                </tr>
+                <tr>
+                    <td><strong>Level AA</strong></td>
+                    <td><span class="bears-badge" style="background: green; color: white;">✅ Compliant</span></td>
+                    <td>Color contrast, focus management, ARIA labels</td>
+                </tr>
+                <tr>
+                    <td><strong>Level AAA</strong></td>
+                    <td><span class="bears-badge" style="background: orange; color: white;">🔄 Partial</span></td>
+                    <td>Enhanced error identification could be improved</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Testing Your Accessibility</h3>
+        <p>To test the accessibility features:</p>
+        <ol>
+            <li><strong>Screen Reader Testing:</strong> Use NVDA (Windows), JAWS (Windows), or VoiceOver (Mac)</li>
+            <li><strong>Keyboard Navigation:</strong> Navigate using only the Tab, Enter, and Escape keys</li>
+            <li><strong>High Contrast:</strong> Enable high contrast mode in your operating system</li>
+            <li><strong>Zoom Testing:</strong> Test at 200% zoom level</li>
+            <li><strong>Reduced Motion:</strong> Enable "Reduce motion" in your system accessibility settings</li>
+        </ol>
+
+        <h2 id="keyword-extraction">Keyword Extraction <span class="badge new">NEW</span></h2>
+
+        <div class="success">
+            <strong>Smart Analytics:</strong> Automatically extract and analyze keywords from user messages to understand usage patterns.
+        </div>
+
+        <h3>Configuration Options</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Setting</th>
+                    <th>Default</th>
+                    <th>Description</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>Minimum Keyword Length</td>
+                    <td>3</td>
+                    <td>Minimum characters for a word to be considered (1-10)</td>
+                </tr>
+                <tr>
+                    <td>Maximum Keyword Length</td>
+                    <td>50</td>
+                    <td>Maximum characters for a word to be considered (10-100)</td>
+                </tr>
+                <tr>
+                    <td>Stop Words</td>
+                    <td>300+ English words</td>
+                    <td>Comma-separated list of words to ignore during extraction</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Default Stop Words</h3>
+        <p>The system includes a comprehensive list of 300+ common English stop words including:</p>
+        <div class="code-block">
+a, able, about, above, across, act, actually, add, after, again, against, age, ago, agree, all, almost, alone, along, already, also, although, always, am, among, an, and, anger, angry, animal, another, answer, any, anyone, anything, anyway, appear, are, area, around, as, ask, at, attack, away...
+        </div>
+
+        <h3>Multi-Language Support</h3>
+        <p>To support other languages, create language-specific overrides:</p>
+        <ol>
+            <li>Go to <strong>System → Manage → Language Overrides</strong></li>
+            <li>Create override for <code>MOD_BEARS_AICHATBOT_STOP_WORDS_DEFAULT</code></li>
+            <li>Add comma-separated stop words for your language</li>
+        </ol>
+
+        <h2 id="admin-component">Administrator Component</h2>
+
+        <div class="info">
+            <strong>Access:</strong> Navigate to <strong>Components → Bears AI Chatbot</strong> in the Joomla administrator.
+        </div>
+
+        <h3>Dashboard Views</h3>
+
+        <h4>1. Status View</h4>
+        <ul>
+            <li>System status and configuration overview</li>
+            <li>IONOS API connectivity diagnostics</li>
+            <li>Quick usage statistics</li>
+            <li>Database table status</li>
+        </ul>
+
+        <h4>2. Usage View</h4>
+        <ul>
+            <li>Detailed usage logs with filtering</li>
+            <li>CSV export functionality</li>
+            <li>Token consumption tracking</li>
+            <li>Cost analysis per request</li>
+        </ul>
+
+        <h4>3. Collections View</h4>
+        <ul>
+            <li>IONOS document collection management</li>
+            <li>Collection metadata and statistics</li>
+            <li>Rebuild collection functionality</li>
+            <li>Document count tracking</li>
+        </ul>
+
+        <h4>4. Keywords View <span class="badge new">NEW</span></h4>
+        <ul>
+            <li>Top keywords by usage frequency</li>
+            <li>Success rates per keyword</li>
+            <li>Trending keywords (last 7 days)</li>
+            <li>Time period filtering options</li>
+        </ul>
+
+        <h2 id="analytics">Analytics & Reporting</h2>
+
+        <h3>Key Performance Indicators (KPIs)</h3>
+        <ul>
+            <li><strong>Total Requests:</strong> Number of chat interactions</li>
+            <li><strong>Token Usage:</strong> Prompt, completion, and total tokens</li>
+            <li><strong>Cost Tracking:</strong> Estimated costs in USD</li>
+            <li><strong>Success Rates:</strong> Answered vs refused vs error rates</li>
+            <li><strong>Collection Size:</strong> Number of documents indexed</li>
+        </ul>
+
+        <h3>Available Charts</h3>
+        <div class="feature-grid">
+            <div class="feature-card">
+                <h4>📈 Tokens Over Time</h4>
+                <p>Stacked chart showing prompt and completion token usage trends</p>
+            </div>
+            <div class="feature-card">
+                <h4>🔄 Requests and Errors</h4>
+                <p>Success vs error rates over time</p>
+            </div>
+            <div class="feature-card">
+                <h4>💰 Spend Over Time</h4>
+                <p>Cost analysis and spending trends in USD</p>
+            </div>
+            <div class="feature-card">
+                <h4>⚡ Latency Analysis</h4>
+                <p>Average and maximum response times</p>
+            </div>
+            <div class="feature-card">
+                <h4>📊 Token Distribution</h4>
+                <p>Histogram of token usage patterns</p>
+            </div>
+            <div class="feature-card">
+                <h4>🎯 Outcomes</h4>
+                <p>Breakdown of answered, refused, and error responses</p>
+            </div>
+        </div>
+
+        <h3>Keyword Analytics <span class="badge new">NEW</span></h3>
+        <ul>
+            <li><strong>Usage Statistics:</strong> Total keywords, queries, success rates</li>
+            <li><strong>Top Keywords:</strong> Most frequently used terms</li>
+            <li><strong>Trending Analysis:</strong> Keywords gaining popularity</li>
+            <li><strong>Success Correlation:</strong> Which keywords lead to successful answers</li>
+            <li><strong>Time Filtering:</strong> 7/30/60/90 days, YTD, all time</li>
+        </ul>
+
+        <h2 id="troubleshooting">Troubleshooting</h2>
+
+        <h3>Common Issues</h3>
+
+        <div class="warning">
+            <strong>Authentication Errors</strong><br>
+            If you receive authentication errors, verify your IONOS token and token ID are correct and have the necessary permissions.
+        </div>
+
+        <h4>Chat Not Working</h4>
+        <ul>
+            <li>Check IONOS API credentials in module settings</li>
+            <li>Verify the selected model is available in your IONOS account</li>
+            <li>Ensure outbound HTTPS connections are allowed</li>
+            <li>Check browser console for JavaScript errors</li>
+        </ul>
+
+        <h4>No Search Results</h4>
+        <ul>
+            <li>Verify document collection exists and has content</li>
+            <li>Run the reconcile task to sync content</li>
+            <li>Check if articles are published and in selected categories</li>
+            <li>Lower the minimum score threshold</li>
+        </ul>
+
+        <h4>Scheduler Tasks Not Running</h4>
+        <ul>
+            <li>Enable Joomla Scheduler in Global Configuration</li>
+            <li>Check task status in System → Manage → Scheduled Tasks</li>
+            <li>Manually run tasks to test functionality</li>
+            <li>Verify cron job is configured on your server</li>
+        </ul>
+
+        <h4>Keywords Not Extracting</h4>
+        <ul>
+            <li>Check keyword extraction settings in module configuration</li>
+            <li>Verify minimum/maximum length settings</li>
+            <li>Review stop words list for your language</li>
+            <li>Check error logs for extraction failures</li>
+        </ul>
+
+        <h3>Debug Information</h3>
+        <p>Enable debug logging by adding this to your Joomla configuration:</p>
+        <div class="code-block">
+public $log_level = 'DEBUG';
+public $log_categories = ['bears_aichatbot'];
+        </div>
+
+        <h2 id="advanced">Advanced Topics</h2>
+
+        <h3>Database Schema</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Table</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>#__aichatbot_usage</code></td>
+                    <td>Usage logs with metrics and costs</td>
+                </tr>
+                <tr>
+                    <td><code>#__aichatbot_docs</code></td>
+                    <td>Mapping of Joomla content to remote document IDs</td>
+                </tr>
+                <tr>
+                    <td><code>#__aichatbot_jobs</code></td>
+                    <td>Ingestion queue for content processing</td>
+                </tr>
+                <tr>
+                    <td><code>#__aichatbot_state</code></td>
+                    <td>Centralized operational state</td>
+                </tr>
+                <tr>
+                    <td><code>#__aichatbot_collection_stats</code></td>
+                    <td>Daily snapshots for collection size tracking</td>
+                </tr>
+                <tr>
+                    <td><code>#__aichatbot_keywords</code></td>
+                    <td>Keyword extraction analytics</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Cost Calculation</h3>
+        <p>The system uses IONOS standard pricing for cost estimation:</p>
+        <ul>
+            <li><strong>Prompt tokens:</strong> $0.0004 per 1K tokens</li>
+            <li><strong>Completion tokens:</strong> $0.0006 per 1K tokens</li>
+            <li><strong>Formula:</strong> <code>(prompt/1000) * 0.0004 + (completion/1000) * 0.0006</code></li>
+        </ul>
+
+        <h3>Collection Management</h3>
+        <p>Document collections are automatically created and managed:</p>
+        <ul>
+            <li><strong>Auto-creation:</strong> First chat or task run creates collection</li>
+            <li><strong>Synchronization:</strong> Content changes trigger background updates</li>
+            <li><strong>Reconciliation:</strong> Daily task ensures consistency</li>
+            <li><strong>Rebuild:</strong> Manual rebuild option for complete refresh</li>
+        </ul>
+
+        <h2 id="api-reference">API Reference</h2>
+
+        <h3>IONOS API Endpoints</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Endpoint</th>
+                    <th>Method</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><code>/v1/chat/completions</code></td>
+                    <td>POST</td>
+                    <td>Chat completions</td>
+                </tr>
+                <tr>
+                    <td><code>/collections</code></td>
+                    <td>GET/POST</td>
+                    <td>List/create collections</td>
+                </tr>
+                <tr>
+                    <td><code>/collections/{id}/query</code></td>
+                    <td>POST</td>
+                    <td>Query documents</td>
+                </tr>
+                <tr>
+                    <td><code>/collections/{id}/documents</code></td>
+                    <td>POST/DELETE</td>
+                    <td>Manage documents</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Component API</h3>
+        <p>The administrator component provides JSON APIs for:</p>
+        <ul>
+            <li><strong>Usage data:</strong> <code>index.php?option=com_bears_aichatbot&task=getUsageData</code></li>
+            <li><strong>Collection info:</strong> <code>index.php?option=com_bears_aichatbot&task=getCollectionInfo</code></li>
+            <li><strong>Keyword stats:</strong> <code>index.php?option=com_bears_aichatbot&task=getKeywordStats</code></li>
+            <li><strong>Delete collection:</strong> <code>index.php?option=com_bears_aichatbot&task=deleteCollection</code></li>
+        </ul>
+
+        <div class="success">
+            <strong>Security:</strong> All admin APIs require <code>core.manage</code> permissions and are CSRF-protected.
+        </div>
+
+        <h2>Support & Updates</h2>
+        
+        <div class="info">
+            <strong>Version:</strong> This documentation covers Bears AI Chatbot v2025.09.14 and later versions.
+        </div>
+
+        <h3>Getting Help</h3>
+        <ul>
+            <li><strong>Documentation:</strong> Check this guide and the README.md file</li>
+            <li><strong>Debug Logs:</strong> Enable debug logging for detailed error information</li>
+            <li><strong>System Status:</strong> Use the Status view in the admin component</li>
+            <li><strong>Community:</strong> Check Joomla community forums for additional support</li>
+        </ul>
+
+        <h3>License</h3>
+        <p>Bears AI Chatbot is released under the <strong>GNU General Public License v3.0</strong> or later. See the LICENSE file for complete terms.</p>
+
+        <h3>Credits</h3>
+        <ul>
+            <li><strong>Original Development:</strong> N6REJ</li>
+            <li><strong>Joomla 5 Enhancements:</strong> RAG integration, analytics, and keyword extraction</li>
+            <li><strong>IONOS Integration:</strong> AI Model Hub and Document Collections API</li>
+        </ul>
+
+        <div class="success">
+            <strong>Thank you for using Bears AI Chatbot!</strong> We hope this documentation helps you get the most out of your AI-powered knowledge base.
+        </div>
+    </div>
+</body>
+</html>

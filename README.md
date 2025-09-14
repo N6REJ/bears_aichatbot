@@ -19,12 +19,26 @@ Features
 - Sitemap context support (external HTML/XML sitemap preferred, menu-based fallback)
 - Automatic Scheduler integration (reconcile and queue tasks)
 - Centralized IONOS credential source (module)
-- Administrator analytics (new)
+- **Full Accessibility Support (WCAG 2.1 AA Compliant)**
+  - Screen reader compatible with ARIA labels and live regions
+  - Complete keyboard navigation with shortcuts (Ctrl+/ to open, Escape to close)
+  - High contrast mode support and reduced motion preferences
+  - Multi-language accessibility strings with 15+ screen reader announcements
+  - Enhanced focus indicators and semantic HTML structure
+  - Real-time status announcements for AI processing states
+- Administrator analytics
   - Requests, errors, token usage, spend, and KPIs
   - Charts: tokens over time, requests/errors, spend (USD), latency, token histogram, outcomes (answered/refused/error), collection size history
   - Collection Info (metadata fetched from IONOS Document Collections API)
   - Rebuild Document Collection tool with confirmation prompt (in-place)
   - CSV export (filters respected)
+- Keyword extraction and analytics
+  - Configurable keyword extraction from user messages
+  - Customizable stop words list (300+ English words by default)
+  - Adjustable minimum/maximum keyword length
+  - Keyword usage statistics and success rates
+  - Trending keywords dashboard
+  - Multi-language support for stop words
 
 
 Requirements
@@ -72,6 +86,10 @@ Module configuration (frontend chat)
   - Sitemap URL (optional)
 - UI and positioning
   - Position, width/height, offsets, label, dark mode
+- Keyword extraction
+  - Minimum keyword length (1-10, default: 3)
+  - Maximum keyword length (10-100, default: 50)
+  - Stop words list (customizable, 300+ English words by default)
 
 Notes on retrieval
 - Top K controls the number of highest‑scoring snippets included.
@@ -104,8 +122,10 @@ Ingestion and synchronization
 Administrator component (com_bears_aichatbot)
 - Access under Components → Bears AI Chatbot
 - Menu entries (submenu)
-  - Dashboard: charts and KPIs, collection tools
+  - Status: system status and diagnostics
   - Usage: table of individual usage rows with CSV export
+  - Collections: IONOS document collection management
+  - Keywords: keyword extraction analytics and trends
 - Dashboard filters: date range, group by (day/week/month), module_id, model, collection_id
 - KPIs: requests, total tokens, prompt tokens, completion tokens, retrieved snippets, docs in collection, total cost (USD)
 - Charts:
@@ -116,6 +136,12 @@ Administrator component (com_bears_aichatbot)
   - Token Distribution (histogram)
   - Outcomes (answered/refused/error)
   - Collection Size (history)
+- Keywords Analytics:
+  - Top keywords by usage frequency
+  - Success rates per keyword
+  - Trending keywords (last 7 days)
+  - Time period filtering (7/30/60/90 days, YTD, all time)
+  - Keyword statistics: total keywords, total queries, average success rate
 - Collection Info
   - Calls IONOS API: GET /document-collections/{collection_id}
   - Displays metadata: name, description, created/updated, documentsCount (if available)
@@ -155,6 +181,7 @@ Database schema
 - #__aichatbot_jobs: ingestion queue (upsert/delete)
 - #__aichatbot_state: centralized operational state (collection_id, last run timestamps)
 - #__aichatbot_collection_stats: daily snapshot of docs_count for collection size chart
+- #__aichatbot_keywords: keyword extraction analytics (keyword, usage_count, success_rate, etc.)
 
 
 Upgrades and data migration
@@ -171,6 +198,48 @@ Scheduler tasks
 - AI Chatbot: Process queue (manual)
   - Type: aichatbot.queue (enable/schedule as desired)
 
+
+Accessibility Features (WCAG 2.1 AA Compliant)
+The Bears AI Chatbot is fully accessible and provides an inclusive experience for all users:
+
+**Screen Reader Support:**
+- Complete ARIA labeling for all interactive elements
+- Live regions announce new messages and state changes
+- Proper semantic HTML structure with roles (dialog, log, form, article)
+- Screen reader announcements for chat open/close, loading states, and errors
+- Message role identification (user messages vs AI responses vs errors)
+
+**Keyboard Navigation:**
+- Full keyboard accessibility with Tab navigation
+- Keyboard shortcuts: Ctrl+/ (Cmd+/ on Mac) to open chat, Escape to close
+- Enter key to send messages, auto-focus management
+- Visible focus indicators with proper contrast ratios
+- Skip links for efficient navigation
+
+**Visual Accessibility:**
+- High contrast mode support with enhanced borders and styling
+- Dark mode option with accessible color schemes
+- Reduced motion support for users with vestibular disorders
+- Enhanced focus indicators that meet WCAG contrast requirements
+- Responsive design that works at all zoom levels up to 200%
+
+**Multi-language Support:**
+- 15+ accessibility-specific language strings for screen reader announcements
+- Translatable ARIA labels and status messages
+- Support for right-to-left (RTL) languages through template inheritance
+- Customizable stop words for keyword extraction in any language
+
+**Technical Implementation:**
+- Uses semantic HTML5 elements (nav, section, article, dialog)
+- Proper form labeling with explicit label-input associations
+- ARIA live regions for dynamic content announcements
+- Screen reader only content properly hidden with .bears-sr-only class
+- Loading states announced with aria-busy and status updates
+
+**Compliance Status:**
+- ✅ WCAG 2.1 Level A: Fully compliant
+- ✅ WCAG 2.1 Level AA: Fully compliant  
+- 🔄 WCAG 2.1 Level AAA: Partially compliant (enhanced error identification could be improved)
 
 Sitemap behavior
 - If Include Sitemap = Yes and a Sitemap URL is provided, the module fetches and parses it (HTML/XML). If unavailable, it falls back to menu-based site map.

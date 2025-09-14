@@ -7,11 +7,14 @@
   <license>GNU General Public License version 3 or later; see LICENSE</license>
   <description>Bears AI Chatbot administrator component with a simple dashboard.</description>
 
+  <scriptfile>script.php</scriptfile>
+
   <administration>
     <menu>COM_BEARS_AICHATBOT</menu>
     <files folder="">
       <filename>com_bears_aichatbot.xml</filename>
       <filename>bears_aichatbot.php</filename>
+      <filename>script.php</filename>
       <folder>tmpl</folder>
       <folder>language</folder>
     </files>
