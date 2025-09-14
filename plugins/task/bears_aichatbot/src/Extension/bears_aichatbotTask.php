@@ -40,8 +40,8 @@ class BearsAichatbotTask extends CMSPlugin
     public function onRegisterTasks(): array
     {
         return [
-            TaskOption::create('bears_aichatbot.queue', 'Process AI Chatbot job queue', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
-            TaskOption::create('bears_aichatbot.reconcile', 'Reconcile AI Chatbot collection', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
+            TaskOption::create('bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
+            TaskOption::create('bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '\\plugins\\task\\bears_aichatbot\\src\\Extension\\BearsAichatbotTask'),
         ];
     }
 
