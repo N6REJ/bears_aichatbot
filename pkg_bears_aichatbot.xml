@@ -14,8 +14,8 @@
   <files>
     <file type="component" id="com_bears_aichatbot" client="administrator">com_bears_aichatbot</file>
     <file type="module" client="site" id="mod_bears_aichatbot">mod_bears_aichatbot</file>
-    <file type="plugin" group="task" id="bears_aichatbot">plugins/task/bears_aichatbot</file>
-    <file type="plugin" group="content" id="bears_aichatbot">plugins/content/bears_aichatbot</file>
-    <file type="plugin" group="system" id="bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</file>
+    <file type="plugin" group="task" id="plg_task_bears_aichatbot">plugins/task/bears_aichatbot</file>
+    <file type="plugin" group="content" id="plg_content_bears_aichatbot">plugins/content/bears_aichatbot</file>
+    <file type="plugin" group="system" id="plg_system_bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</file>
   </files>
 </extension>
