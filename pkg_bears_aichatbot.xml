@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="utf-8"?>
 <extension type="package" version="5.0" method="upgrade">
   <name>Bears AI Chatbot package</name>
-  <packagename>pkg_bears_aichatbot</packagename>
+  <packagename>pkg_pkg_bears_aichatbot</packagename>
   <author>N6REJ</author>
   <creationDate>2025 September 14</creationDate>
   <version>2025.09.14.2</version>
