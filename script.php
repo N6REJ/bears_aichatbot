@@ -41,14 +41,14 @@ class pkg_pkg_bears_aichatbotInstallerScript
             $db->setQuery($query);
             $db->execute();
             
-            // Remove Bears AI Chatbot database tables
+            // Remove Bears AI Chatbot database tables (in correct order due to foreign keys)
             $tables = [
+                '#__aichatbot_keywords',  // Has foreign key, drop first
                 '#__aichatbot_usage',
                 '#__aichatbot_docs', 
                 '#__aichatbot_jobs',
                 '#__aichatbot_state',
-                '#__aichatbot_collection_stats',
-                '#__aichatbot_keywords'
+                '#__aichatbot_collection_stats'
             ];
             
             foreach ($tables as $table) {
@@ -60,9 +60,69 @@ class pkg_pkg_bears_aichatbotInstallerScript
                 }
             }
             
+            // Clean up orphaned module menu assignments
+            try {
+                $query = $db->getQuery(true)
+                    ->delete($db->quoteName('#__modules_menu'))
+                    ->where($db->quoteName('moduleid') . ' NOT IN (SELECT ' . $db->quoteName('id') . ' FROM ' . $db->quoteName('#__modules') . ')');
+                $db->setQuery($query);
+                $db->execute();
+            } catch (\Throwable $e) {
+                // Ignore cleanup errors
+            }
+            
         } catch (\Throwable $e) {
             // Log error but don't fail uninstallation
             \Joomla\CMS\Log\Log::add('Bears AI Chatbot uninstall cleanup error: ' . $e->getMessage(), \Joomla\CMS\Log\Log::WARNING, 'bears_aichatbot');
+        }
+        
+        return true;
+    }
+
+    public function preflight($type, $parent)
+    {
+        // Handle package uninstallation issues
+        if ($type === 'uninstall') {
+            try {
+                $db = $parent->getParent()->getDbo();
+                
+                // Ensure all child extensions are properly registered for uninstallation
+                $childExtensions = [
+                    ['type' => 'component', 'element' => 'com_bears_aichatbot'],
+                    ['type' => 'module', 'element' => 'mod_bears_aichatbot'],
+                    ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'task'],
+                    ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'content'],
+                    ['type' => 'plugin', 'element' => 'bears_aichatbotinstaller', 'folder' => 'system']
+                ];
+                
+                foreach ($childExtensions as $ext) {
+                    $query = $db->getQuery(true)
+                        ->select($db->quoteName('extension_id'))
+                        ->from($db->quoteName('#__extensions'))
+                        ->where($db->quoteName('type') . ' = ' . $db->quote($ext['type']))
+                        ->where($db->quoteName('element') . ' = ' . $db->quote($ext['element']));
+                    
+                    if (isset($ext['folder'])) {
+                        $query->where($db->quoteName('folder') . ' = ' . $db->quote($ext['folder']));
+                    }
+                    
+                    $db->setQuery($query);
+                    $extensionId = $db->loadResult();
+                    
+                    if ($extensionId) {
+                        // Mark extension as enabled to ensure proper uninstallation
+                        $updateQuery = $db->getQuery(true)
+                            ->update($db->quoteName('#__extensions'))
+                            ->set($db->quoteName('enabled') . ' = 1')
+                            ->where($db->quoteName('extension_id') . ' = ' . (int)$extensionId);
+                        $db->setQuery($updateQuery);
+                        $db->execute();
+                    }
+                }
+                
+            } catch (\Throwable $e) {
+                // Continue with uninstallation even if preflight fails
+            }
         }
         
         return true;
