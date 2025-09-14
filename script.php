@@ -19,6 +19,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     public function install($parent)
     {
         $this->enablePlugins();
+        $this->seedSchedulerTasks();
         return true;
     }
 
@@ -28,6 +29,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     public function update($parent)
     {
         $this->enablePlugins();
+        $this->seedSchedulerTasks();
         return true;
     }
 
@@ -38,6 +40,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     {
         if ($type === 'install' || $type === 'update') {
             $this->enablePlugins();
+            $this->seedSchedulerTasks();
         }
     }
 
@@ -71,6 +74,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
             $db = Factory::getDbo();
             $this->enablePlugin($db, 'task', 'bears_aichatbot');
             $this->enablePlugin($db, 'content', 'bears_aichatbot');
+            $this->enablePlugin($db, 'system', 'bears_aichatbotinstaller');
         } catch (\Throwable $e) {
             // best-effort only
         }
@@ -89,6 +93,82 @@ class pkg_pkg_bears_aichatbotInstallerScript
         } catch (\Throwable $e) {
             // ignore
         }
+    }
+
+    private function seedSchedulerTasks(): void
+    {
+        try {
+            $db = Factory::getDbo();
+            $this->ensureSchedulerTask($db, 'bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', '0 * * * *');
+            $this->ensureSchedulerTask($db, 'bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', '0 0 * * 0');
+        } catch (\Throwable $e) {
+            // ignore
+        }
+    }
+
+    private function ensureSchedulerTask($db, string $type, string $title, string $cron): void
+    {
+        try {
+            $q = $db->getQuery(true)
+                ->select('COUNT(*)')
+                ->from($db->quoteName('#__scheduler_tasks'))
+                ->where($db->quoteName('type') . ' = ' . $db->quote($type));
+            $db->setQuery($q);
+            if ((int)$db->loadResult() > 0) {
+                return;
+            }
+
+            // Preferred schema: execution_rules JSON
+            $executionRules = json_encode(['rule' => 'cron', 'expression' => $cron], JSON_UNESCAPED_SLASHES);
+            $ins = $db->getQuery(true)
+                ->insert($db->quoteName('#__scheduler_tasks'))
+                ->columns([
+                    $db->quoteName('type'),
+                    $db->quoteName('title'),
+                    $db->quoteName('state'),
+                    $db->quoteName('execution_rules'),
+                    $db->quoteName('params'),
+                    $db->quoteName('priority'),
+                ])
+                ->values(implode(',', [
+                    $db->quote($type),
+                    $db->quote($title),
+                    1,
+                    $db->quote($executionRules),
+                    $db->quote('{}'),
+                    3,
+                ]));
+            try {
+                $db->setQuery($ins)->execute();
+                return;
+            } catch (\Throwable $e) {}
+
+            // Legacy schema fallback
+            try {
+                $columns = $db->getTableColumns('#__scheduler_tasks', false);
+                if (isset($columns['cron_expression'])) {
+                    $ins2 = $db->getQuery(true)
+                        ->insert($db->quoteName('#__scheduler_tasks'))
+                        ->columns([
+                            $db->quoteName('type'),
+                            $db->quoteName('title'),
+                            $db->quoteName('state'),
+                            $db->quoteName('cron_expression'),
+                            $db->quoteName('params'),
+                            $db->quoteName('priority'),
+                        ])
+                        ->values(implode(',', [
+                            $db->quote($type),
+                            $db->quote($title),
+                            1,
+                            $db->quote($cron),
+                            $db->quote('{}'),
+                            3,
+                        ]));
+                    $db->setQuery($ins2)->execute();
+                }
+            } catch (\Throwable $ignore) {}
+        } catch (\Throwable $e) {}
     }
 
     /**
