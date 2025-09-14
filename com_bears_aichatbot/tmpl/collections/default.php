@@ -2,7 +2,7 @@
 /**
  * Bears AI Chatbot - Collections View
  *
- * @version 2025.09.14.16
+ * @version 2025.09.14.17
  * @package Bears AI Chatbot
  * @author N6REJ
  * @email troy@hallhome.us
