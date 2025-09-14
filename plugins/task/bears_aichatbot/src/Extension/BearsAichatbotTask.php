@@ -40,8 +40,12 @@ class BearsAichatbotTask extends CMSPlugin implements SubscriberInterface
     public function onRegisterTasks(): array
     {
         return [
+            // Current types
             TaskOption::create('bears_aichatbot.queue', 'Bears AI Chatbot: Process queue', self::class),
             TaskOption::create('bears_aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', self::class),
+            // Backward-compatible legacy types to resolve existing tasks
+            TaskOption::create('aichatbot.queue', 'Bears AI Chatbot: Process queue', self::class),
+            TaskOption::create('aichatbot.reconcile', 'Bears AI Chatbot: Reconcile', self::class),
         ];
     }
 

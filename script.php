@@ -20,6 +20,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     {
         $this->enablePlugins();
         $this->seedSchedulerTasks();
+        $this->disableSystemInstallerPlugin();
         return true;
     }
 
@@ -30,6 +31,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     {
         $this->enablePlugins();
         $this->seedSchedulerTasks();
+        $this->disableSystemInstallerPlugin();
         return true;
     }
 
@@ -41,6 +43,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
         if ($type === 'install' || $type === 'update') {
             $this->enablePlugins();
             $this->seedSchedulerTasks();
+            $this->disableSystemInstallerPlugin();
         }
     }
 
@@ -74,7 +77,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
             $db = Factory::getDbo();
             $this->enablePlugin($db, 'task', 'bears_aichatbot');
             $this->enablePlugin($db, 'content', 'bears_aichatbot');
-            $this->enablePlugin($db, 'system', 'bears_aichatbotinstaller');
+            // Do not force-enable the system installer plugin; it should disable itself after seeding
         } catch (\Throwable $e) {
             // best-effort only
         }
@@ -169,6 +172,23 @@ class pkg_pkg_bears_aichatbotInstallerScript
                 }
             } catch (\Throwable $ignore) {}
         } catch (\Throwable $e) {}
+    }
+
+    private function disableSystemInstallerPlugin(): void
+    {
+        try {
+            $db = Factory::getDbo();
+            $db->setQuery(
+                $db->getQuery(true)
+                    ->update($db->quoteName('#__extensions'))
+                    ->set($db->quoteName('enabled') . ' = 0')
+                    ->where($db->quoteName('type') . ' = ' . $db->quote('plugin'))
+                    ->where($db->quoteName('folder') . ' = ' . $db->quote('system'))
+                    ->where($db->quoteName('element') . ' = ' . $db->quote('bears_aichatbotinstaller'))
+            )->execute();
+        } catch (\Throwable $e) {
+            // ignore
+        }
     }
 
     /**
