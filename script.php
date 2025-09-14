@@ -57,10 +57,13 @@ class pkg_pkg_bears_aichatbotInstallerScript
 
     /**
      * Called during uninstallation
-     * Joomla handles the extension removal, we just clean up data
+     * We need to manually uninstall child extensions since Joomla isn't doing it automatically
      */
     public function uninstall($parent)
     {
+        // Manually uninstall child extensions
+        $this->uninstallChildExtensions();
+        
         // Additional cleanup after extensions are removed
         $this->finalCleanup();
         return true;
@@ -142,6 +145,68 @@ class pkg_pkg_bears_aichatbotInstallerScript
         } catch (\Exception $e) {
             // Log error but don't fail uninstallation
             Factory::getApplication()->enqueueMessage('Cleanup warning: ' . $e->getMessage(), 'warning');
+        }
+    }
+
+    /**
+     * Manually uninstall child extensions
+     * This is needed because Joomla isn't automatically uninstalling them
+     */
+    private function uninstallChildExtensions()
+    {
+        try {
+            $db = Factory::getDbo();
+            $installer = Installer::getInstance();
+            
+            // Define child extensions to uninstall
+            $childExtensions = [
+                ['type' => 'plugin', 'element' => 'bears_aichatbotinstaller', 'folder' => 'system'],
+                ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'content'],
+                ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'task'],
+                ['type' => 'module', 'element' => 'mod_bears_aichatbot'],
+                ['type' => 'component', 'element' => 'com_bears_aichatbot']
+            ];
+            
+            foreach ($childExtensions as $ext) {
+                try {
+                    // Find the extension ID
+                    $query = $db->getQuery(true)
+                        ->select($db->quoteName('extension_id'))
+                        ->from($db->quoteName('#__extensions'))
+                        ->where($db->quoteName('type') . ' = ' . $db->quote($ext['type']))
+                        ->where($db->quoteName('element') . ' = ' . $db->quote($ext['element']));
+                    
+                    if (isset($ext['folder'])) {
+                        $query->where($db->quoteName('folder') . ' = ' . $db->quote($ext['folder']));
+                    }
+                    
+                    $db->setQuery($query);
+                    $extensionId = $db->loadResult();
+                    
+                    if ($extensionId) {
+                        // Uninstall the extension
+                        $result = $installer->uninstall($ext['type'], $extensionId);
+                        if ($result) {
+                            Factory::getApplication()->enqueueMessage(
+                                'Successfully uninstalled: ' . $ext['element'] . 
+                                (isset($ext['folder']) ? ' (' . $ext['folder'] . ')' : ''), 
+                                'message'
+                            );
+                        }
+                    }
+                    
+                } catch (\Exception $e) {
+                    // Log individual extension uninstall errors but continue
+                    Factory::getApplication()->enqueueMessage(
+                        'Could not uninstall ' . $ext['element'] . ': ' . $e->getMessage(), 
+                        'warning'
+                    );
+                }
+            }
+            
+        } catch (\Exception $e) {
+            // Log error but don't fail package uninstallation
+            Factory::getApplication()->enqueueMessage('Child extension uninstall error: ' . $e->getMessage(), 'warning');
         }
     }
 
