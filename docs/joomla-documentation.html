@@ -88,6 +88,7 @@
                 <li><a href="#requirements">Requirements</a></li>
                 <li><a href="#installation">Installation Guide</a></li>
                 <li><a href="#configuration">Configuration</a></li>
+                <li><a href="#scheduler-tasks">Scheduler Tasks & Content Processing</a></li>
                 <li><a href="#accessibility">Accessibility Features</a></li>
                 <li><a href="#keyword-extraction">Keyword Extraction</a></li>
                 <li><a href="#admin-component">Administrator Component</a></li>
@@ -279,6 +280,359 @@
             <li><strong>Dark Mode:</strong> Enable dark theme</li>
             <li><strong>Button Label:</strong> Custom text for side position buttons</li>
         </ul>
+
+        <h2 id="scheduler-tasks">Scheduler Tasks & Content Processing</h2>
+
+        <div class="bears-alert">
+            <strong>Critical Setup Step:</strong> The scheduler tasks are essential for populating your document collection and enabling advanced AI retrieval. Without running these tasks, your chatbot will only use basic Joomla article search.
+        </div>
+
+        <h3>Understanding the Docs Table</h3>
+
+        <p>The <code>#__aichatbot_docs</code> table is the <strong>mapping table</strong> that tracks which Joomla articles have been uploaded to your IONOS Document Collection. It serves as:</p>
+
+        <ul>
+            <li><strong>Content Tracker:</strong> Maps Joomla article IDs to IONOS document IDs</li>
+            <li><strong>Change Detection:</strong> Uses content hashes to detect when articles are modified</li>
+            <li><strong>Sync Manager:</strong> Prevents duplicate uploads and manages deletions</li>
+            <li><strong>Status Monitor:</strong> Shows which content is successfully indexed</li>
+        </ul>
+
+        <div class="bears-alert">
+            <strong>Empty Docs Table (0 records):</strong> This means your content hasn't been processed yet. The chatbot is only using basic search instead of AI-powered document retrieval.
+        </div>
+
+        <h3>The Two Scheduler Tasks Explained</h3>
+
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🔄 "Bears AI Chatbot: Reconcile"</h4>
+                <p><strong>Purpose:</strong> Full content synchronization</p>
+                <p><strong>When to run:</strong> Initially (to populate docs table), then daily/weekly</p>
+                <p><strong>What it does:</strong></p>
+                <ul>
+                    <li>Scans ALL articles in selected categories</li>
+                    <li>Uploads new articles to IONOS</li>
+                    <li>Updates changed articles (detects via hash)</li>
+                    <li>Removes deleted/unpublished articles</li>
+                    <li>Populates the docs table with mappings</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ "Bears AI Chatbot: Process Queue"</h4>
+                <p><strong>Purpose:</strong> Incremental updates</p>
+                <p><strong>When to run:</strong> Frequently (every 15-30 minutes)</p>
+                <p><strong>What it does:</strong></p>
+                <ul>
+                    <li>Processes queued upload/delete jobs</li>
+                    <li>Handles real-time content changes</li>
+                    <li>Works on smaller batches for efficiency</li>
+                    <li>Triggered by content plugin events</li>
+                </ul>
+            </div>
+        </div>
+
+        <h3>Initial Setup Process</h3>
+
+        <ol class="bears-step-list">
+            <li>
+                <strong>Verify Prerequisites</strong>
+                <ul>
+                    <li>IONOS credentials configured in module</li>
+                    <li>Content categories selected</li>
+                    <li>Published articles exist in those categories</li>
+                    <li>Task plugin is enabled</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Run Reconcile Task First</strong>
+                <ul>
+                    <li>Go to <strong>System → Scheduler</strong></li>
+                    <li>Find "Bears AI Chatbot: Reconcile"</li>
+                    <li>Click <strong>"Run Now"</strong></li>
+                    <li>Wait for completion (may take several minutes)</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Results</strong>
+                <ul>
+                    <li>Go to <strong>Components → Bears AI Chatbot → Status</strong></li>
+                    <li>Check "Docs table exists (X records)" where X > 0</li>
+                    <li>Verify collection ID exists</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Set Up Regular Schedules</strong>
+                <ul>
+                    <li><strong>Reconcile:</strong> Weekly at 2 AM Sunday (<code>0 2 * * 0</code>)</li>
+                    <li><strong>Process Queue:</strong> Every 30 minutes (<code>*/30 * * * *</code>)</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h3>Collection Diagnostics Explained</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Diagnostic</th>
+                    <th>Meaning</th>
+                    <th>Action Required</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>✅ Docs table exists (0 records)</td>
+                    <td>Table created but no content processed</td>
+                    <td><strong>Run Reconcile task</strong></td>
+                </tr>
+                <tr>
+                    <td>✅ Docs table exists (X records)</td>
+                    <td>X articles successfully mapped</td>
+                    <td>✅ Working correctly</td>
+                </tr>
+                <tr>
+                    <td>❌ Docs table missing</td>
+                    <td>Database table not created</td>
+                    <td>Reinstall package or run SQL manually</td>
+                </tr>
+                <tr>
+                    <td>✅ Collection ID exists</td>
+                    <td>IONOS collection created</td>
+                    <td>✅ Working correctly</td>
+                </tr>
+                <tr>
+                    <td>❌ No collection ID</td>
+                    <td>IONOS collection not created</td>
+                    <td>Check credentials, run Reconcile task</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Troubleshooting Empty Docs Table</h3>
+
+        <div class="bears-alert">
+            <strong>Problem:</strong> Collection diagnostics show "Docs table exists (0 records)"
+        </div>
+
+        <h4>Step-by-Step Resolution:</h4>
+
+        <ol class="bears-step-list">
+            <li>
+                <strong>Check Task Plugin Status</strong>
+                <ul>
+                    <li>Go to <strong>Extensions → Plugins</strong></li>
+                    <li>Search for "Task - Bears AI Chatbot"</li>
+                    <li>Ensure it's <strong>Published</strong></li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Module Configuration</strong>
+                <ul>
+                    <li>IONOS Token is configured</li>
+                    <li>Model is selected</li>
+                    <li>Content categories are selected</li>
+                    <li>Published articles exist in those categories</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Run Reconcile Task Manually</strong>
+                <ul>
+                    <li>Go to <strong>System → Scheduler</strong></li>
+                    <li>Find "Bears AI Chatbot: Reconcile"</li>
+                    <li>Click <strong>"Run Now"</strong></li>
+                    <li>Check execution log for errors</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Check Task Execution Results</strong>
+                <ul>
+                    <li>Look for success message like "Reconcile: X upserts, Y deletes"</li>
+                    <li>If errors, check IONOS credentials and API connectivity</li>
+                    <li>Verify articles are published and in selected categories</li>
+                </ul>
+            </li>
+            <li>
+                <strong>Verify Collection Population</strong>
+                <ul>
+                    <li>Return to <strong>Components → Bears AI Chatbot → Status</strong></li>
+                    <li>Should now show "Docs table exists (X records)" where X > 0</li>
+                    <li>Test chatbot - should now use enhanced AI retrieval</li>
+                </ul>
+            </li>
+        </ol>
+
+        <h3>Common Task Execution Errors</h3>
+
+        <table>
+            <thead>
+                <tr>
+                    <th>Error</th>
+                    <th>Cause</th>
+                    <th>Solution</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>"Missing IONOS credentials"</td>
+                    <td>Token not configured</td>
+                    <td>Configure IONOS token in module settings</td>
+                </tr>
+                <tr>
+                    <td>"No articles found"</td>
+                    <td>No published articles in selected categories</td>
+                    <td>Check category selection and article status</td>
+                </tr>
+                <tr>
+                    <td>"HTTP 401 Unauthorized"</td>
+                    <td>Invalid IONOS token</td>
+                    <td>Verify token is correct and active</td>
+                </tr>
+                <tr>
+                    <td>"Collection not found"</td>
+                    <td>Collection ID invalid</td>
+                    <td>Clear collection ID, let task recreate</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>Performance Considerations</h3>
+
+        <ul>
+            <li><strong>Initial Reconcile:</strong> May take 5-15 minutes for large sites</li>
+            <li><strong>Batch Size:</strong> Default 50 articles per batch (configurable)</li>
+            <li><strong>Rate Limits:</strong> IONOS API has rate limits - tasks handle this automatically</li>
+            <li><strong>Memory Usage:</strong> Large articles may require increased PHP memory limit</li>
+        </ul>
+
+        <h3>Recommended Task Frequencies</h3>
+
+        <div class="bears-alert">
+            <strong>Optimal Schedule:</strong> For most Joomla sites, we recommend weekly reconcile and 30-minute queue processing for the best balance of performance, cost, and user experience.
+        </div>
+
+        <h4>Standard Recommendation (Most Sites)</h4>
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🔄 Reconcile Task: WEEKLY</h4>
+                <p><strong>Schedule:</strong> <code>0 2 * * 0</code> (Sunday 2 AM)</p>
+                <p><strong>Why Weekly:</strong></p>
+                <ul>
+                    <li>Heavy operation - scans ALL articles</li>
+                    <li>Resource intensive (5-15 minutes)</li>
+                    <li>Most sites don't change content daily</li>
+                    <li>Comprehensive cleanup and integrity checks</li>
+                    <li>Cost-effective API usage</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ Process Queue: EVERY 30 MINUTES</h4>
+                <p><strong>Schedule:</strong> <code>*/30 * * * *</code></p>
+                <p><strong>Why 30 Minutes:</strong></p>
+                <ul>
+                    <li>Lightweight operation (seconds to complete)</li>
+                    <li>Handles real-time content changes</li>
+                    <li>Good balance of timeliness vs efficiency</li>
+                    <li>Prevents queue buildup</li>
+                    <li>Maintains current chatbot responses</li>
+                </ul>
+            </div>
+        </div>
+
+        <h4>Alternative Schedules by Site Type</h4>
+        <table>
+            <thead>
+                <tr>
+                    <th>Site Type</th>
+                    <th>Reconcile Task</th>
+                    <th>Process Queue</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>High-Activity Sites</strong><br><small>Multiple daily updates</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every 15 minutes<br><code>*/15 * * * *</code></td>
+                    <td>News sites, active blogs, e-commerce</td>
+                </tr>
+                <tr>
+                    <td><strong>Medium-Activity Sites</strong><br><small>Few updates per day</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every 30 minutes<br><code>*/30 * * * *</code></td>
+                    <td>Corporate sites, documentation, forums</td>
+                </tr>
+                <tr>
+                    <td><strong>Low-Activity Sites</strong><br><small>Updates few times per week</small></td>
+                    <td>Weekly (Sunday 2 AM)</td>
+                    <td>Every hour<br><code>0 * * * *</code></td>
+                    <td>Personal blogs, small business sites</td>
+                </tr>
+                <tr>
+                    <td><strong>Static/Archive Sites</strong><br><small>Rare updates</small></td>
+                    <td>Monthly (1st Sunday)<br><code>0 2 1-7 * 0</code></td>
+                    <td>Every 2 hours<br><code>0 */2 * * *</code></td>
+                    <td>Documentation archives, legacy sites</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h4>Performance Considerations</h4>
+
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>🚫 Why Not More Frequent Reconcile?</h4>
+                <ul>
+                    <li><strong>API Rate Limits:</strong> IONOS has limits that reconcile can hit</li>
+                    <li><strong>Server Load:</strong> Full scans are CPU/memory intensive</li>
+                    <li><strong>Unnecessary:</strong> Most content doesn't change daily</li>
+                    <li><strong>Cost:</strong> More API calls = higher expenses</li>
+                </ul>
+            </div>
+            <div class="bears-feature-card">
+                <h4>⚡ Why Not Less Frequent Queue Processing?</h4>
+                <ul>
+                    <li><strong>User Experience:</strong> Delays in content appearing</li>
+                    <li><strong>Queue Buildup:</strong> Jobs accumulate, slowing processing</li>
+                    <li><strong>Real-time Expectation:</strong> Users expect current content</li>
+                    <li><strong>Search Relevance:</strong> Outdated results frustrate users</li>
+                </ul>
+            </div>
+        </div>
+
+        <h4>Monitoring & Adjustment Signs</h4>
+
+        <div class="bears-alert">
+            <strong>Monitor Your System:</strong> Watch for these indicators to adjust your schedule as needed.
+        </div>
+
+        <h5>Signs You Need More Frequent Reconcile:</h5>
+        <ul>
+            <li>Docs table count doesn't match article count</li>
+            <li>Old deleted articles still appearing in search results</li>
+            <li>Major content changes not reflected in chatbot</li>
+            <li>Collection diagnostics showing inconsistencies</li>
+        </ul>
+
+        <h5>Signs You Need More Frequent Queue Processing:</h5>
+        <ul>
+            <li>New articles not appearing in chatbot for hours</li>
+            <li>Queue jobs table (<code>#__aichatbot_jobs</code>) growing large</li>
+            <li>Users reporting outdated search results</li>
+            <li>Content plugin creating jobs faster than processing</li>
+        </ul>
+
+        <h5>Signs You Can Reduce Frequency:</h5>
+        <ul>
+            <li>Queue jobs table usually empty</li>
+            <li>Very low content change frequency</li>
+            <li>Server resource constraints</li>
+            <li>Budget concerns with API usage</li>
+        </ul>
+
+        <div class="bears-alert">
+            <strong>Success Indicator:</strong> Once the Reconcile task runs successfully, your chatbot will use AI-powered document retrieval instead of basic search, providing much more accurate and contextual responses.
+        </div>
 
         <h2 id="accessibility">Accessibility Features <span class="bears-badge">WCAG 2.1 AA</span></h2>
 
