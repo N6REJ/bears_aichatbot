@@ -18,6 +18,20 @@ use Joomla\Database\DatabaseInterface;
  */
 class pkg_pkg_bears_aichatbotInstallerScript
 {
+    public function install($parent)
+    {
+        // Store package manifest path for uninstallation
+        $this->storeManifestPath($parent);
+        return true;
+    }
+
+    public function update($parent)
+    {
+        // Store package manifest path for uninstallation
+        $this->storeManifestPath($parent);
+        return true;
+    }
+
     public function postflight($type, $parent)
     {
         // Obtain DB from installer parent to avoid DI container usage
@@ -26,6 +40,11 @@ class pkg_pkg_bears_aichatbotInstallerScript
         // Enable the plugins (content + task) via Extension table (standard Joomla 5)
         $this->enablePlugin($db, 'content', 'bears_aichatbot');
         $this->enablePlugin($db, 'task', 'bears_aichatbot');
+
+        // Ensure manifest path is stored
+        if ($type === 'install' || $type === 'update') {
+            $this->storeManifestPath($parent);
+        }
     }
 
     public function uninstall($parent)
@@ -141,6 +160,46 @@ class pkg_pkg_bears_aichatbotInstallerScript
             }
         } catch (\Throwable $e) {
             // ignore
+        }
+    }
+
+    protected function storeManifestPath($parent)
+    {
+        try {
+            $db = $parent->getParent()->getDbo();
+            
+            // Ensure the package extension record has the correct manifest_cache
+            $query = $db->getQuery(true)
+                ->select($db->quoteName('extension_id'))
+                ->from($db->quoteName('#__extensions'))
+                ->where($db->quoteName('type') . ' = ' . $db->quote('package'))
+                ->where($db->quoteName('element') . ' = ' . $db->quote('pkg_bears_aichatbot'));
+            
+            $db->setQuery($query);
+            $extensionId = $db->loadResult();
+            
+            if ($extensionId) {
+                // Update the manifest_cache to ensure proper uninstallation
+                $manifestData = [
+                    'name' => 'pkg_bears_aichatbot',
+                    'type' => 'package',
+                    'creationDate' => '2025 September 14',
+                    'author' => 'N6REJ',
+                    'version' => '2025.09.14.4',
+                    'description' => 'Package containing the Bears AI Chatbot site module and associated plugins'
+                ];
+                
+                $updateQuery = $db->getQuery(true)
+                    ->update($db->quoteName('#__extensions'))
+                    ->set($db->quoteName('manifest_cache') . ' = ' . $db->quote(json_encode($manifestData)))
+                    ->where($db->quoteName('extension_id') . ' = ' . (int)$extensionId);
+                
+                $db->setQuery($updateQuery);
+                $db->execute();
+            }
+            
+        } catch (\Throwable $e) {
+            // Ignore manifest storage errors
         }
     }
 }
