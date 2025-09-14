@@ -2,7 +2,7 @@
 /**
  * Bears AI Chatbot - Keywords View Template
  *
- * @version 2025.09.14.2
+ * @version 2025.09.14.3
  * @package Bears AI Chatbot
  * @author N6REJ
  * @email troy@hallhome.us
