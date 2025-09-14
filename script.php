@@ -21,6 +21,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     public function install($parent)
     {
         $this->enablePlugins();
+        $this->normalizePackageRow();
         return true;
     }
 
@@ -30,6 +31,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     public function update($parent)
     {
         $this->enablePlugins();
+        $this->normalizePackageRow();
         return true;
     }
 
@@ -40,6 +42,7 @@ class pkg_pkg_bears_aichatbotInstallerScript
     {
         if ($type === 'install' || $type === 'update') {
             $this->enablePlugins();
+            $this->normalizePackageRow();
         }
     }
 
@@ -104,6 +107,87 @@ class pkg_pkg_bears_aichatbotInstallerScript
             }
         } catch (\Exception $e) {
             // Ignore individual plugin errors
+        }
+    }
+
+    /**
+     * Normalize the package row in #__extensions to ensure element and duplicates are correct
+     */
+    private function normalizePackageRow()
+    {
+        try {
+            $db = Factory::getDbo();
+
+            // Fetch any package rows with either correct or incorrect element name
+            $q = $db->getQuery(true)
+                ->select($db->quoteName(['extension_id','element','manifest_cache']))
+                ->from($db->quoteName('#__extensions'))
+                ->where($db->quoteName('type') . ' = ' . $db->quote('package'))
+                ->where($db->quoteName('element') . ' IN (' . $db->quote('pkg_bears_aichatbot') . ',' . $db->quote('pkg_pkg_bears_aichatbot') . ')');
+            $db->setQuery($q);
+            $rows = (array) $db->loadAssocList();
+
+            if (!$rows) {
+                return; // nothing to normalize
+            }
+
+            $keepId = 0;
+            $toDelete = [];
+
+            // Prefer keeping a row that already has the correct element
+            foreach ($rows as $r) {
+                if ((string)$r['element'] === 'pkg_bears_aichatbot') {
+                    if ($keepId === 0) {
+                        $keepId = (int)$r['extension_id'];
+                    } else {
+                        $toDelete[] = (int)$r['extension_id'];
+                    }
+                }
+            }
+
+            // If no correct row, convert the first wrong one and mark the rest for delete
+            if ($keepId === 0) {
+                $first = $rows[0];
+                $keepId = (int)$first['extension_id'];
+                $upd = $db->getQuery(true)
+                    ->update($db->quoteName('#__extensions'))
+                    ->set($db->quoteName('element') . ' = ' . $db->quote('pkg_bears_aichatbot'))
+                    ->where($db->quoteName('extension_id') . ' = ' . $keepId);
+                $db->setQuery($upd)->execute();
+                // Remaining wrong rows (if any) get deleted below
+                for ($i = 1; $i < count($rows); $i++) {
+                    $toDelete[] = (int)$rows[$i]['extension_id'];
+                }
+            } else {
+                // Mark all non-keep rows for deletion
+                foreach ($rows as $r) {
+                    if ((int)$r['extension_id'] !== $keepId) {
+                        $toDelete[] = (int)$r['extension_id'];
+                    }
+                }
+            }
+
+            // Delete duplicate/incorrect rows if any
+            if (!empty($toDelete)) {
+                $del = $db->getQuery(true)
+                    ->delete($db->quoteName('#__extensions'))
+                    ->where($db->quoteName('extension_id') . ' IN (' . implode(',', array_map('intval', $toDelete)) . ')');
+                $db->setQuery($del)->execute();
+            }
+
+            // Ensure minimal manifest_cache exists for the kept row
+            $minimal = json_encode([
+                'name'    => 'pkg_bears_aichatbot',
+                'type'    => 'package',
+                'version' => '2025.09.14.7'
+            ], JSON_UNESCAPED_SLASHES);
+            $upd2 = $db->getQuery(true)
+                ->update($db->quoteName('#__extensions'))
+                ->set($db->quoteName('manifest_cache') . ' = ' . $db->quote($minimal))
+                ->where($db->quoteName('extension_id') . ' = ' . (int)$keepId);
+            $db->setQuery($upd2)->execute();
+        } catch (\Throwable $e) {
+            // ignore normalization errors to avoid breaking install/update
         }
     }
 
