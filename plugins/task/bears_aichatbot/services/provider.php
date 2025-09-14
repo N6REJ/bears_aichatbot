@@ -20,9 +20,21 @@ return new class implements ServiceProviderInterface {
             // Gracefully no-op if provider class is unavailable to avoid breaking the Plugin Manager
             return;
         }
-        // Register by group and element (per manual)
+
+        // Register by group/element and optionally path, depending on constructor signature
         if ($providerClass !== null) {
-            $container->registerServiceProvider(new $providerClass('task', 'bears_aichatbot', dirname(__DIR__)));
+            try {
+                $ref  = new \ReflectionClass($providerClass);
+                $ctor = $ref->getConstructor();
+                $n    = $ctor ? $ctor->getNumberOfParameters() : 0;
+                if ($n >= 3) {
+                    $container->registerServiceProvider(new $providerClass('task', 'bears_aichatbot', dirname(__DIR__)));
+                } else {
+                    $container->registerServiceProvider(new $providerClass('task', 'bears_aichatbot'));
+                }
+            } catch (\Throwable $e) {
+                // Graceful no-op to avoid breaking the Plugin Manager
+            }
         }
     }
 };
