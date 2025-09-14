@@ -17,7 +17,8 @@ $position     = $params->get('chat_position', 'bottom-right');
 $offsetBottom = (int) $params->get('chat_offset_bottom', 20);
 $offsetSide   = (int) $params->get('chat_offset_side', 20);
 ?>
-<div class="bears-aichatbot" data-module-id="<?php echo $moduleId; ?>"
+<div class="bears-aichatbot" 
+     data-module-id="<?php echo $moduleId; ?>"
      data-ajax-url="<?php echo htmlspecialchars($ajaxEndpoint, ENT_QUOTES, 'UTF-8'); ?>"
      data-position="<?php echo htmlspecialchars($position, ENT_QUOTES, 'UTF-8'); ?>"
      data-offset-bottom="<?php echo (int) $offsetBottom; ?>"
@@ -25,21 +26,61 @@ $offsetSide   = (int) $params->get('chat_offset_side', 20);
      data-open-width="<?php echo (int) $params->get('open_width', 400); ?>"
      data-open-height="<?php echo (int) $params->get('open_height', 500); ?>"
      data-button-label="<?php echo htmlspecialchars($params->get('button_label', 'Knowledgebase'), ENT_QUOTES, 'UTF-8'); ?>"
-     data-dark-mode="<?php echo (int) $params->get('dark_mode', 0); ?>">
-    <div class="bears-aichatbot-window">
+     data-dark-mode="<?php echo (int) $params->get('dark_mode', 0); ?>"
+     role="complementary"
+     aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_ARIA_LABEL'); ?>">
+    
+    <!-- Screen reader only description -->
+    <div id="chat-description-<?php echo $moduleId; ?>" class="bears-sr-only">
+        <?php echo Text::_('MOD_BEARS_AICHATBOT_CHAT_DESCRIPTION'); ?>
+    </div>
+    
+    <!-- Status announcements for screen readers -->
+    <div id="chat-status-<?php echo $moduleId; ?>" 
+         aria-live="assertive" 
+         class="bears-sr-only"></div>
+    
+    <div class="bears-aichatbot-window" 
+         role="dialog" 
+         aria-modal="false"
+         aria-labelledby="chat-title-<?php echo $moduleId; ?>"
+         aria-describedby="chat-description-<?php echo $moduleId; ?>">
         <div class="bears-aichatbot-header">
-            <div class="bears-aichatbot-title"><?php echo Text::_('MOD_BEARS_AICHATBOT_TITLE'); ?></div>
+            <div class="bears-aichatbot-title" id="chat-title-<?php echo $moduleId; ?>">
+                <?php echo Text::_('MOD_BEARS_AICHATBOT_TITLE'); ?>
+            </div>
         </div>
-        <div class="bears-aichatbot-messages" id="bears-aichatbot-messages-<?php echo $moduleId; ?>">
+        <div class="bears-aichatbot-messages" 
+             id="bears-aichatbot-messages-<?php echo $moduleId; ?>"
+             role="log"
+             aria-live="polite"
+             aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_CONVERSATION_LABEL'); ?>"
+             tabindex="0">
             <?php if (!empty($introText)) : ?>
-                <div class="message bot">
+                <div class="message bot" role="article" aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_BOT_MESSAGE'); ?>">
                     <div class="bubble"><?php echo $introText; ?></div>
                 </div>
             <?php endif; ?>
         </div>
-        <div class="bears-aichatbot-input">
-            <input type="text" class="bears-aichatbot-text" id="bears-aichatbot-input-<?php echo $moduleId; ?>" placeholder="<?php echo Text::_('MOD_BEARS_AICHATBOT_PLACEHOLDER'); ?>" />
-            <button class="bears-aichatbot-send btn btn-primary" id="bears-aichatbot-send-<?php echo $moduleId; ?>"><?php echo Text::_('MOD_BEARS_AICHATBOT_SEND'); ?></button>
+        <div class="bears-aichatbot-input" role="form" aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_INPUT_FORM_LABEL'); ?>">
+            <label for="bears-aichatbot-input-<?php echo $moduleId; ?>" class="bears-sr-only">
+                <?php echo Text::_('MOD_BEARS_AICHATBOT_INPUT_LABEL'); ?>
+            </label>
+            <input type="text" 
+                   id="bears-aichatbot-input-<?php echo $moduleId; ?>"
+                   class="bears-aichatbot-text" 
+                   placeholder="<?php echo Text::_('MOD_BEARS_AICHATBOT_PLACEHOLDER'); ?>"
+                   aria-describedby="chat-help-<?php echo $moduleId; ?>"
+                   aria-required="false" />
+            <div id="chat-help-<?php echo $moduleId; ?>" class="bears-sr-only">
+                <?php echo Text::_('MOD_BEARS_AICHATBOT_INPUT_HELP'); ?>
+            </div>
+            <button class="bears-aichatbot-send btn btn-primary" 
+                    id="bears-aichatbot-send-<?php echo $moduleId; ?>"
+                    aria-describedby="chat-help-<?php echo $moduleId; ?>"
+                    aria-busy="false">
+                <?php echo Text::_('MOD_BEARS_AICHATBOT_SEND'); ?>
+            </button>
         </div>
     </div>
 </div>

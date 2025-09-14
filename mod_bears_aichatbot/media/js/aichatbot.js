@@ -1,4 +1,30 @@
 (function () {
+  // Helper function to get language strings (fallback to English if not available)
+  function getLanguageString(key, fallback) {
+    // Try to get from Joomla language system if available
+    if (typeof Joomla !== 'undefined' && Joomla.Text && Joomla.Text._(key)) {
+      return Joomla.Text._(key);
+    }
+    return fallback || key;
+  }
+
+  // Announce message to screen readers
+  function announceToScreenReader(message, priority = 'polite') {
+    const announcement = document.createElement('div');
+    announcement.setAttribute('aria-live', priority);
+    announcement.setAttribute('aria-atomic', 'true');
+    announcement.className = 'bears-sr-only';
+    announcement.textContent = message;
+    document.body.appendChild(announcement);
+    
+    // Remove after announcement
+    setTimeout(() => {
+      if (announcement.parentNode) {
+        announcement.parentNode.removeChild(announcement);
+      }
+    }, 1000);
+  }
+
   function ensureStyles() {
     try {
       if (document.getElementById('bears-aichatbot-inline-style')) return;
@@ -327,13 +353,16 @@
     // Create toggle (bubble) and header close button
     const toggle = document.createElement('button');
     toggle.className = 'bears-aichatbot-toggle btn btn-primary';
-    toggle.setAttribute('aria-label', 'Open chat');
-    toggle.title = 'Chat';
+    toggle.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_OPEN_CHAT', 'Open AI chatbot'));
+    toggle.setAttribute('aria-expanded', 'false');
+    toggle.setAttribute('aria-describedby', `chat-description-${moduleId}`);
+    toggle.title = getLanguageString('MOD_BEARS_AICHATBOT_OPEN_CHAT', 'Open AI chatbot');
     // Vertical labeled toggle for middle positions
     if (position === 'middle-right' || position === 'middle-left') {
       toggle.textContent = buttonLabel;
     } else {
       toggle.textContent = '💬';
+      toggle.setAttribute('aria-label', `${getLanguageString('MOD_BEARS_AICHATBOT_OPEN_CHAT', 'Open AI chatbot')} (Chat icon)`);
     }
     instance.appendChild(toggle);
 
@@ -342,7 +371,7 @@
     if (!closeBtn && headerEl) {
       closeBtn = document.createElement('button');
       closeBtn.className = 'bears-aichatbot-close';
-      closeBtn.setAttribute('aria-label', 'Close chat');
+      closeBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_CLOSE_CHAT', 'Close chatbot'));
       closeBtn.type = 'button';
       closeBtn.textContent = '×';
       headerEl.appendChild(closeBtn);
@@ -351,15 +380,31 @@
     function openChat() {
       instance.classList.add('bears-aichatbot--open');
       instance.classList.remove('bears-aichatbot--closed');
+      // Update ARIA attributes
+      toggle.setAttribute('aria-expanded', 'true');
+      const window = instance.querySelector('.bears-aichatbot-window');
+      if (window) {
+        window.setAttribute('aria-modal', 'true');
+      }
       // Anchor to bottom when opened
       instance.style.removeProperty('top');
       instance.style.removeProperty('transform');
       instance.style.setProperty('bottom', `var(--bears-offset-bottom, 20px)`);
+      // Announce to screen readers
+      announceToScreenReader(getLanguageString('MOD_BEARS_AICHATBOT_CHAT_OPENED', 'Chat opened'));
       try { input && input.focus(); } catch(e) {}
     }
     function closeChat() {
       instance.classList.remove('bears-aichatbot--open');
       instance.classList.add('bears-aichatbot--closed');
+      // Update ARIA attributes
+      toggle.setAttribute('aria-expanded', 'false');
+      const window = instance.querySelector('.bears-aichatbot-window');
+      if (window) {
+        window.setAttribute('aria-modal', 'false');
+      }
+      // Announce to screen readers
+      announceToScreenReader(getLanguageString('MOD_BEARS_AICHATBOT_CHAT_CLOSED', 'Chat closed'));
     }
     toggle.addEventListener('click', openChat);
     if (closeBtn) closeBtn.addEventListener('click', closeChat);
@@ -368,9 +413,20 @@
     const input = instance.querySelector('.bears-aichatbot-text');
     const sendBtn = instance.querySelector('.bears-aichatbot-send');
 
-    function appendMessage(role, text) {
+    function appendMessage(role, text, isError = false) {
       const wrap = document.createElement('div');
-      wrap.className = 'message ' + (role === 'user' ? 'user' : 'bot');
+      wrap.className = 'message ' + (role === 'user' ? 'user' : 'bot') + (isError ? ' error' : '');
+      wrap.setAttribute('role', 'article');
+      
+      // Set appropriate ARIA label
+      if (role === 'user') {
+        wrap.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_USER_MESSAGE', 'Your message'));
+      } else if (isError) {
+        wrap.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_ERROR_MESSAGE', 'Error message'));
+      } else {
+        wrap.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_BOT_MESSAGE', 'AI assistant response'));
+      }
+      
       const bubble = document.createElement('div');
       bubble.className = 'bubble';
       if (role === 'bot') {
@@ -382,6 +438,7 @@
       }
       wrap.appendChild(bubble);
       messages.appendChild(wrap);
+      
       // Auto-scroll to bottom with slight delay for animation
       setTimeout(() => {
         messages.scrollTop = messages.scrollHeight;
@@ -435,19 +492,30 @@
     let thinkingIndicator = null;
 
     function setLoading(loading, status) {
+      const statusEl = document.getElementById(`chat-status-${moduleId}`);
+      
       if (loading) {
-        // Disable and animate the send button
+        // Update ARIA attributes for loading state
         sendBtn.setAttribute('disabled', 'disabled');
+        sendBtn.setAttribute('aria-busy', 'true');
         sendBtn.classList.add('loading');
         if (!sendBtn.dataset.prevText) {
           sendBtn.dataset.prevText = sendBtn.textContent;
         }
         sendBtn.innerHTML = '<span style="opacity: 0.8;">Sending...</span>';
         
+        // Announce loading status to screen readers
+        const statusText = status || getLanguageString('MOD_BEARS_AICHATBOT_THINKING', 'AI is researching your question');
+        if (statusEl) {
+          statusEl.textContent = statusText;
+        }
+        
         // Add or update thinking indicator in the chat
         if (!thinkingIndicator) {
           thinkingIndicator = document.createElement('div');
           thinkingIndicator.className = 'message bot';
+          thinkingIndicator.setAttribute('role', 'status');
+          thinkingIndicator.setAttribute('aria-label', statusText);
           thinkingIndicator.innerHTML = `
             <div class="bears-thinking-indicator">
               <span class="bears-thinking-text">Researching</span>
@@ -467,15 +535,22 @@
           if (textElement) {
             textElement.textContent = status;
           }
+          thinkingIndicator.setAttribute('aria-label', status);
         }
         
         messages.scrollTop = messages.scrollHeight;
       } else {
         // Remove loading state from button
         sendBtn.removeAttribute('disabled');
+        sendBtn.setAttribute('aria-busy', 'false');
         sendBtn.classList.remove('loading');
         if (sendBtn.dataset.prevText) {
           sendBtn.textContent = sendBtn.dataset.prevText;
+        }
+        
+        // Clear status announcements
+        if (statusEl) {
+          statusEl.textContent = '';
         }
         
         // Remove thinking indicator
