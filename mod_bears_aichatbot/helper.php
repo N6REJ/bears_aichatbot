@@ -118,23 +118,42 @@ class ModBearsAichatbotHelper
         // Auto-create a document collection on first use if missing but credentials are present
         if ($collectionId === '' && $token !== '') {
             try {
-                // Use the correct IONOS Cloud API v6 endpoint for document collections
-                // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
-                $apiBase = 'https://api.ionos.com/cloudapi/v6';
+                // Use the correct IONOS Inference API endpoint for document collections
+                // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+                $apiBase = 'https://inference.de-txl.ionos.com';
 
                 $site   = Factory::getApplication()->get('sitename') ?: 'Joomla Site';
                 $root   = \Joomla\CMS\Uri\Uri::root();
                 $host   = parse_url($root, PHP_URL_HOST) ?: 'localhost';
                 $name   = 'bears-aichatbot-' . preg_replace('/[^a-z0-9-]/i', '-', $host) . '-' . date('YmdHis');
-                $payload = [ 'name' => $name, 'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')' ];
+                $payload = [ 
+                    'properties' => [
+                        'name' => $name, 
+                        'description' => 'Auto-created by Bears AI Chatbot for ' . $site . ' (' . $root . ')',
+                        'chunking' => [
+                            'enabled' => true,
+                            'strategy' => [
+                                'config' => [
+                                    'chunk_overlap' => 50,
+                                    'chunk_size' => 512
+                                ]
+                            ]
+                        ],
+                        'embedding' => [
+                            'model' => 'BAAI/bge-large-en-v1.5'
+                        ],
+                        'engine' => [
+                            'db_type' => 'pgvector'
+                        ]
+                    ]
+                ];
                 $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
-                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
 
                 $http = HttpFactory::getHttp();
-                $resp = $http->post($apiBase . '/ai/modelhub/document-collections', json_encode($payload), $headers, 30);
+                $resp = $http->post($apiBase . '/collections', json_encode($payload), $headers, 30);
                 if ($resp->code >= 200 && $resp->code < 300) {
                     $data = json_decode((string)$resp->body, true);
-                    $newId = (string)($data['id'] ?? $data['collection_id'] ?? '');
+                    $newId = (string)($data['id'] ?? '');
                     if ($newId !== '') {
                         // Persist operational state to centralized table only
                         try {
@@ -156,86 +175,54 @@ class ModBearsAichatbotHelper
         
         // Try Document Collection retrieval if configured and no context yet
         if ($context === '' && $collectionId !== '' && $token !== '') {
-            // Use the correct IONOS Cloud API v6 endpoint for document collections
-            // Based on official documentation: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
-            $apiBase = 'https://api.ionos.com/cloudapi/v6';
+            // Use the correct IONOS Inference API endpoint for document collections
+            // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+            $apiBase = 'https://inference.de-txl.ionos.com';
             try {
                 $http = HttpFactory::getHttp();
-                $url = rtrim($apiBase, '/') . '/ai/modelhub/document-collections/' . rawurlencode($collectionId) . '/query';
-                $payload = [ 'query' => $message, 'top_k' => $topK, 'score_threshold' => $minScore, 'topK' => $topK, 'scoreThreshold' => $minScore ];
+                $url = rtrim($apiBase, '/') . '/collections/' . rawurlencode($collectionId) . '/query';
+                $payload = [ 'query' => $message, 'limit' => $topK ];
                 $headers = [ 'Authorization' => 'Bearer ' . $token, 'Accept' => 'application/json', 'Content-Type' => 'application/json' ];
-                if ($tokenId !== '') { $headers['X-IONOS-Token-Id'] = $tokenId; }
                 $resp = $http->post($url, json_encode($payload), $headers, 30);
                 if ($resp->code >= 200 && $resp->code < 300) {
                     $data = json_decode((string)$resp->body, true);
 
-                    // Collect possible result arrays from different schemas
+                    // Handle IONOS Inference API response format based on collections.ipynb
                     $candidates = [];
-                    if (isset($data['results']) && is_array($data['results'])) $candidates = $data['results'];
-                    elseif (isset($data['documents']) && is_array($data['documents'])) $candidates = $data['documents'];
-                    elseif (isset($data['data']) && is_array($data['data'])) $candidates = $data['data'];
-                    elseif (isset($data['hits']) && is_array($data['hits'])) $candidates = $data['hits'];
-                    elseif (isset($data['matches']) && is_array($data['matches'])) $candidates = $data['matches'];
-                    elseif (isset($data['items']) && is_array($data['items'])) $candidates = $data['items'];
-
-                    // Handle vector DB shape: documents (array of strings) + metadatas (array)
-                    if (empty($candidates) && isset($data['documents']) && is_array($data['documents'])) {
-                        $docsArr = $data['documents'];
-                        $metasArr = isset($data['metadatas']) && is_array($data['metadatas']) ? $data['metadatas'] : [];
-                        $scoresArr = isset($data['scores']) && is_array($data['scores']) ? $data['scores'] : [];
-                        $tmp = [];
-                        foreach ($docsArr as $i => $docVal) {
-                            $tmp[] = [
-                                'text' => is_string($docVal) ? $docVal : (string)($docVal['text'] ?? $docVal['content'] ?? ''),
-                                'metadata' => isset($metasArr[$i]) && is_array($metasArr[$i]) ? $metasArr[$i] : [],
-                                'score' => isset($scoresArr[$i]) ? (float)$scoresArr[$i] : null,
-                            ];
-                        }
-                        $candidates = $tmp;
-                    }
-
-                    // Normalize candidates to {text, metadata, score}
-                    $normalized = [];
-                    foreach ((array)$candidates as $c) {
-                        $text = '';
-                        if (is_string($c)) { $text = $c; $meta = []; $score = null; }
-                        else {
-                            $meta = (array)($c['metadata'] ?? $c['meta'] ?? $c['attrs'] ?? ($c['document']['metadata'] ?? []));
-                            $score = $c['score'] ?? $c['similarity'] ?? $c['relevance'] ?? null;
-                            if ($score === null && isset($c['distance'])) {
-                                // Convert distance (0=identical, 1=far) to similarity if plausible
-                                $d = (float)$c['distance'];
-                                if ($d >= 0 && $d <= 1) { $score = 1.0 - $d; }
+                    if (isset($data['properties']['matches']) && is_array($data['properties']['matches'])) {
+                        $matches = $data['properties']['matches'];
+                        foreach ($matches as $match) {
+                            if (isset($match['document']['properties']['content'])) {
+                                // Decode base64 content
+                                $content = base64_decode($match['document']['properties']['content']);
+                                $name = $match['document']['properties']['name'] ?? '';
+                                $score = $match['score'] ?? null;
+                                
+                                $candidates[] = [
+                                    'text' => $content,
+                                    'metadata' => ['name' => $name],
+                                    'score' => is_numeric($score) ? (float)$score : null
+                                ];
                             }
-                            // Extract text from common paths
-                            $text = (string)($c['text']
-                                ?? ($c['content'] ?? null)
-                                ?? ($c['chunk'] ?? null)
-                                ?? ($c['page_content'] ?? null)
-                                ?? ($c['document']['text'] ?? null)
-                                ?? ($c['document']['content'] ?? ''));
                         }
-                        $text = (string)$text;
-                        if ($text === '') { continue; }
-                        $normalized[] = [ 'text' => $text, 'metadata' => $meta ?? [], 'score' => is_numeric($score) ? (float)$score : null ];
                     }
 
                     // Client-side filter/sort according to minScore and topK if score is available
-                    if (!empty($normalized)) {
+                    if (!empty($candidates)) {
                         // Filter by score if present
-                        $hasScores = array_reduce($normalized, function($carry, $it){ return $carry || ($it['score'] !== null); }, false);
+                        $hasScores = array_reduce($candidates, function($carry, $it){ return $carry || ($it['score'] !== null); }, false);
                         if ($hasScores) {
-                            $normalized = array_values(array_filter($normalized, function($it) use ($minScore){ return $it['score'] === null ? true : ($it['score'] >= $minScore); }));
-                            usort($normalized, function($a, $b){ return ($b['score'] <=> $a['score']); });
+                            $candidates = array_values(array_filter($candidates, function($it) use ($minScore){ return $it['score'] === null ? true : ($it['score'] >= $minScore); }));
+                            usort($candidates, function($a, $b){ return ($b['score'] <=> $a['score']); });
                         }
                         // Trim to topK
-                        if (count($normalized) > $topK) { $normalized = array_slice($normalized, 0, $topK); }
+                        if (count($candidates) > $topK) { $candidates = array_slice($candidates, 0, $topK); }
 
                         $parts = [];
                         $retrievedTopScore = null;
-                        foreach ($normalized as $it) {
+                        foreach ($candidates as $it) {
                             $meta = (array)$it['metadata'];
-                            $source = (string)($meta['url'] ?? $meta['source'] ?? $meta['title'] ?? '');
+                            $source = (string)($meta['name'] ?? $meta['source'] ?? $meta['title'] ?? '');
                             $label = $source !== '' ? ('Source: ' . $source) : '';
                             $snippet = mb_substr((string)$it['text'], 0, 1500);
                             $parts[] = ($label !== '' ? ($label . "\n") : '') . $snippet;
