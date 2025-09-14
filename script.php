@@ -1,57 +1,117 @@
 <?php
 /**
  * Package installer script for pkg_bears_aichatbot
- * - Enables the content and task plugins by default using Joomla 5 APIs
- * - Defers Scheduler task creation to Joomla's standard Scheduled Tasks UI
+ * Uses Joomla's standard package uninstallation methods
  */
 \defined('_JEXEC') or die;
 
+use Joomla\CMS\Factory;
+use Joomla\CMS\Installer\Installer;
 use Joomla\CMS\Table\Extension as ExtensionTable;
 use Joomla\Database\DatabaseInterface;
 
 /**
- * Primary installer script class keyed to how Joomla may compute the class name
- * for a package with packagename="pkg_bears_aichatbot".
- * Many Joomla versions build the class name as: type prefix + '_' + element + 'InstallerScript'
- * where element for packages equals the <packagename>.
- * Result => 'pkg_' + 'pkg_bears_aichatbot' + 'InstallerScript'
+ * Package installer script class
  */
 class pkg_pkg_bears_aichatbotInstallerScript
 {
+    /**
+     * Called after installation
+     */
     public function install($parent)
     {
-        // Store package manifest path for uninstallation
-        $this->storeManifestPath($parent);
+        $this->enablePlugins();
         return true;
     }
 
+    /**
+     * Called after update
+     */
     public function update($parent)
     {
-        // Store package manifest path for uninstallation
-        $this->storeManifestPath($parent);
+        $this->enablePlugins();
         return true;
     }
 
+    /**
+     * Called after any type of action
+     */
     public function postflight($type, $parent)
     {
-        // Obtain DB from installer parent to avoid DI container usage
-        $db = $parent->getParent()->getDbo();
-
-        // Enable the plugins (content + task) via Extension table (standard Joomla 5)
-        $this->enablePlugin($db, 'content', 'bears_aichatbot');
-        $this->enablePlugin($db, 'task', 'bears_aichatbot');
-
-        // Ensure manifest path is stored
         if ($type === 'install' || $type === 'update') {
-            $this->storeManifestPath($parent);
+            $this->enablePlugins();
         }
     }
 
+    /**
+     * Called before uninstallation
+     * This is where we clean up our data before Joomla uninstalls the extensions
+     */
+    public function preflight($type, $parent)
+    {
+        if ($type === 'uninstall') {
+            $this->cleanupBeforeUninstall();
+        }
+        return true;
+    }
+
+    /**
+     * Called during uninstallation
+     * Joomla handles the extension removal, we just clean up data
+     */
     public function uninstall($parent)
     {
-        // Clean up Bears AI Chatbot data during uninstallation
+        // Additional cleanup after extensions are removed
+        $this->finalCleanup();
+        return true;
+    }
+
+    /**
+     * Enable the plugins after installation
+     */
+    private function enablePlugins()
+    {
         try {
-            $db = $parent->getParent()->getDbo();
+            $db = Factory::getDbo();
+            
+            // Enable task plugin
+            $this->enablePlugin($db, 'task', 'bears_aichatbot');
+            
+            // Enable content plugin
+            $this->enablePlugin($db, 'content', 'bears_aichatbot');
+            
+        } catch (\Exception $e) {
+            // Log error but don't fail installation
+            Factory::getApplication()->enqueueMessage('Could not enable plugins: ' . $e->getMessage(), 'warning');
+        }
+    }
+
+    /**
+     * Enable a specific plugin
+     */
+    private function enablePlugin($db, $folder, $element)
+    {
+        try {
+            $table = new ExtensionTable($db);
+            if ($table->load(['type' => 'plugin', 'element' => $element, 'folder' => $folder])) {
+                if ((int) $table->enabled !== 1) {
+                    $table->enabled = 1;
+                    $table->store();
+                }
+            }
+        } catch (\Exception $e) {
+            // Ignore individual plugin errors
+        }
+    }
+
+    /**
+     * Clean up data before uninstallation
+     * This runs before Joomla removes the extensions
+     */
+    private function cleanupBeforeUninstall()
+    {
+        try {
+            $db = Factory::getDbo();
             
             // Remove scheduler tasks
             $query = $db->getQuery(true)
@@ -74,137 +134,46 @@ class pkg_pkg_bears_aichatbotInstallerScript
                 try {
                     $db->setQuery("DROP TABLE IF EXISTS " . $db->quoteName($table));
                     $db->execute();
-                } catch (\Throwable $e) {
+                } catch (\Exception $e) {
                     // Ignore individual table errors
                 }
             }
             
-            // Clean up orphaned module menu assignments
-            try {
-                $query = $db->getQuery(true)
-                    ->delete($db->quoteName('#__modules_menu'))
-                    ->where($db->quoteName('moduleid') . ' NOT IN (SELECT ' . $db->quoteName('id') . ' FROM ' . $db->quoteName('#__modules') . ')');
-                $db->setQuery($query);
-                $db->execute();
-            } catch (\Throwable $e) {
-                // Ignore cleanup errors
-            }
-            
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             // Log error but don't fail uninstallation
-            \Joomla\CMS\Log\Log::add('Bears AI Chatbot uninstall cleanup error: ' . $e->getMessage(), \Joomla\CMS\Log\Log::WARNING, 'bears_aichatbot');
+            Factory::getApplication()->enqueueMessage('Cleanup warning: ' . $e->getMessage(), 'warning');
         }
-        
-        return true;
     }
 
-    public function preflight($type, $parent)
-    {
-        // Handle package uninstallation issues
-        if ($type === 'uninstall') {
-            try {
-                $db = $parent->getParent()->getDbo();
-                
-                // Ensure all child extensions are properly registered for uninstallation
-                $childExtensions = [
-                    ['type' => 'component', 'element' => 'com_bears_aichatbot'],
-                    ['type' => 'module', 'element' => 'mod_bears_aichatbot'],
-                    ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'task'],
-                    ['type' => 'plugin', 'element' => 'bears_aichatbot', 'folder' => 'content'],
-                    ['type' => 'plugin', 'element' => 'bears_aichatbotinstaller', 'folder' => 'system']
-                ];
-                
-                foreach ($childExtensions as $ext) {
-                    $query = $db->getQuery(true)
-                        ->select($db->quoteName('extension_id'))
-                        ->from($db->quoteName('#__extensions'))
-                        ->where($db->quoteName('type') . ' = ' . $db->quote($ext['type']))
-                        ->where($db->quoteName('element') . ' = ' . $db->quote($ext['element']));
-                    
-                    if (isset($ext['folder'])) {
-                        $query->where($db->quoteName('folder') . ' = ' . $db->quote($ext['folder']));
-                    }
-                    
-                    $db->setQuery($query);
-                    $extensionId = $db->loadResult();
-                    
-                    if ($extensionId) {
-                        // Mark extension as enabled to ensure proper uninstallation
-                        $updateQuery = $db->getQuery(true)
-                            ->update($db->quoteName('#__extensions'))
-                            ->set($db->quoteName('enabled') . ' = 1')
-                            ->where($db->quoteName('extension_id') . ' = ' . (int)$extensionId);
-                        $db->setQuery($updateQuery);
-                        $db->execute();
-                    }
-                }
-                
-            } catch (\Throwable $e) {
-                // Continue with uninstallation even if preflight fails
-            }
-        }
-        
-        return true;
-    }
-
-    protected function enablePlugin(DatabaseInterface $db, string $folder, string $element): void
+    /**
+     * Final cleanup after extensions are removed
+     */
+    private function finalCleanup()
     {
         try {
-            $table = new ExtensionTable($db);
-
-            if ($table->load(['type' => 'plugin', 'element' => $element, 'folder' => $folder])) {
-                if ((int) $table->enabled !== 1) {
-                    $table->enabled = 1;
-                    $table->store();
-                }
-            }
-        } catch (\Throwable $e) {
-            // ignore
-        }
-    }
-
-    protected function storeManifestPath($parent)
-    {
-        try {
-            $db = $parent->getParent()->getDbo();
+            $db = Factory::getDbo();
             
-            // Ensure the package extension record has the correct manifest_cache
+            // Clean up orphaned module menu assignments
             $query = $db->getQuery(true)
-                ->select($db->quoteName('extension_id'))
-                ->from($db->quoteName('#__extensions'))
-                ->where($db->quoteName('type') . ' = ' . $db->quote('package'))
-                ->where($db->quoteName('element') . ' = ' . $db->quote('pkg_bears_aichatbot'));
-            
+                ->delete($db->quoteName('#__modules_menu'))
+                ->where($db->quoteName('moduleid') . ' NOT IN (SELECT ' . $db->quoteName('id') . ' FROM ' . $db->quoteName('#__modules') . ')');
             $db->setQuery($query);
-            $extensionId = $db->loadResult();
+            $db->execute();
             
-            if ($extensionId) {
-                // Update the manifest_cache to ensure proper uninstallation
-                $manifestData = [
-                    'name' => 'pkg_bears_aichatbot',
-                    'type' => 'package',
-                    'creationDate' => '2025 September 14',
-                    'author' => 'N6REJ',
-                    'version' => '2025.09.14.4',
-                    'description' => 'Package containing the Bears AI Chatbot site module and associated plugins'
-                ];
-                
-                $updateQuery = $db->getQuery(true)
-                    ->update($db->quoteName('#__extensions'))
-                    ->set($db->quoteName('manifest_cache') . ' = ' . $db->quote(json_encode($manifestData)))
-                    ->where($db->quoteName('extension_id') . ' = ' . (int)$extensionId);
-                
-                $db->setQuery($updateQuery);
-                $db->execute();
-            }
+            // Remove any remaining menu items
+            $query = $db->getQuery(true)
+                ->delete($db->quoteName('#__menu'))
+                ->where($db->quoteName('link') . ' LIKE ' . $db->quote('%com_bears_aichatbot%'));
+            $db->setQuery($query);
+            $db->execute();
             
-        } catch (\Throwable $e) {
-            // Ignore manifest storage errors
+        } catch (\Exception $e) {
+            // Ignore final cleanup errors
         }
     }
 }
 
-// Compatibility shims for other Joomla naming expectations
+// Compatibility shims for different Joomla naming conventions
 if (!class_exists('pkg_bears_aichatbotInstallerScript')) {
     class pkg_bears_aichatbotInstallerScript extends pkg_pkg_bears_aichatbotInstallerScript {}
 }

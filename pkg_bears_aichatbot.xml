@@ -4,7 +4,7 @@
   <packagename>pkg_bears_aichatbot</packagename>
   <author>N6REJ</author>
   <creationDate>2025 September 14</creationDate>
-  <version>2025.09.14.6</version>
+  <version>2025.09.14.5</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Package containing the Bears AI Chatbot site module and associated plugins (task scheduler and optional content event plugin).</description>
 
@@ -12,11 +12,9 @@
   
   <files>
     <file type="component" id="com_bears_aichatbot" client="administrator">com_bears_aichatbot</file>
-    <file type="module" client="site">mod_bears_aichatbot</file>
-    <file type="plugin" group="task">plugins/task/bears_aichatbot</file>
-    <file type="plugin" group="content">plugins/content/bears_aichatbot</file>
-    <file type="plugin" group="system">plugins/system/bears_aichatbotinstaller</file>
+    <file type="module" client="site" id="mod_bears_aichatbot">mod_bears_aichatbot</file>
+    <file type="plugin" group="task" id="bears_aichatbot">plugins/task/bears_aichatbot</file>
+    <file type="plugin" group="content" id="bears_aichatbot">plugins/content/bears_aichatbot</file>
+    <file type="plugin" group="system" id="bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</file>
   </files>
-
-  <blockChildUninstall>true</blockChildUninstall>
 </extension>
