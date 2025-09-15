@@ -462,7 +462,18 @@ class ModBearsAichatbotHelper
                 if (isset($kbStats['retrieved_top_score']) && is_numeric($kbStats['retrieved_top_score'])) {
                     $topScore = (float)$kbStats['retrieved_top_score'];
                 }
-                self::logUsageExtended(
+                // Log detailed usage data before database insert
+                \Joomla\CMS\Log\Log::add(
+                    'Attempting to log usage - Tokens: prompt=' . ($usage['prompt_tokens'] ?? 0) . 
+                    ', completion=' . ($usage['completion_tokens'] ?? 0) . 
+                    ', total=' . ($usage['total_tokens'] ?? 0) . 
+                    ', outcome=' . $outcome . 
+                    ', estimated=' . (isset($usage['_estimated']) ? 'true' : 'false'),
+                    \Joomla\CMS\Log\Log::INFO,
+                    'bears_aichatbot'
+                );
+                
+                $logResult = self::logUsageExtended(
                     (int)$moduleId,
                     (string)$model,
                     (string)$endpoint,
@@ -1165,8 +1176,9 @@ class ModBearsAichatbotHelper
         try {
             $db = Factory::getContainer()->get('DatabaseDriver');
 
-            // Ensure table exists
-            $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_usage` (
+            // Ensure table exists - use proper Joomla prefix handling
+            $prefix = $db->getPrefix();
+            $ddl = "CREATE TABLE IF NOT EXISTS `{$prefix}aichatbot_usage` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `module_id` INT DEFAULT NULL,
@@ -1377,8 +1389,14 @@ class ModBearsAichatbotHelper
         try {
             $db = Factory::getContainer()->get('DatabaseDriver');
             
-            // Ensure keywords table exists
-            $ddl = "CREATE TABLE IF NOT EXISTS `#__aichatbot_keywords` (
+            // Check if table exists and get its columns
+            $tables = $db->getTableList();
+            $prefix = $db->getPrefix();
+            $keywordsTable = $prefix . 'aichatbot_keywords';
+            
+            if (!in_array($keywordsTable, $tables)) {
+                // Create the table with correct structure - use proper prefix
+                $ddl = "CREATE TABLE `{$prefix}aichatbot_keywords` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `keyword` VARCHAR(100) NOT NULL,
   `usage_count` INT DEFAULT 1,
@@ -1394,7 +1412,43 @@ class ModBearsAichatbotHelper
   KEY `idx_usage_count` (`usage_count`),
   KEY `idx_last_used` (`last_used`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
-            $db->setQuery($ddl)->execute();
+                $db->setQuery($ddl)->execute();
+            } else {
+                // Check if table has the correct columns and add missing ones
+                $columns = $db->getTableColumns($keywordsTable);
+                
+                // Add missing columns if needed
+                if (!isset($columns['usage_count'])) {
+                    // Check if there's a 'count' column to rename
+                    if (isset($columns['count'])) {
+                        $alter = "ALTER TABLE `#__aichatbot_keywords` CHANGE COLUMN `count` `usage_count` INT DEFAULT 1";
+                        $db->setQuery($alter)->execute();
+                    } else {
+                        $alter = "ALTER TABLE `#__aichatbot_keywords` ADD COLUMN `usage_count` INT DEFAULT 1";
+                        $db->setQuery($alter)->execute();
+                    }
+                }
+                
+                // Add other missing columns as needed
+                $requiredColumns = [
+                    'avg_tokens' => 'DECIMAL(8,2) DEFAULT 0',
+                    'total_tokens' => 'INT DEFAULT 0',
+                    'success_rate' => 'DECIMAL(5,2) DEFAULT 0',
+                    'answered_count' => 'INT DEFAULT 0',
+                    'refused_count' => 'INT DEFAULT 0'
+                ];
+                
+                foreach ($requiredColumns as $colName => $colDef) {
+                    if (!isset($columns[$colName])) {
+                        $alter = "ALTER TABLE `#__aichatbot_keywords` ADD COLUMN `$colName` $colDef";
+                        try {
+                            $db->setQuery($alter)->execute();
+                        } catch (\Throwable $e) {
+                            // Column might already exist with different definition
+                        }
+                    }
+                }
+            }
             
             // Set up Joomla logging for this component
             \Joomla\CMS\Log\Log::addLogger(
