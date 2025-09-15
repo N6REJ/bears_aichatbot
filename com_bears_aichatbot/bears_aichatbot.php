@@ -435,8 +435,11 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
         // Log the delete attempt
         Log::add('Attempting to delete collection: ' . $collectionId . ' at URL: ' . $deleteUrl, Log::INFO, 'bears_aichatbot');
         Log::add('Using Token ID: ' . substr($tokenId, 0, 8) . '...', Log::DEBUG, 'bears_aichatbot');
+        Log::add('Using Token (first 20 chars): ' . substr($token, 0, 20) . '...', Log::DEBUG, 'bears_aichatbot');
         
-        $response = $http->delete($deleteUrl, [], $headers, 30);
+        // The delete method signature is: delete($url, $headers = [], $timeout = null, $userAgent = null)
+        // So headers should be the second parameter, not third
+        $response = $http->delete($deleteUrl, $headers, 30);
         
         // Log the response
         Log::add('Delete response code: ' . $response->code, Log::INFO, 'bears_aichatbot');
