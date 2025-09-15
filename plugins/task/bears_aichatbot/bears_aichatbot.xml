@@ -3,7 +3,7 @@
   <name>plg_task_bears_aichatbot</name>
   <author>N6REJ</author>
   <creationDate>2025-09-06</creationDate>
-  <version>2025.09.06.8</version>
+  <version>2025.09.15.15</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Task Scheduler plugin for syncing Joomla content with the IONOS document collection.</description>
   <namespace path="src">Joomla\Plugin\Task\BearsAichatbot</namespace>
