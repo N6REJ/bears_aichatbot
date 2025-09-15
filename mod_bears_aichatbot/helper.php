@@ -1248,33 +1248,41 @@ class ModBearsAichatbotHelper
                 'bears_aichatbot'
             );
 
+            // Columns array - pass directly without quoteName
+            $columns = [
+                'module_id',
+                'collection_id', 
+                'model',
+                'endpoint',
+                'prompt_tokens',
+                'completion_tokens',
+                'total_tokens',
+                'retrieved',
+                'article_count',
+                'kunena_count',
+                'url_count',
+                'message_len',
+                'answer_len',
+                'status_code',
+                'duration_ms',
+                'request_bytes',
+                'response_bytes',
+                'outcome',
+                'retrieved_top_score',
+                'price_prompt',
+                'price_completion',
+                'currency',
+                'estimated_cost'
+            ];
+            
+            // Quote each column name individually
+            $quotedColumns = array_map(function($col) use ($db) {
+                return $db->quoteName($col);
+            }, $columns);
+            
             $q = $db->getQuery(true)
                 ->insert($db->quoteName('#__aichatbot_usage'))
-                ->columns($db->quoteName([
-                    'module_id',
-                    'collection_id', 
-                    'model',
-                    'endpoint',
-                    'prompt_tokens',
-                    'completion_tokens',
-                    'total_tokens',
-                    'retrieved',
-                    'article_count',
-                    'kunena_count',
-                    'url_count',
-                    'message_len',
-                    'answer_len',
-                    'status_code',
-                    'duration_ms',
-                    'request_bytes',
-                    'response_bytes',
-                    'outcome',
-                    'retrieved_top_score',
-                    'price_prompt',
-                    'price_completion',
-                    'currency',
-                    'estimated_cost'
-                ]))
+                ->columns($quotedColumns)
                 ->values(implode(',', [
                     (int)$moduleId,
                     $collectionId !== '' ? $db->quote($collectionId) : 'NULL',
