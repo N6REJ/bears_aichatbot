@@ -611,20 +611,43 @@ class ModBearsAichatbotHelper
                 ->where($db->quoteName('state') . ' = 1')
                 ->where($db->quoteName('catid') . ' IN (' . implode(',', $allCatIds) . ')');
 
-            // Apply simple keyword relevance if user provided a message
+            // Apply keyword relevance if user provided a message
             $userMessage = trim($userMessage);
             if ($userMessage !== '') {
-                $terms = preg_split('/\s+/', mb_strtolower($userMessage));
+                // First, try to search for the complete phrase
+                $fullPhrase = mb_strtolower($userMessage);
                 $likes = [];
-                $maxTerms = 5;
+                
+                // Add full phrase search (if not too long)
+                if (mb_strlen($fullPhrase) <= 100) {
+                    $kw = $db->escape($fullPhrase, true);
+                    $like = $db->quote('%' . $kw . '%', false);
+                    $likes[] = '(' . $db->quoteName('title') . ' LIKE ' . $like . ' OR ' . $db->quoteName('introtext') . ' LIKE ' . $like . ' OR ' . $db->quoteName('fulltext') . ' LIKE ' . $like . ')';
+                }
+                
+                // Also search for individual significant words
+                $terms = preg_split('/\s+/', $fullPhrase);
+                $maxTerms = 8; // Increased from 5
+                $termCount = 0;
+                
+                // Common question words to skip
+                $skipWords = ['what', 'is', 'are', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'does', 'do', 'the', 'a', 'an'];
+                
                 foreach ($terms as $t) {
                     $t = trim($t);
-                    if (mb_strlen($t) < 3) continue;
+                    // Skip very short words unless they might be technical terms (all caps or contains numbers)
+                    if (mb_strlen($t) < 2) continue;
+                    if (mb_strlen($t) < 3 && !preg_match('/^[A-Z]+$/', $t) && !preg_match('/\d/', $t)) continue;
+                    // Skip common question words
+                    if (in_array($t, $skipWords)) continue;
+                    
                     $kw = $db->escape($t, true);
                     $like = $db->quote('%' . $kw . '%', false);
                     $likes[] = '(' . $db->quoteName('title') . ' LIKE ' . $like . ' OR ' . $db->quoteName('introtext') . ' LIKE ' . $like . ' OR ' . $db->quoteName('fulltext') . ' LIKE ' . $like . ')';
-                    if (count($likes) >= $maxTerms) break;
+                    $termCount++;
+                    if ($termCount >= $maxTerms) break;
                 }
+                
                 $hadLikes = !empty($likes);
                 if ($hadLikes) {
                     $query->where('(' . implode(' OR ', $likes) . ')');
@@ -636,24 +659,94 @@ class ModBearsAichatbotHelper
             $db->setQuery($query, 0, $limit);
             $items = (array) $db->loadAssocList();
 
-            // In strict mode, if we had no usable keywords, treat as no relevant matches
-            if ($strict && !$hadLikes) {
-                $items = [];
+            // Fallback to recent items if no keyword matches
+            if (!$items && !$hadLikes) {
+                // In non-strict mode, get recent articles from selected categories
+                if (!$strict) {
+                    $query = $db->getQuery(true)
+                        ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext']))
+                        ->from($db->quoteName('#__content'))
+                        ->where($db->quoteName('state') . ' = 1')
+                        ->where($db->quoteName('catid') . ' IN (' . implode(',', $allCatIds) . ')')
+                        ->order($db->escape('modified DESC, created DESC'));
+                    $db->setQuery($query, 0, $limit);
+                    $items = (array) $db->loadAssocList();
+                    if (!$items) {
+                        self::$lastContextStats['note'] = 'No articles found in selected categories.';
+                    }
+                }
+                // In strict mode with no keywords, we'll let the site-wide fallback handle it
             }
+        }
 
-            // Fallback to recent items if no keyword matches (disabled in strict mode)
-            if (!$items && !$strict) {
-                $query = $db->getQuery(true)
+        // If no items found (either no categories selected or no matches in selected categories), do a site-wide search
+        if (empty($items)) {
+            // Log that we're falling back to site-wide search
+            if (!empty($catIds)) {
+                self::$lastContextStats['note'] = 'No matches in selected categories; attempting site-wide search.';
+            }
+            
+            if ($strict) {
+                // Site-wide keyword-filtered search in strict mode
+                $qAll = $db->getQuery(true)
+                    ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext']))
+                    ->from($db->quoteName('#__content'))
+                    ->where($db->quoteName('state') . ' = 1');
+
+                // Use the same improved keyword extraction logic
+                $fullPhrase = mb_strtolower(trim($userMessage));
+                $likes = [];
+                
+                // Add full phrase search (if not too long)
+                if (mb_strlen($fullPhrase) <= 100) {
+                    $kw = $db->escape($fullPhrase, true);
+                    $like = $db->quote('%' . $kw . '%', false);
+                    $likes[] = '(' . $db->quoteName('title') . ' LIKE ' . $like . ' OR ' . $db->quoteName('introtext') . ' LIKE ' . $like . ' OR ' . $db->quoteName('fulltext') . ' LIKE ' . $like . ')';
+                }
+                
+                // Also search for individual significant words
+                $terms = preg_split('/\s+/', $fullPhrase);
+                $maxTerms = 8;
+                $termCount = 0;
+                
+                // Common question words to skip
+                $skipWords = ['what', 'is', 'are', 'how', 'why', 'when', 'where', 'who', 'which', 'can', 'does', 'do', 'the', 'a', 'an'];
+                
+                if (!empty($terms)) {
+                    foreach ($terms as $t) {
+                        $t = trim($t);
+                        // Skip very short words unless they might be technical terms
+                        if (mb_strlen($t) < 2) continue;
+                        if (mb_strlen($t) < 3 && !preg_match('/^[A-Z]+$/', $t) && !preg_match('/\d/', $t)) continue;
+                        // Skip common question words
+                        if (in_array($t, $skipWords)) continue;
+                        
+                        $kw = $db->escape($t, true);
+                        $like = $db->quote('%' . $kw . '%', false);
+                        $likes[] = '(' . $db->quoteName('title') . ' LIKE ' . $like . ' OR ' . $db->quoteName('introtext') . ' LIKE ' . $like . ' OR ' . $db->quoteName('fulltext') . ' LIKE ' . $like . ')';
+                        $termCount++;
+                        if ($termCount >= $maxTerms) break;
+                    }
+                }
+                
+                if (!empty($likes)) {
+                    $qAll->where('(' . implode(' OR ', $likes) . ')');
+                    $qAll->order($db->escape('modified DESC, created DESC'));
+                    $db->setQuery($qAll, 0, $limit);
+                    $items = (array) $db->loadAssocList();
+                } else {
+                    // No usable keywords; leave items empty to trigger refusal
+                    $items = [];
+                }
+            } else {
+                // Non-strict mode: get recent articles site-wide
+                $qAll = $db->getQuery(true)
                     ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext']))
                     ->from($db->quoteName('#__content'))
                     ->where($db->quoteName('state') . ' = 1')
-                    ->where($db->quoteName('catid') . ' IN (' . implode(',', $allCatIds) . ')')
                     ->order($db->escape('modified DESC, created DESC'));
-                $db->setQuery($query, 0, $limit);
+                $db->setQuery($qAll, 0, $limit);
                 $items = (array) $db->loadAssocList();
-                if (!$items) {
-                    self::$lastContextStats['note'] = 'No matches in selected categories; falling back to site-wide recent articles.';
-                }
             }
         }
 
