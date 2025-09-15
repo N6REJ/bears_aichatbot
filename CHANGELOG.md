@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.15] - 2025-09-15
+## [2025.09.15.1] - 2025-09-15
 
 ### Added
 
@@ -45,12 +45,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add bulk delete functionality for collections with progress tracking and enhanced delete endpoint handling ([f22bb56](https://github.com/N6REJ/bears_aichatbot/commit/f22bb56))
 * Add document synchronization functionality and enhance collections interface with article management ([47c397d](https://github.com/N6REJ/bears_aichatbot/commit/47c397d))
 * Add automatic collection creation and fix MySQL reserved word quoting in database queries ([a17189f](https://github.com/N6REJ/bears_aichatbot/commit/a17189f))
+* Implement real-time progress tracking for document synchronization with Server-Sent Events ([95f9f61](https://github.com/N6REJ/bears_aichatbot/commit/95f9f61))
+* Implement real-time progress tracking for document synchronization with Server-Sent Events ([559185e](https://github.com/N6REJ/bears_aichatbot/commit/559185e))
 
 ### Changed
 
-* Update version to 2025.09.12.63 [skip ci] ([6e94d10](https://github.com/N6REJ/bears_aichatbot/commit/6e94d10))
-* Bump version to 2025.09.13.01 ([1417a97](https://github.com/N6REJ/bears_aichatbot/commit/1417a97))
-* Merge remote-tracking branch 'origin/main' ([08052ad](https://github.com/N6REJ/bears_aichatbot/commit/08052ad))
 * Update version to 2025.09.13 [skip ci] ([2c46fa4](https://github.com/N6REJ/bears_aichatbot/commit/2c46fa4))
 * Update version to 2025.09.13.1 [skip ci] ([d3fae1d](https://github.com/N6REJ/bears_aichatbot/commit/d3fae1d))
 * Update version to 2025.09.13.01 and simplify component architecture by removing custom controller/dispatcher resolution logic, adding proper language file loading in HtmlView, and fixing menu title translation key in manifest ([7a94345](https://github.com/N6REJ/bears_aichatbot/commit/7a94345))
@@ -258,6 +257,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update version to 2025.09.15.8 [skip ci] ([e62e58a](https://github.com/N6REJ/bears_aichatbot/commit/e62e58a))
 * Enhance document synchronization with improved status messaging and output buffering ([fa9d6b8](https://github.com/N6REJ/bears_aichatbot/commit/fa9d6b8))
 * Merge remote-tracking branch 'origin/main' ([a69f2a1](https://github.com/N6REJ/bears_aichatbot/commit/a69f2a1))
+* Update version to 2025.09.15 [skip ci] ([ba2bd69](https://github.com/N6REJ/bears_aichatbot/commit/ba2bd69))
+* Merge remote-tracking branch 'origin/main' ([3f38191](https://github.com/N6REJ/bears_aichatbot/commit/3f38191))
 
 ### Fixed
 
