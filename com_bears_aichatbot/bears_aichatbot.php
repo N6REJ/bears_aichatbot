@@ -609,20 +609,15 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                 }
                 
                 // Prepare document payload for IONOS Inference API
-                // According to API docs: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
-                // IMPORTANT: Content must be base64 encoded and limited to 65535 characters
-                
-                // Limit content to 65535 characters before encoding
-                if (strlen($content) > 65535) {
-                    $content = substr($content, 0, 65535);
-                    Log::add('Article ID ' . $article->id . ' content truncated to 65535 characters', Log::DEBUG, 'bears_aichatbot');
+                // The API expects plain text content, not base64 encoded
+                // Limit content to reasonable size for processing
+                if (strlen($content) > 100000) {
+                    $content = substr($content, 0, 100000);
+                    Log::add('Article ID ' . $article->id . ' content truncated to 100000 characters', Log::DEBUG, 'bears_aichatbot');
                 }
                 
-                // Base64 encode the content as required by IONOS API
-                $encodedContent = base64_encode($content);
-                
                 $documentPayload = [
-                    'content' => $encodedContent,
+                    'content' => $content,
                     'metadata' => [
                         'article_id' => (string)$article->id,
                         'title' => $article->title,
@@ -648,7 +643,7 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                 $documentUrl = $apiBase . '/collections/' . rawurlencode($collectionId) . '/documents';
                 
                 Log::add('Syncing article ID ' . $article->id . ' to collection ' . $collectionId, Log::DEBUG, 'bears_aichatbot');
-                Log::add('Document payload: ' . json_encode($documentPayload), Log::DEBUG, 'bears_aichatbot');
+                // Don't log full payload as it's too large
                 
                 $response = $http->post($documentUrl, json_encode($documentPayload), $headers, 30);
                 
@@ -1448,28 +1443,8 @@ if ($task === 'createCollection') {
 }
 
 if ($task === 'syncDocuments') {
-    // Handle sync documents request with Server-Sent Events for real-time progress
-    header('Content-Type: text/event-stream');
-    header('Cache-Control: no-cache');
-    header('Connection: keep-alive');
-    header('X-Accel-Buffering: no'); // Disable Nginx buffering
-    
-    // Enable output buffering with immediate flush for progress updates
-    @ini_set('output_buffering', 'off');
-    @ini_set('zlib.output_compression', false);
-    @ini_set('implicit_flush', true);
-    @ob_implicit_flush(true);
-    
-    // Clear any existing buffers
-    while (@ob_end_clean());
-    
-    // Function to send SSE message
-    function sendSSEMessage($event, $data) {
-        echo "event: $event\n";
-        echo "data: " . json_encode($data) . "\n\n";
-        @ob_flush();
-        @flush();
-    }
+    // Handle sync documents request - return JSON instead of SSE
+    header('Content-Type: application/json');
     
     // Get IONOS configuration
     $moduleConfig = getModuleConfig();

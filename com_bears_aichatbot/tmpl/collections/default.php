@@ -613,10 +613,51 @@ function syncDocuments() {
     let syncedCount = 0;
     let failedCount = 0;
     
-    // Use Server-Sent Events for real-time progress
-    const eventSource = new EventSource('index.php?option=com_bears_aichatbot&task=syncDocuments');
+    // Use regular AJAX instead of SSE (SSE not working properly in Joomla)
+    fetch('index.php?option=com_bears_aichatbot&task=syncDocuments', {
+        method: 'GET',
+        headers: {
+            'Accept': 'application/json',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        // Hide progress overlay
+        progressOverlay.remove();
+        
+        if (data.success) {
+            // Show success message
+            alert(data.message);
+            // Reload the page to refresh collections
+            window.location.reload();
+        } else {
+            // Show error message
+            alert('Sync failed: ' + data.message);
+        }
+        
+        // Re-enable button
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    })
+    .catch(error => {
+        // Hide progress overlay
+        progressOverlay.remove();
+        
+        console.error('Sync error:', error);
+        alert('An error occurred during sync: ' + error.message);
+        
+        // Re-enable button
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
     
-    eventSource.addEventListener('start', function(e) {
+    return;
+    
+    // OLD SSE CODE - DISABLED
+    const eventSource_DISABLED = new EventSource('index.php?option=com_bears_aichatbot&task=syncDocuments');
+    
+    eventSource_DISABLED.addEventListener('start', function(e) {
         const data = JSON.parse(e.data);
         totalArticles = data.total;
         statusText.textContent = data.message;
