@@ -609,10 +609,20 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                 }
                 
                 // Prepare document payload for IONOS Inference API
-                // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/#tag/Document-Collections
-                // The API expects content directly, not wrapped in properties
+                // According to API docs: https://docs.ionos.com/cloud/ai/ai-model-hub/tutorials/document-collections
+                // IMPORTANT: Content must be base64 encoded and limited to 65535 characters
+                
+                // Limit content to 65535 characters before encoding
+                if (strlen($content) > 65535) {
+                    $content = substr($content, 0, 65535);
+                    Log::add('Article ID ' . $article->id . ' content truncated to 65535 characters', Log::DEBUG, 'bears_aichatbot');
+                }
+                
+                // Base64 encode the content as required by IONOS API
+                $encodedContent = base64_encode($content);
+                
                 $documentPayload = [
-                    'content' => $content,
+                    'content' => $encodedContent,
                     'metadata' => [
                         'article_id' => (string)$article->id,
                         'title' => $article->title,
