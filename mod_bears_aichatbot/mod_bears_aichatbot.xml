@@ -109,6 +109,59 @@
                 <field name="ionos_endpoint" type="text" label="MOD_BEARS_AICHATBOT_ENDPOINT_LABEL" description="MOD_BEARS_AICHATBOT_ENDPOINT_DESC" default="https://openai.inference.de-txl.ionos.com/v1/chat/completions"/>
                 <field name="ionos_model" type="ionosmodels" label="MOD_BEARS_AICHATBOT_MODEL_LABEL" description="MOD_BEARS_AICHATBOT_MODEL_DESC" default=""/>
             </fieldset>
+            <fieldset name="limits" label="MOD_BEARS_AICHATBOT_FIELDSET_LIMITS">
+                <field name="max_response_tokens" 
+                       type="list" 
+                       default="1024" 
+                       label="MOD_BEARS_AICHATBOT_MAX_RESPONSE_TOKENS_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_MAX_RESPONSE_TOKENS_DESC">
+                    <option value="256">256 tokens (Very short answers)</option>
+                    <option value="512">512 tokens (Short answers)</option>
+                    <option value="1024">1024 tokens (Normal answers)</option>
+                    <option value="2048">2048 tokens (Detailed answers)</option>
+                    <option value="4096">4096 tokens (Very detailed answers)</option>
+                </field>
+                <field name="max_context_length" 
+                       type="number" 
+                       default="30000" 
+                       min="5000" 
+                       max="100000" 
+                       step="1000"
+                       label="MOD_BEARS_AICHATBOT_MAX_CONTEXT_LENGTH_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_MAX_CONTEXT_LENGTH_DESC" />
+                <field name="max_kunena_fetch" 
+                       type="number" 
+                       default="100" 
+                       min="10" 
+                       max="500" 
+                       step="10"
+                       label="MOD_BEARS_AICHATBOT_MAX_KUNENA_FETCH_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_MAX_KUNENA_FETCH_DESC" />
+                <field name="max_sitemap_urls" 
+                       type="number" 
+                       default="150" 
+                       min="50" 
+                       max="500" 
+                       step="10"
+                       label="MOD_BEARS_AICHATBOT_MAX_SITEMAP_URLS_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_MAX_SITEMAP_URLS_DESC" />
+                <field name="request_timeout" 
+                       type="number" 
+                       default="30" 
+                       min="10" 
+                       max="120" 
+                       step="5"
+                       label="MOD_BEARS_AICHATBOT_REQUEST_TIMEOUT_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_REQUEST_TIMEOUT_DESC" />
+                <field name="temperature" 
+                       type="number" 
+                       default="0.2" 
+                       min="0" 
+                       max="1" 
+                       step="0.1"
+                       label="MOD_BEARS_AICHATBOT_TEMPERATURE_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_TEMPERATURE_DESC" />
+            </fieldset>
             <fieldset name="keywords" label="MOD_BEARS_AICHATBOT_FIELDSET_KEYWORDS">
                 <field name="keyword_min_length" type="number" default="3" min="1" max="10" label="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_LABEL" description="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_DESC" />
                 <field name="keyword_max_length" type="number" default="50" min="10" max="100" label="MOD_BEARS_AICHATBOT_KEYWORD_MAX_LENGTH_LABEL" description="MOD_BEARS_AICHATBOT_KEYWORD_MAX_LENGTH_DESC" />

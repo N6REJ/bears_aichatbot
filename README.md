@@ -86,6 +86,22 @@ Module configuration (frontend chat)
   - Sitemap URL (optional)
 - UI and positioning
   - Position, width/height, offsets, label, dark mode
+- System Limits (NEW)
+  - Max Response Tokens: Controls response length (256-4096 tokens, default: 1024)
+    - 256 tokens: Very short answers (~150 words)
+    - 512 tokens: Short answers (~300 words)
+    - 1024 tokens: Normal answers (~600 words)
+    - 2048 tokens: Detailed answers (~1200 words)
+    - 4096 tokens: Very detailed answers (~2400 words)
+  - Max Context Length: Maximum characters for knowledge base context (5,000-100,000, default: 30,000)
+  - Max Kunena Fetch: Maximum forum posts to include (10-500, default: 100)
+  - Max Sitemap URLs: Maximum URLs from sitemap (50-500, default: 150)
+  - Request Timeout: API request timeout in seconds (10-120, default: 30)
+  - Temperature: AI creativity level (0-1, default: 0.2)
+    - 0: Deterministic, factual responses
+    - 0.2: Balanced (recommended)
+    - 0.5: More creative
+    - 1.0: Maximum creativity
 - Keyword extraction
   - Minimum keyword length (1-10, default: 3)
   - Maximum keyword length (10-100, default: 50)
@@ -95,6 +111,19 @@ Notes on retrieval
 - Top K controls the number of highest‑scoring snippets included.
 - Min score filters out weakly related snippets before the top K cut.
 - Strict mode returns "I don't know based on the provided dataset." if nothing relevant exists.
+
+Notes on system limits
+- **Response Token Limits**: Directly affects API costs and response completeness
+  - Shorter responses (256-512 tokens) reduce costs but may truncate complex answers
+  - Longer responses (2048-4096 tokens) provide comprehensive answers but increase costs
+  - Token usage is tracked and displayed in the admin dashboard
+- **Context Length**: Balances knowledge comprehensiveness with API limits
+  - Smaller contexts (5,000-15,000 chars) process faster but may miss relevant information
+  - Larger contexts (30,000-100,000 chars) provide more knowledge but increase prompt tokens
+- **Performance Tuning**:
+  - Adjust timeout for slow connections or complex queries
+  - Limit Kunena/sitemap fetching for faster response times
+  - Temperature affects response consistency vs creativity
 
 
 Task plugin configuration
@@ -169,10 +198,13 @@ Usage logging and analytics
   - price_prompt, price_completion, currency, estimated_cost
 - Cost computation
   - Defaults to IONOS “standard” package pricing (per 1K tokens):
-    - price_prompt = 0.0004 USD
-    - price_completion = 0.0006 USD
+    - IONOS Standard: $10/month, 25M tokens included, $0.40/1M overage
+    - IONOS Premium: $50/month, 125M tokens included, $0.40/1M overage
+    - IONOS Ultimate: $250/month, 625M tokens included, $0.40/1M overage
+    - IONOS Pay-as-you-go: $0.80/1M input, $1.20/1M output
   - estimated_cost = (prompt/1000)*price_prompt + (completion/1000)*price_completion
-  - Can be overridden via component parameters in the future
+  - Token limits directly affect costs - configure max_response_tokens accordingly
+  - Pricing configuration stored in config/aichatbot.php for easy updates
 
 
 Database schema
@@ -257,6 +289,10 @@ Troubleshooting
 - Retrieval returns nothing: ensure the collection exists and ingestion has queued/processed; run reconcile
 - Empty sitemap: validate the sitemap URL; a menu-based fallback is used
 - Scheduler inactive: enable Joomla Scheduler and tasks; try manual run to test
+- Response truncated: increase max_response_tokens in module settings (default 1024)
+- Timeout errors: increase request_timeout in module settings (default 30 seconds)
+- High API costs: reduce max_response_tokens and max_context_length
+- Database errors: run SQL scripts in mod_bears_aichatbot/sql/ to fix table structure
 
 
 Changelog

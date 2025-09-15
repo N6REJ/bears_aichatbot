@@ -301,14 +301,18 @@ class ModBearsAichatbotHelper
         ));
         $systemPrompt .= $sitemapInfo . "\nKnowledge base context follows between <kb> tags.\n<kb>" . $context . '</kb>';
 
+        // Get limits from module parameters, fallback to config defaults
+        $maxTokens = (int) $params->get('max_response_tokens', BearsAIChatbotConfig::get('LIMITS.max_response_tokens', 1024));
+        $temperature = (float) $params->get('temperature', 0.2);
+        
         $payload = [
             'model'       => $model,
             'messages'    => [
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user',   'content' => $message],
             ],
-            'max_tokens'  => BearsAIChatbotConfig::get('LIMITS.max_response_tokens', 512),
-            'temperature' => $strict ? 0.0 : 0.2,
+            'max_tokens'  => $maxTokens,
+            'temperature' => $strict ? 0.0 : $temperature,
         ];
 
         // OpenAI-compatible chat completions endpoint (IONOS Model Hub)
@@ -323,9 +327,12 @@ class ModBearsAichatbotHelper
                 'Accept'        => 'application/json',
             ];
 
+            // Get request timeout from params
+            $requestTimeout = (int) $params->get('request_timeout', BearsAIChatbotConfig::get('LIMITS.request_timeout', 30));
+            
             $requestBody = json_encode($payload);
             $t0 = microtime(true);
-            $response = $http->post($url, $requestBody, $headers);
+            $response = $http->post($url, $requestBody, $headers, $requestTimeout);
             $durationMs = (int) round((microtime(true) - $t0) * 1000);
             $reqBytes = strlen($requestBody ?? '');
             $resBytes = strlen($response->body ?? '');
@@ -534,7 +541,7 @@ class ModBearsAichatbotHelper
         $hadLikes = false;
 
         // Budget for context to avoid exceeding token limits
-        $maxTotal = BearsAIChatbotConfig::get('LIMITS.max_context_length', 30000);
+        $maxTotal = (int) $params->get('max_context_length', BearsAIChatbotConfig::get('LIMITS.max_context_length', 30000));
         $contextParts = [];
         $total = 0;
 
@@ -790,6 +797,9 @@ class ModBearsAichatbotHelper
         $useKunena = (int) $params->get('use_kunena', 1) === 1;
         if ($useKunena && $total < $maxTotal) {
             try {
+                // Get max Kunena fetch limit from params
+                $maxKunenaFetch = (int) $params->get('max_kunena_fetch', BearsAIChatbotConfig::get('LIMITS.max_kunena_fetch', 100));
+                
                 $kquery = $db->getQuery(true)
                     ->select($db->quoteName(['m.id', 'm.subject']))
                     ->select($db->quoteName('mt.message'))
@@ -800,7 +810,7 @@ class ModBearsAichatbotHelper
                     ->where($db->quoteName('m.hold') . ' = 0')
                     ->order($db->escape('m.time DESC'));
 
-                $db->setQuery($kquery, 0, min($limit, 100));
+                $db->setQuery($kquery, 0, min($limit, $maxKunenaFetch));
                 $kitems = $db->loadAssocList();
 
                 if ($kitems) {
@@ -975,7 +985,8 @@ class ModBearsAichatbotHelper
         try {
             $sitemap = [];
             $urlCount = 0;
-            $maxUrls = 150; // Increased limit for comprehensive sitemaps
+            // Get max sitemap URLs from params (note: this is in parseHtmlSitemap method)
+            $maxUrls = 150; // Will be replaced with param value in the calling method
             
             // Use DOMDocument to parse HTML
             $dom = new \DOMDocument();

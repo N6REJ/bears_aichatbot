@@ -262,7 +262,7 @@ class BearsAIChatbotConfig
         'max_context_length' => 30000,      // Maximum characters for context
         'max_article_fetch' => 500,         // Maximum articles to fetch
         'max_kunena_fetch' => 100,          // Maximum Kunena posts to fetch
-        'max_response_tokens' => 512,       // Maximum tokens in response
+        'max_response_tokens' => 2048,      // Maximum tokens in response (increased from 512)
         'max_sitemap_urls' => 150,          // Maximum URLs in sitemap
         'max_keywords_track' => 10,         // Maximum keywords to track per message
         'request_timeout' => 30             // API request timeout in seconds
