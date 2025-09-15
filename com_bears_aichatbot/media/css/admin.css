@@ -559,3 +559,149 @@
         justify-content: center;
     }
 }
+
+/* Keywords View Styles */
+.com-bears-aichatbot-keywords .table-dark {
+    background-color: #343a40 !important;
+    color: #ffffff !important;
+}
+
+.com-bears-aichatbot-keywords .table-dark th {
+    background-color: #343a40 !important;
+    color: #ffffff !important;
+    border-color: #454d55 !important;
+}
+
+/* Fix for both light and dark admin themes */
+.com-bears-aichatbot-keywords .table thead th {
+    background-color: #495057 !important;
+    color: #ffffff !important;
+    border-color: #6c757d !important;
+}
+
+/* Ensure proper contrast in Joomla's dark mode */
+body.admin-dark .com-bears-aichatbot-keywords .table thead th,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .table thead th {
+    background-color: #495057 !important;
+    color: #ffffff !important;
+}
+
+/* Card headers in keywords view */
+.com-bears-aichatbot-keywords .card-header {
+    background-color: #f8f9fa;
+    color: #495057;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.com-bears-aichatbot-keywords .card-header h5 {
+    color: #495057;
+}
+
+/* Dark mode support for card headers */
+body.admin-dark .com-bears-aichatbot-keywords .card-header,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .card-header {
+    background-color: #343a40;
+    color: #f8f9fa;
+    border-bottom-color: #495057;
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .card-header h5,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .card-header h5 {
+    color: #f8f9fa;
+}
+
+/* Summary cards with proper text contrast */
+.com-bears-aichatbot-keywords .bg-primary,
+.com-bears-aichatbot-keywords .bg-success,
+.com-bears-aichatbot-keywords .bg-info {
+    color: #ffffff !important;
+}
+
+.com-bears-aichatbot-keywords .bg-primary .card-title,
+.com-bears-aichatbot-keywords .bg-primary .card-text,
+.com-bears-aichatbot-keywords .bg-success .card-title,
+.com-bears-aichatbot-keywords .bg-success .card-text,
+.com-bears-aichatbot-keywords .bg-info .card-title,
+.com-bears-aichatbot-keywords .bg-info .card-text {
+    color: #ffffff !important;
+}
+
+/* Badge styles for better visibility */
+.com-bears-aichatbot-keywords .badge-primary {
+    background-color: #007bff !important;
+    color: #ffffff !important;
+}
+
+.com-bears-aichatbot-keywords .badge-success {
+    background-color: #28a745 !important;
+    color: #ffffff !important;
+}
+
+.com-bears-aichatbot-keywords .badge-warning {
+    background-color: #ffc107 !important;
+    color: #212529 !important;
+}
+
+.com-bears-aichatbot-keywords .badge-danger {
+    background-color: #dc3545 !important;
+    color: #ffffff !important;
+}
+
+/* Table row hover effect */
+.com-bears-aichatbot-keywords .table-hover tbody tr:hover {
+    background-color: rgba(0, 0, 0, 0.075);
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .table-hover tbody tr:hover,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .table-hover tbody tr:hover {
+    background-color: rgba(255, 255, 255, 0.075);
+}
+
+/* Fix table text colors in dark mode */
+body.admin-dark .com-bears-aichatbot-keywords .table,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .table {
+    color: inherit;
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .table td,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .table td {
+    color: inherit;
+    border-color: #495057;
+}
+
+/* List group items in trending section */
+.com-bears-aichatbot-keywords .list-group-item {
+    background-color: transparent;
+    color: inherit;
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .list-group-item,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .list-group-item {
+    background-color: transparent;
+    color: inherit;
+    border-color: #495057;
+}
+
+/* Text muted class override for better visibility */
+.com-bears-aichatbot-keywords .text-muted {
+    color: #6c757d !important;
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .text-muted,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .text-muted {
+    color: #adb5bd !important;
+}
+
+/* Alert styles */
+.com-bears-aichatbot-keywords .alert-info {
+    background-color: #d1ecf1;
+    border-color: #bee5eb;
+    color: #0c5460;
+}
+
+body.admin-dark .com-bears-aichatbot-keywords .alert-info,
+body[data-color-scheme="dark"] .com-bears-aichatbot-keywords .alert-info {
+    background-color: #1c3a44;
+    border-color: #2c5866;
+    color: #9fc9d4;
+}

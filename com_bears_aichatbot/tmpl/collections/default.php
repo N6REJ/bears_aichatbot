@@ -238,8 +238,48 @@ function refreshCollections() {
 }
 
 function createCollection() {
-    // This would trigger collection creation
-    alert('Collection creation functionality would be implemented here');
+    // Show a modal or form for collection creation
+    const name = prompt('<?php echo Text::_('COM_BEARS_AICHATBOT_ENTER_COLLECTION_NAME'); ?>', 'bears-aichatbot-' + Date.now());
+    
+    if (!name) {
+        return;
+    }
+    
+    const description = prompt('<?php echo Text::_('COM_BEARS_AICHATBOT_ENTER_COLLECTION_DESC'); ?>', 'AI Chatbot Document Collection');
+    
+    if (name) {
+        // Show loading state
+        const btn = event.target;
+        const originalText = btn.innerHTML;
+        btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating...';
+        btn.disabled = true;
+        
+        // Make AJAX request to create collection
+        fetch('index.php?option=com_bears_aichatbot&task=createCollection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'name=' + encodeURIComponent(name) + '&description=' + encodeURIComponent(description || '')
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('<?php echo Text::_('COM_BEARS_AICHATBOT_COLLECTION_CREATED'); ?>');
+                window.location.reload();
+            } else {
+                alert('<?php echo Text::_('COM_BEARS_AICHATBOT_CREATE_ERROR'); ?>: ' + (data.message || 'Unknown error'));
+                btn.innerHTML = originalText;
+                btn.disabled = false;
+            }
+        })
+        .catch(error => {
+            alert('<?php echo Text::_('COM_BEARS_AICHATBOT_CREATE_ERROR'); ?>: ' + error.message);
+            btn.innerHTML = originalText;
+            btn.disabled = false;
+        });
+    }
 }
 
 function viewDocuments(collectionId) {

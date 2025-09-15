@@ -299,9 +299,19 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Use the correct IONOS API endpoint for document collections
-        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
-        $apiBase = 'https://api.ionos.com/inference-modelhub';
+        // Extract base URL from the endpoint (remove /v1/chat/completions if present)
+        $apiBase = $endpoint;
+        if (strpos($apiBase, '/v1/chat/completions') !== false) {
+            $apiBase = str_replace('/v1/chat/completions', '', $apiBase);
+        } elseif (strpos($apiBase, '/chat/completions') !== false) {
+            $apiBase = str_replace('/chat/completions', '', $apiBase);
+        }
+        
+        // Ensure we have the inference base URL
+        if (strpos($apiBase, 'inference') === false) {
+            // Fallback to known working endpoint
+            $apiBase = 'https://inference.de-txl.ionos.com';
+        }
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -314,8 +324,9 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        // Try the correct endpoint: /v1/document-collections
-        $response = $http->get($apiBase . '/v1/document-collections', $headers, 30);
+        // Try the collections endpoint
+        $collectionsUrl = $apiBase . '/collections';
+        $response = $http->get($collectionsUrl, $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             $data = json_decode($response->body, true);
@@ -1054,6 +1065,91 @@ HTMLHelper::_('stylesheet', 'com_bears_aichatbot/admin.css', ['version' => 'auto
 $input = Factory::getApplication()->input;
 $task = $input->getCmd('task', '');
 
+if ($task === 'createCollection') {
+    // Handle AJAX create collection request
+    $name = $input->getString('name', '');
+    $description = $input->getString('description', '');
+    
+    if (empty($name)) {
+        echo json_encode(['success' => false, 'message' => 'Collection name is required']);
+        exit;
+    }
+    
+    // Get IONOS configuration
+    $moduleConfig = getModuleConfig();
+    $ionosToken = $moduleConfig['token'] ?? '';
+    $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    
+    if (empty($ionosToken)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
+        exit;
+    }
+    
+    // Create the collection
+    try {
+        // Use the correct IONOS Inference API endpoint
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        
+        $http = HttpFactory::getHttp();
+        $headers = [
+            'Authorization' => 'Bearer ' . $ionosToken,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json'
+        ];
+        
+        $payload = [
+            'properties' => [
+                'name' => $name,
+                'description' => $description ?: 'Created via Bears AI Chatbot admin',
+                'chunking' => [
+                    'enabled' => true,
+                    'strategy' => [
+                        'config' => [
+                            'chunk_overlap' => 50,
+                            'chunk_size' => 512
+                        ]
+                    ]
+                ],
+                'embedding' => [
+                    'model' => 'BAAI/bge-large-en-v1.5'
+                ],
+                'engine' => [
+                    'db_type' => 'pgvector'
+                ]
+            ]
+        ];
+        
+        $response = $http->post($apiBase . '/collections', json_encode($payload), $headers, 30);
+        
+        if ($response->code >= 200 && $response->code < 300) {
+            $data = json_decode($response->body, true);
+            $collectionId = $data['id'] ?? $data['collection_id'] ?? null;
+            
+            if ($collectionId) {
+                // Optionally save as active collection
+                $db = Factory::getContainer()->get('DatabaseDriver');
+                $updateQuery = $db->getQuery(true)
+                    ->update($db->quoteName('#__aichatbot_state'))
+                    ->set($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId))
+                    ->where($db->quoteName('id') . ' = 1');
+                $db->setQuery($updateQuery)->execute();
+                
+                echo json_encode(['success' => true, 'message' => 'Collection created successfully', 'collection_id' => $collectionId]);
+            } else {
+                echo json_encode(['success' => false, 'message' => 'Collection created but no ID returned']);
+            }
+        } else {
+            $errorBody = json_decode($response->body, true);
+            $errorMsg = $errorBody['message'] ?? $errorBody['error'] ?? 'Failed to create collection';
+            echo json_encode(['success' => false, 'message' => $errorMsg]);
+        }
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    
+    exit;
+}
+
 if ($task === 'deleteCollection') {
     // Handle AJAX delete collection request
     $collectionId = $input->getString('collection_id', '');
@@ -1068,16 +1164,50 @@ if ($task === 'deleteCollection') {
     $ionosToken = $moduleConfig['token'] ?? '';
     $ionosTokenId = $moduleConfig['token_id'] ?? '';
     
-    if (empty($ionosToken) || empty($ionosTokenId)) {
+    if (empty($ionosToken)) {
         echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
         exit;
     }
     
-    // Delete the collection
-    $result = deleteCollection($collectionId, $ionosToken, $ionosTokenId);
+    // Delete the collection using the correct endpoint
+    try {
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        
+        $http = HttpFactory::getHttp();
+        $headers = [
+            'Authorization' => 'Bearer ' . $ionosToken,
+            'Accept' => 'application/json'
+        ];
+        
+        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
+        
+        if ($response->code >= 200 && $response->code < 300) {
+            // Clear from database if it was the active collection
+            $db = Factory::getContainer()->get('DatabaseDriver');
+            $stateQuery = $db->getQuery(true)
+                ->select($db->quoteName('collection_id'))
+                ->from($db->quoteName('#__aichatbot_state'))
+                ->where($db->quoteName('id') . ' = 1')
+                ->setLimit(1);
+            $db->setQuery($stateQuery);
+            $currentCollectionId = (string)($db->loadResult() ?? '');
+            
+            if ($currentCollectionId === $collectionId) {
+                $updateQuery = $db->getQuery(true)
+                    ->update($db->quoteName('#__aichatbot_state'))
+                    ->set($db->quoteName('collection_id') . ' = NULL')
+                    ->where($db->quoteName('id') . ' = 1');
+                $db->setQuery($updateQuery)->execute();
+            }
+            
+            echo json_encode(['success' => true, 'message' => 'Collection deleted successfully']);
+        } else {
+            echo json_encode(['success' => false, 'message' => 'Failed to delete collection (HTTP ' . $response->code . ')']);
+        }
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
     
-    header('Content-Type: application/json');
-    echo json_encode($result);
     exit;
 }
 
