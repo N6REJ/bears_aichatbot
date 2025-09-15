@@ -36,7 +36,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_usage` (
   KEY `idx_created_at` (`created_at`),
   KEY `idx_module_id` (`module_id`),
   KEY `idx_outcome` (`outcome`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Table structure for table `#__aichatbot_keywords`
@@ -56,7 +56,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_keywords` (
   UNIQUE KEY `idx_keyword` (`keyword`),
   KEY `idx_usage_count` (`usage_count`),
   KEY `idx_last_used` (`last_used`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Table structure for table `#__aichatbot_docs`
@@ -70,7 +70,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_docs` (
   PRIMARY KEY (`content_id`),
   UNIQUE KEY `idx_remote_id` (`remote_id`),
   KEY `idx_last_synced` (`last_synced`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Table structure for table `#__aichatbot_jobs`
@@ -87,7 +87,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_jobs` (
   PRIMARY KEY (`id`),
   KEY `idx_status` (`status`),
   KEY `idx_content_id` (`content_id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Table structure for table `#__aichatbot_state`
@@ -102,7 +102,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_state` (
   `last_run_reconcile` DATETIME DEFAULT NULL,
   `last_run_queue` DATETIME DEFAULT NULL,
   PRIMARY KEY (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Table structure for table `#__aichatbot_collection_stats`
@@ -111,7 +111,7 @@ CREATE TABLE IF NOT EXISTS `#__aichatbot_collection_stats` (
   `stat_date` DATE NOT NULL,
   `docs_count` INT NOT NULL DEFAULT 0,
   PRIMARY KEY (`stat_date`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 DEFAULT COLLATE=utf8mb4_unicode_ci;
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 --
 -- Insert default state record
