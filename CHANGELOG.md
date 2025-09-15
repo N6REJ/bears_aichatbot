@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.15] - 2025-09-15
+## [2025.09.15.1] - 2025-09-15
 
 ### Added
 
@@ -42,12 +42,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Implement collection creation functionality and improve collections view with enhanced UI interactions ([249aada](https://github.com/N6REJ/bears_aichatbot/commit/249aada))
 * Add limits configuration section and update IONOS API endpoints to use Model Hub v1 ([31c6f04](https://github.com/N6REJ/bears_aichatbot/commit/31c6f04))
 * Add configurable no-data message for AI chatbot responses ([e1772d5](https://github.com/N6REJ/bears_aichatbot/commit/e1772d5))
+* Add bulk delete functionality for collections with progress tracking and enhanced delete endpoint handling ([f22bb56](https://github.com/N6REJ/bears_aichatbot/commit/f22bb56))
 
 ### Changed
 
-* Update version to 2025.09.12.63 [skip ci] ([6e94d10](https://github.com/N6REJ/bears_aichatbot/commit/6e94d10))
-* Bump version to 2025.09.13.01 ([1417a97](https://github.com/N6REJ/bears_aichatbot/commit/1417a97))
-* Merge remote-tracking branch 'origin/main' ([08052ad](https://github.com/N6REJ/bears_aichatbot/commit/08052ad))
 * Update version to 2025.09.13 [skip ci] ([2c46fa4](https://github.com/N6REJ/bears_aichatbot/commit/2c46fa4))
 * Update version to 2025.09.13.1 [skip ci] ([d3fae1d](https://github.com/N6REJ/bears_aichatbot/commit/d3fae1d))
 * Update version to 2025.09.13.01 and simplify component architecture by removing custom controller/dispatcher resolution logic, adding proper language file loading in HtmlView, and fixing menu title translation key in manifest ([7a94345](https://github.com/N6REJ/bears_aichatbot/commit/7a94345))
@@ -233,6 +231,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Merge remote-tracking branch 'origin/main' ([e5c364a](https://github.com/N6REJ/bears_aichatbot/commit/e5c364a))
 * Update version to 2025.09.15 [skip ci] ([782c8b7](https://github.com/N6REJ/bears_aichatbot/commit/782c8b7))
 * Merge remote-tracking branch 'origin/main' ([3f6945a](https://github.com/N6REJ/bears_aichatbot/commit/3f6945a))
+* Update version to 2025.09.15 [skip ci] ([8a2711d](https://github.com/N6REJ/bears_aichatbot/commit/8a2711d))
+* Merge remote-tracking branch 'origin/main' ([57c1360](https://github.com/N6REJ/bears_aichatbot/commit/57c1360))
 
 ### Fixed
 
