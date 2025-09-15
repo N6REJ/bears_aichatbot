@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.15] - 2025-09-15
+## [2025.09.15.1] - 2025-09-15
 
 ### Added
 
@@ -170,6 +170,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update version to 2025.09.14.20 [skip ci] ([32bbde0](https://github.com/N6REJ/bears_aichatbot/commit/32bbde0))
 * Update version to 2025.09.14 [skip ci] ([dfd71cc](https://github.com/N6REJ/bears_aichatbot/commit/dfd71cc))
 * Merge remote-tracking branch 'origin/main' ([a3b4d30](https://github.com/N6REJ/bears_aichatbot/commit/a3b4d30))
+* Update version to 2025.09.15 [skip ci] ([191c4cf](https://github.com/N6REJ/bears_aichatbot/commit/191c4cf))
+* Improve article search with enhanced keyword matching and site-wide fallback logic ([f78a8ec](https://github.com/N6REJ/bears_aichatbot/commit/f78a8ec))
+* Merge remote-tracking branch 'origin/main' ([7b6d5a0](https://github.com/N6REJ/bears_aichatbot/commit/7b6d5a0))
 
 ### Fixed
 
