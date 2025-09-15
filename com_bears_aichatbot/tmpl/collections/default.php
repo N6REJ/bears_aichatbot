@@ -590,10 +590,13 @@ function syncDocuments() {
             // Update status messages
             if (progress < 30) {
                 statusText.textContent = 'Connecting to IONOS API...';
+                detailsText.textContent = 'Establishing secure connection';
             } else if (progress < 60) {
                 statusText.textContent = 'Processing articles...';
+                detailsText.textContent = 'Preparing documents for upload';
             } else {
                 statusText.textContent = 'Uploading documents to collection...';
+                detailsText.textContent = 'This may take a moment for large collections';
             }
         }
     }, 500);

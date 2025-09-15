@@ -1433,6 +1433,15 @@ if ($task === 'syncDocuments') {
     // Handle AJAX sync documents request
     header('Content-Type: application/json');
     
+    // Enable output buffering with immediate flush for progress updates
+    @ini_set('output_buffering', 'off');
+    @ini_set('zlib.output_compression', false);
+    @ini_set('implicit_flush', true);
+    @ob_implicit_flush(true);
+    
+    // Clear any existing buffers
+    while (@ob_end_clean());
+    
     // Get IONOS configuration
     $moduleConfig = getModuleConfig();
     $ionosToken = $moduleConfig['token'] ?? '';
