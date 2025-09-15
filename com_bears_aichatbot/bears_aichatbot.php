@@ -649,6 +649,7 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                 
                 if ($response->code >= 200 && $response->code < 300) {
                     $synced++;
+                    Log::add('Successfully synced article ID ' . $article->id, Log::INFO, 'bears_aichatbot');
                     
                     // Store document mapping in database
                     $docData = json_decode($response->body, true);
@@ -700,7 +701,7 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                     }
                 } else {
                     $failed++;
-                    $errorBody = substr($response->body, 0, 500);
+                    $errorBody = substr($response->body, 0, 1000);
                     Log::add('Failed to sync article ID ' . $article->id . ': HTTP ' . $response->code . ' - ' . $errorBody, Log::WARNING, 'bears_aichatbot');
                     
                     // Log more details for 401 errors
@@ -708,11 +709,19 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                         Log::add('401 Unauthorized for document sync. Check if token has document write permissions.', Log::ERROR, 'bears_aichatbot');
                         Log::add('Collection ID: ' . $collectionId, Log::ERROR, 'bears_aichatbot');
                         Log::add('Document URL: ' . $documentUrl, Log::ERROR, 'bears_aichatbot');
+                        Log::add('Token (first 20 chars): ' . substr($token, 0, 20) . '...', Log::ERROR, 'bears_aichatbot');
+                        Log::add('Token ID: ' . substr($tokenId, 0, 8) . '...', Log::ERROR, 'bears_aichatbot');
                         
                         // Try to parse error response
                         $errorData = json_decode($response->body, true);
                         if ($errorData) {
                             Log::add('Error details: ' . json_encode($errorData), Log::ERROR, 'bears_aichatbot');
+                        }
+                        
+                        // Stop after first 401 to avoid spamming logs
+                        if ($failed === 1) {
+                            Log::add('Stopping sync due to authorization errors. Please check your IONOS token permissions.', Log::ERROR, 'bears_aichatbot');
+                            break; // Exit the foreach loop
                         }
                     }
                 }
