@@ -1252,7 +1252,7 @@ class ModBearsAichatbotHelper
                 ->insert($db->quoteName('#__aichatbot_usage'))
                 ->columns($db->quoteName([
                     'module_id',
-                    'collection_id',
+                    'collection_id', 
                     'model',
                     'endpoint',
                     'prompt_tokens',
