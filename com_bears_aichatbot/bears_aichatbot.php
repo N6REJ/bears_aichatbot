@@ -251,12 +251,12 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                         $info[] = "✅ IONOS API accessible ({$count} collections found)";
                         
                         foreach ($collections as $i => $collection) {
-                            if ($i >= 3) { // Limit to first 3
-                                $info[] = "... and " . ($count - 3) . " more";
+                            if ($i >= 10) { // Show up to 10 collections
+                                $info[] = "... and " . ($count - 10) . " more";
                                 break;
                             }
                             $id = $collection['id'] ?? $collection['collection_id'] ?? 'unknown';
-                            $name = $collection['name'] ?? 'unnamed';
+                            $name = $collection['name'] ?? $collection['properties']['name'] ?? 'unnamed';
                             $info[] = "  - {$name} (ID: " . substr($id, 0, 12) . "...)";
                         }
                     } else {
@@ -299,62 +299,79 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Use the correct IONOS Inference API endpoint for document collections
-        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
-        // CONFIRMED WORKING: HTTP 200 response verified
-        $apiBase = 'https://inference.de-txl.ionos.com';
+        // Use the correct IONOS API endpoint for document collections
+        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
+        $apiBase = 'https://api.ionos.com/inference-modelhub';
         
         $http = HttpFactory::getHttp();
         $headers = [
             'Authorization' => 'Bearer ' . $token,
             'Accept' => 'application/json'
         ];
-        // Note: Inference API doesn't need X-IONOS-Token-Id header
         
-        $response = $http->get($apiBase . '/collections', $headers, 30);
+        // Add X-IONOS-Token-Id if provided
+        if ($tokenId) {
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
+        
+        // Try the correct endpoint: /v1/document-collections
+        $response = $http->get($apiBase . '/v1/document-collections', $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             $data = json_decode($response->body, true);
             if (is_array($data)) {
-                $collections = $data['collections'] ?? $data['data'] ?? $data;
+                // The API returns collections in 'items' array according to docs
+                $collections = $data['items'] ?? $data['collections'] ?? $data['data'] ?? [];
+                
+                // If the response is directly an array of collections
+                if (!empty($data) && isset($data[0]) && (isset($data[0]['id']) || isset($data[0]['properties']))) {
+                    $collections = $data;
+                }
+                
                 if (is_array($collections)) {
-                    // Fetch detailed metadata for each collection
-                    $detailedCollections = [];
+                    // Process collections to extract properties if needed
+                    $processedCollections = [];
                     foreach ($collections as $collection) {
-                        $collectionId = $collection['id'] ?? '';
-                        if ($collectionId) {
-                            try {
-                                // Get detailed collection info
-                                $detailResponse = $http->get($apiBase . '/ai/modelhub/document-collections/' . rawurlencode($collectionId), $headers, 10);
-                                if ($detailResponse->code >= 200 && $detailResponse->code < 300) {
-                                    $detailData = json_decode($detailResponse->body, true);
-                                    if (is_array($detailData)) {
-                                        $detailedCollections[] = $detailData;
-                                    } else {
-                                        $detailedCollections[] = $collection; // Fallback to basic info
-                                    }
-                                } else {
-                                    $detailedCollections[] = $collection; // Fallback to basic info
-                                }
-                            } catch (\Throwable $e) {
-                                $detailedCollections[] = $collection; // Fallback to basic info
+                        // Handle both direct properties and nested properties structure
+                        if (isset($collection['properties'])) {
+                            // Extract properties to top level for easier access
+                            $processed = array_merge(
+                                ['id' => $collection['id'] ?? ''],
+                                $collection['properties']
+                            );
+                            // Keep metadata if present
+                            if (isset($collection['metadata'])) {
+                                $processed['metadata'] = $collection['metadata'];
                             }
+                            $processedCollections[] = $processed;
+                        } else {
+                            // Already in flat structure or different format
+                            $processedCollections[] = $collection;
                         }
                     }
-                    return ['collections' => $detailedCollections, 'error' => ''];
+                    return ['collections' => $processedCollections, 'error' => ''];
                 } else {
                     return ['collections' => [], 'error' => 'IONOS API returned unexpected format'];
                 }
             } else {
                 return ['collections' => [], 'error' => 'IONOS API returned non-JSON response'];
             }
+        } elseif ($response->code === 404) {
+            // No collections found is not an error
+            return ['collections' => [], 'error' => ''];
         } else {
             $errorBody = substr($response->body, 0, 500);
             $errorMsg = "IONOS API error (HTTP {$response->code})";
             if ($errorBody) {
                 $errorData = json_decode($errorBody, true);
-                if (is_array($errorData) && isset($errorData['error'])) {
-                    $errorMsg .= ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                if (is_array($errorData)) {
+                    if (isset($errorData['message'])) {
+                        $errorMsg .= ': ' . $errorData['message'];
+                    } elseif (isset($errorData['error'])) {
+                        $errorMsg .= ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                    } else {
+                        $errorMsg .= ': ' . $errorBody;
+                    }
                 } else {
                     $errorMsg .= ': ' . $errorBody;
                 }
@@ -372,20 +389,23 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
 function deleteCollection(string $collectionId, string $token, string $tokenId): array
 {
     try {
-        // Use the correct IONOS Inference API endpoint for document collections
-        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
-        // CONFIRMED WORKING: HTTP 200 response verified
-        $apiBase = 'https://inference.de-txl.ionos.com';
+        // Use the correct IONOS API endpoint for document collections
+        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
+        $apiBase = 'https://api.ionos.com/inference-modelhub';
         
         $http = HttpFactory::getHttp();
         $headers = [
             'Authorization' => 'Bearer ' . $token,
             'Accept' => 'application/json'
         ];
-        // Note: Inference API doesn't need X-IONOS-Token-Id header
         
-        // Delete collection from IONOS API
-        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
+        // Add X-IONOS-Token-Id if provided
+        if ($tokenId) {
+            $headers['X-IONOS-Token-Id'] = $tokenId;
+        }
+        
+        // Delete collection from IONOS API: DELETE /v1/document-collections/{collectionId}
+        $response = $http->delete($apiBase . '/v1/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Successfully deleted from IONOS, now clean up local database
