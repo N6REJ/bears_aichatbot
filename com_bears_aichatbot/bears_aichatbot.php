@@ -571,9 +571,17 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
             $selectedCategories = array_filter(array_map('intval', explode(',', $selectedCategories)));
         }
         
-        // Get articles from selected categories
+        // Get articles from selected categories - properly quote column names including reserved words
         $query = $db->getQuery(true)
-            ->select(['id', 'title', 'introtext', 'fulltext', 'catid', 'created', 'modified'])
+            ->select([
+                $db->quoteName('id'),
+                $db->quoteName('title'),
+                $db->quoteName('introtext'),
+                $db->quoteName('fulltext'),  // fulltext is a MySQL reserved word, must be quoted
+                $db->quoteName('catid'),
+                $db->quoteName('created'),
+                $db->quoteName('modified')
+            ])
             ->from($db->quoteName('#__content'))
             ->where($db->quoteName('state') . ' = 1');
         
@@ -1418,9 +1426,108 @@ if ($task === 'syncDocuments') {
     $ionosTokenId = $moduleConfig['token_id'] ?? '';
     $collectionId = $moduleConfig['collection_id'] ?? '';
     
-    if (empty($ionosToken) || empty($collectionId)) {
-        echo json_encode(['success' => false, 'message' => 'IONOS API credentials or collection not configured']);
+    if (empty($ionosToken)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
         exit;
+    }
+    
+    // If no collection exists, create one automatically
+    if (empty($collectionId)) {
+        try {
+            $apiBase = 'https://inference.de-txl.ionos.com';
+            $http = HttpFactory::getHttp();
+            $headers = [
+                'Authorization' => 'Bearer ' . $ionosToken,
+                'Accept' => 'application/json',
+                'Content-Type' => 'application/json'
+            ];
+            
+            if ($ionosTokenId) {
+                $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+            }
+            
+            // Create a new collection
+            $collectionName = 'bears-aichatbot-' . date('YmdHis');
+            $payload = [
+                'properties' => [
+                    'name' => $collectionName,
+                    'description' => 'Auto-created collection for Bears AI Chatbot',
+                    'chunking' => [
+                        'enabled' => true,
+                        'strategy' => [
+                            'config' => [
+                                'chunk_overlap' => 50,
+                                'chunk_size' => 512
+                            ]
+                        ]
+                    ],
+                    'embedding' => [
+                        'model' => 'BAAI/bge-large-en-v1.5'
+                    ],
+                    'engine' => [
+                        'db_type' => 'pgvector'
+                    ]
+                ]
+            ];
+            
+            $response = $http->post($apiBase . '/collections', json_encode($payload), $headers, 30);
+            
+            if ($response->code >= 200 && $response->code < 300) {
+                $data = json_decode($response->body, true);
+                $collectionId = $data['id'] ?? null;
+                
+                if ($collectionId) {
+                    // Save the new collection ID to state table
+                    $db = Factory::getContainer()->get('DatabaseDriver');
+                    
+                    // Ensure state table exists
+                    $createStateTable = "CREATE TABLE IF NOT EXISTS `#__aichatbot_state` (
+                        `id` INT NOT NULL PRIMARY KEY,
+                        `collection_id` VARCHAR(255) DEFAULT NULL,
+                        `last_run_queue` DATETIME DEFAULT NULL,
+                        `last_run_reconcile` DATETIME DEFAULT NULL
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                    $db->setQuery($createStateTable)->execute();
+                    
+                    // Check if state record exists
+                    $checkQuery = $db->getQuery(true)
+                        ->select('id')
+                        ->from($db->quoteName('#__aichatbot_state'))
+                        ->where($db->quoteName('id') . ' = 1');
+                    $db->setQuery($checkQuery);
+                    $exists = $db->loadResult();
+                    
+                    if (!$exists) {
+                        // Insert new state record
+                        $insertQuery = $db->getQuery(true)
+                            ->insert($db->quoteName('#__aichatbot_state'))
+                            ->columns(['id', 'collection_id'])
+                            ->values('1, ' . $db->quote($collectionId));
+                        $db->setQuery($insertQuery)->execute();
+                    } else {
+                        // Update existing state record
+                        $updateQuery = $db->getQuery(true)
+                            ->update($db->quoteName('#__aichatbot_state'))
+                            ->set($db->quoteName('collection_id') . ' = ' . $db->quote($collectionId))
+                            ->where($db->quoteName('id') . ' = 1');
+                        $db->setQuery($updateQuery)->execute();
+                    }
+                    
+                    Log::add('Auto-created collection: ' . $collectionId, Log::INFO, 'bears_aichatbot');
+                } else {
+                    echo json_encode(['success' => false, 'message' => 'Failed to create collection - no ID returned']);
+                    exit;
+                }
+            } else {
+                $errorBody = json_decode($response->body, true);
+                $errorMsg = $errorBody['message'] ?? $errorBody['error'] ?? 'Failed to create collection';
+                echo json_encode(['success' => false, 'message' => 'Failed to auto-create collection: ' . $errorMsg]);
+                exit;
+            }
+        } catch (\Throwable $e) {
+            echo json_encode(['success' => false, 'message' => 'Error creating collection: ' . $e->getMessage()]);
+            exit;
+        }
     }
     
     try {
@@ -1441,9 +1548,17 @@ if ($task === 'syncDocuments') {
             $selectedCategories = array_filter(array_map('intval', explode(',', $selectedCategories)));
         }
         
-        // Get articles from selected categories
+        // Get articles from selected categories - properly quote column names including reserved words
         $query = $db->getQuery(true)
-            ->select(['id', 'title', 'introtext', 'fulltext', 'catid', 'created', 'modified'])
+            ->select([
+                $db->quoteName('id'),
+                $db->quoteName('title'),
+                $db->quoteName('introtext'),
+                $db->quoteName('fulltext'),  // fulltext is a MySQL reserved word, must be quoted
+                $db->quoteName('catid'),
+                $db->quoteName('created'),
+                $db->quoteName('modified')
+            ])
             ->from($db->quoteName('#__content'))
             ->where($db->quoteName('state') . ' = 1');
         
