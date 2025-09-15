@@ -610,17 +610,16 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                 
                 // Prepare document payload for IONOS Inference API
                 // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/#tag/Document-Collections
+                // The API expects content directly, not wrapped in properties
                 $documentPayload = [
-                    'properties' => [
-                        'content' => $content,
-                        'metadata' => [
-                            'article_id' => (string)$article->id,
-                            'title' => $article->title,
-                            'category_id' => (string)$article->catid,
-                            'created' => $article->created,
-                            'modified' => $article->modified,
-                            'source' => 'joomla_article'
-                        ]
+                    'content' => $content,
+                    'metadata' => [
+                        'article_id' => (string)$article->id,
+                        'title' => $article->title,
+                        'category_id' => (string)$article->catid,
+                        'created' => $article->created,
+                        'modified' => $article->modified,
+                        'source' => 'joomla_article'
                     ]
                 ];
                 
@@ -696,7 +695,21 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                     }
                 } else {
                     $failed++;
-                    Log::add('Failed to sync article ID ' . $article->id . ': HTTP ' . $response->code . ' - ' . substr($response->body, 0, 200), Log::WARNING, 'bears_aichatbot');
+                    $errorBody = substr($response->body, 0, 500);
+                    Log::add('Failed to sync article ID ' . $article->id . ': HTTP ' . $response->code . ' - ' . $errorBody, Log::WARNING, 'bears_aichatbot');
+                    
+                    // Log more details for 401 errors
+                    if ($response->code === 401) {
+                        Log::add('401 Unauthorized for document sync. Check if token has document write permissions.', Log::ERROR, 'bears_aichatbot');
+                        Log::add('Collection ID: ' . $collectionId, Log::ERROR, 'bears_aichatbot');
+                        Log::add('Document URL: ' . $documentUrl, Log::ERROR, 'bears_aichatbot');
+                        
+                        // Try to parse error response
+                        $errorData = json_decode($response->body, true);
+                        if ($errorData) {
+                            Log::add('Error details: ' . json_encode($errorData), Log::ERROR, 'bears_aichatbot');
+                        }
+                    }
                 }
             } catch (\Throwable $e) {
                 $failed++;
