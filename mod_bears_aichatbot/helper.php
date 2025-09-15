@@ -1237,6 +1237,17 @@ class ModBearsAichatbotHelper
             } catch (\Throwable $ignore) {}
             $est = (($prompt / 1000.0) * $pp) + (($completion / 1000.0) * $pc);
 
+            // Log the values we're about to insert for debugging
+            \Joomla\CMS\Log\Log::add(
+                'Usage INSERT values - moduleId: ' . $moduleId . 
+                ', collectionId: ' . ($collectionId !== '' ? $collectionId : 'NULL') .
+                ', model: ' . $model .
+                ', prompt: ' . $prompt . ', completion: ' . $completion . ', total: ' . $total .
+                ', outcome: ' . ($outcome ?? 'NULL'),
+                \Joomla\CMS\Log\Log::DEBUG,
+                'bears_aichatbot'
+            );
+
             $q = $db->getQuery(true)
                 ->insert($db->quoteName('#__aichatbot_usage'))
                 ->columns([
@@ -1290,8 +1301,27 @@ class ModBearsAichatbotHelper
                     number_format($est, 6, '.', ''),
                 ]));
             $db->setQuery($q)->execute();
+            
+            // Log success
+            \Joomla\CMS\Log\Log::add(
+                'Successfully logged usage to database - ID: ' . $db->insertid() . ', Tokens: ' . $total,
+                \Joomla\CMS\Log\Log::INFO,
+                'bears_aichatbot'
+            );
         } catch (\Throwable $e) {
-            // swallow logging errors
+            // Log the actual error for debugging
+            \Joomla\CMS\Log\Log::add(
+                'Failed to log usage to database: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine(),
+                \Joomla\CMS\Log\Log::ERROR,
+                'bears_aichatbot'
+            );
+            
+            // Also log the SQL query for debugging
+            \Joomla\CMS\Log\Log::add(
+                'Failed SQL: ' . (string)$q,
+                \Joomla\CMS\Log\Log::ERROR,
+                'bears_aichatbot'
+            );
         }
     }
 
