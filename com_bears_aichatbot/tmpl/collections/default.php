@@ -553,7 +553,7 @@ function syncDocuments() {
     progressOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
     progressOverlay.style.zIndex = '10000';
     progressOverlay.innerHTML = `
-        <div class="card" style="min-width: 400px;">
+        <div class="card" style="min-width: 500px; max-width: 600px;">
             <div class="card-body">
                 <h5 class="card-title text-center mb-3">
                     <i class="fas fa-sync-alt fa-spin me-2"></i>Syncing Articles to Collection
@@ -567,7 +567,33 @@ function syncDocuments() {
                          aria-valuemax="100">0%</div>
                 </div>
                 <p class="text-center mb-2" id="sync-status">Initializing sync process...</p>
-                <small class="text-muted d-block text-center" id="sync-details">Please wait, this may take a few moments</small>
+                <small class="text-muted d-block text-center mb-3" id="sync-details">Please wait, this may take a few moments</small>
+                
+                <!-- Article being processed indicator -->
+                <div id="current-article" class="alert alert-info d-none" role="alert">
+                    <div class="d-flex align-items-center">
+                        <div class="spinner-border spinner-border-sm me-2" role="status">
+                            <span class="visually-hidden">Processing...</span>
+                        </div>
+                        <div>
+                            <strong>Processing:</strong> <span id="article-title"></span>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Success/Failed counters -->
+                <div class="row text-center d-none" id="sync-counters">
+                    <div class="col-6">
+                        <span class="badge bg-success fs-6">
+                            <i class="fas fa-check-circle"></i> Synced: <span id="synced-count">0</span>
+                        </span>
+                    </div>
+                    <div class="col-6">
+                        <span class="badge bg-danger fs-6">
+                            <i class="fas fa-times-circle"></i> Failed: <span id="failed-count">0</span>
+                        </span>
+                    </div>
+                </div>
             </div>
         </div>
     `;
@@ -576,80 +602,162 @@ function syncDocuments() {
     const progressBar = progressOverlay.querySelector('.progress-bar');
     const statusText = progressOverlay.querySelector('#sync-status');
     const detailsText = progressOverlay.querySelector('#sync-details');
+    const currentArticleDiv = progressOverlay.querySelector('#current-article');
+    const articleTitleSpan = progressOverlay.querySelector('#article-title');
+    const syncCountersDiv = progressOverlay.querySelector('#sync-counters');
+    const syncedCountSpan = progressOverlay.querySelector('#synced-count');
+    const failedCountSpan = progressOverlay.querySelector('#failed-count');
     
-    // Simulate progress while waiting for response
-    let progress = 0;
-    const progressInterval = setInterval(() => {
-        if (progress < 90) {
-            progress += Math.random() * 10;
-            progress = Math.min(progress, 90);
-            progressBar.style.width = progress + '%';
-            progressBar.textContent = Math.round(progress) + '%';
-            progressBar.setAttribute('aria-valuenow', Math.round(progress));
-            
-            // Update status messages
-            if (progress < 30) {
-                statusText.textContent = 'Connecting to IONOS API...';
-                detailsText.textContent = 'Establishing secure connection';
-            } else if (progress < 60) {
-                statusText.textContent = 'Processing articles...';
-                detailsText.textContent = 'Preparing documents for upload';
-            } else {
-                statusText.textContent = 'Uploading documents to collection...';
-                detailsText.textContent = 'This may take a moment for large collections';
-            }
-        }
-    }, 500);
+    let totalArticles = 0;
+    let currentIndex = 0;
+    let syncedCount = 0;
+    let failedCount = 0;
     
-    fetch('index.php?option=com_bears_aichatbot&task=syncDocuments', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/x-www-form-urlencoded',
-            'X-Requested-With': 'XMLHttpRequest'
-        }
-    })
-    .then(response => response.json())
-    .then(data => {
-        clearInterval(progressInterval);
+    // Use Server-Sent Events for real-time progress
+    const eventSource = new EventSource('index.php?option=com_bears_aichatbot&task=syncDocuments');
+    
+    eventSource.addEventListener('start', function(e) {
+        const data = JSON.parse(e.data);
+        totalArticles = data.total;
+        statusText.textContent = data.message;
+        detailsText.textContent = `Processing ${totalArticles} articles...`;
+    });
+    
+    eventSource.addEventListener('progress', function(e) {
+        const data = JSON.parse(e.data);
+        currentIndex = data.current;
         
-        // Complete the progress bar
+        // Update progress bar
+        const percentage = data.percentage;
+        progressBar.style.width = percentage + '%';
+        progressBar.textContent = percentage + '%';
+        progressBar.setAttribute('aria-valuenow', percentage);
+        
+        // Show current article being processed
+        currentArticleDiv.classList.remove('d-none');
+        articleTitleSpan.textContent = data.article_title + ' (ID: ' + data.article_id + ')';
+        
+        // Update status
+        statusText.textContent = `Processing article ${currentIndex} of ${totalArticles}`;
+        
+        // Show counters
+        syncCountersDiv.classList.remove('d-none');
+    });
+    
+    eventSource.addEventListener('article_synced', function(e) {
+        const data = JSON.parse(e.data);
+        syncedCount = data.synced;
+        failedCount = data.failed;
+        syncedCountSpan.textContent = syncedCount;
+        failedCountSpan.textContent = failedCount;
+        
+        // Flash success for current article
+        currentArticleDiv.classList.remove('alert-info', 'alert-danger');
+        currentArticleDiv.classList.add('alert-success');
+        setTimeout(() => {
+            currentArticleDiv.classList.remove('alert-success');
+            currentArticleDiv.classList.add('alert-info');
+        }, 500);
+    });
+    
+    eventSource.addEventListener('article_failed', function(e) {
+        const data = JSON.parse(e.data);
+        syncedCount = data.synced;
+        failedCount = data.failed;
+        syncedCountSpan.textContent = syncedCount;
+        failedCountSpan.textContent = failedCount;
+        
+        // Flash error for current article
+        currentArticleDiv.classList.remove('alert-info', 'alert-success');
+        currentArticleDiv.classList.add('alert-danger');
+        articleTitleSpan.innerHTML = data.article_title + ' (ID: ' + data.article_id + ') - <small>' + data.error + '</small>';
+        setTimeout(() => {
+            currentArticleDiv.classList.remove('alert-danger');
+            currentArticleDiv.classList.add('alert-info');
+        }, 1000);
+    });
+    
+    eventSource.addEventListener('collection_created', function(e) {
+        const data = JSON.parse(e.data);
+        statusText.textContent = 'New collection created: ' + data.name;
+        detailsText.textContent = 'Collection ID: ' + data.collection_id;
+    });
+    
+    eventSource.addEventListener('complete', function(e) {
+        const data = JSON.parse(e.data);
+        eventSource.close();
+        
+        // Update final UI
         progressBar.style.width = '100%';
         progressBar.textContent = '100%';
         progressBar.setAttribute('aria-valuenow', 100);
         progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-success');
         
-        if (data.success) {
-            progressBar.classList.add('bg-success');
-            statusText.textContent = 'Sync completed successfully!';
-            detailsText.innerHTML = `<strong>${data.synced || 0} articles synced</strong>` + 
-                                   (data.failed > 0 ? ` (${data.failed} failed)` : '');
-            
-            setTimeout(() => {
-                progressOverlay.remove();
-                alert(data.message);
-                window.location.reload();
-            }, 2000);
+        currentArticleDiv.classList.add('d-none');
+        statusText.textContent = 'Sync completed successfully!';
+        detailsText.innerHTML = data.message;
+        
+        setTimeout(() => {
+            progressOverlay.remove();
+            alert(data.message);
+            window.location.reload();
+        }, 3000);
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+    
+    eventSource.addEventListener('error', function(e) {
+        eventSource.close();
+        
+        let errorMessage = 'Unknown error occurred';
+        try {
+            const data = JSON.parse(e.data);
+            errorMessage = data.message;
+        } catch (parseError) {
+            // If we can't parse the error, use default message
+        }
+        
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-danger');
+        currentArticleDiv.classList.add('d-none');
+        statusText.textContent = 'Sync failed!';
+        detailsText.textContent = errorMessage;
+        
+        setTimeout(() => {
+            progressOverlay.remove();
+            alert('Sync failed: ' + errorMessage);
+        }, 3000);
+        
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+    
+    eventSource.onerror = function(e) {
+        // Connection error or stream ended
+        if (eventSource.readyState === EventSource.CLOSED) {
+            // Stream closed normally (might be complete)
+            console.log('SSE connection closed');
         } else {
-            progressBar.classList.add('bg-danger');
-            statusText.textContent = 'Sync failed!';
-            detailsText.textContent = data.message || 'Unknown error occurred';
+            // Actual error
+            console.error('SSE error:', e);
+            eventSource.close();
+            
+            progressBar.classList.remove('progress-bar-animated');
+            progressBar.classList.add('bg-warning');
+            statusText.textContent = 'Connection lost';
+            detailsText.textContent = 'The sync process may have completed or encountered an error';
             
             setTimeout(() => {
                 progressOverlay.remove();
-                alert('Sync failed: ' + data.message);
+                window.location.reload();
             }, 3000);
         }
         
         btn.innerHTML = originalText;
         btn.disabled = false;
-    })
-    .catch(error => {
-        clearInterval(progressInterval);
-        progressOverlay.remove();
-        alert('Sync error: ' + error.message);
-        btn.innerHTML = originalText;
-        btn.disabled = false;
-    });
+    };
 }
 
 function loadDocuments(collectionId) {

@@ -1440,8 +1440,11 @@ if ($task === 'createCollection') {
 }
 
 if ($task === 'syncDocuments') {
-    // Handle AJAX sync documents request
-    header('Content-Type: application/json');
+    // Handle sync documents request with Server-Sent Events for real-time progress
+    header('Content-Type: text/event-stream');
+    header('Cache-Control: no-cache');
+    header('Connection: keep-alive');
+    header('X-Accel-Buffering: no'); // Disable Nginx buffering
     
     // Enable output buffering with immediate flush for progress updates
     @ini_set('output_buffering', 'off');
@@ -1452,6 +1455,14 @@ if ($task === 'syncDocuments') {
     // Clear any existing buffers
     while (@ob_end_clean());
     
+    // Function to send SSE message
+    function sendSSEMessage($event, $data) {
+        echo "event: $event\n";
+        echo "data: " . json_encode($data) . "\n\n";
+        @ob_flush();
+        @flush();
+    }
+    
     // Get IONOS configuration
     $moduleConfig = getModuleConfig();
     $ionosToken = $moduleConfig['token'] ?? '';
@@ -1459,7 +1470,7 @@ if ($task === 'syncDocuments') {
     $collectionId = $moduleConfig['collection_id'] ?? '';
     
     if (empty($ionosToken)) {
-        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
+        sendSSEMessage('error', ['success' => false, 'message' => 'IONOS API credentials not configured']);
         exit;
     }
     
