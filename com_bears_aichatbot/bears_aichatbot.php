@@ -18,6 +18,7 @@ use Joomla\CMS\Language\Text;
 use Joomla\CMS\HTML\HTMLHelper;
 use Joomla\Registry\Registry;
 use Joomla\CMS\Http\HttpFactory;
+use Joomla\CMS\Log\Log;
 
 // Define Joomla constants for IDE support (these are normally defined by Joomla core)
 if (!defined('JPATH_ADMINISTRATOR')) {
@@ -299,31 +300,10 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Derive the API base URL from the configured endpoint
-        // The endpoint parameter contains the chat completions URL
-        // We need to extract the base URL for document collections
-        $apiBase = '';
-        
-        // Check if this is an IONOS inference endpoint
-        if (strpos($endpoint, 'inference') !== false && strpos($endpoint, 'ionos.com') !== false) {
-            // For IONOS inference endpoints, use the Model Hub API
-            // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
-            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
-        } else {
-            // Fallback: try to extract base URL from endpoint
-            // Remove /v1/chat/completions or /chat/completions to get base
-            $apiBase = $endpoint;
-            if (strpos($apiBase, '/v1/chat/completions') !== false) {
-                $apiBase = str_replace('/v1/chat/completions', '', $apiBase);
-            } elseif (strpos($apiBase, '/chat/completions') !== false) {
-                $apiBase = str_replace('/chat/completions', '', $apiBase);
-            }
-            
-            // If we still don't have a valid base, use the default
-            if (empty($apiBase) || strpos($apiBase, 'http') !== 0) {
-                $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
-            }
-        }
+        // Use the correct IONOS Inference API endpoint for document collections
+        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+        // This is the working endpoint confirmed by checkCollectionStatus function
+        $apiBase = 'https://inference.de-txl.ionos.com';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -336,20 +316,37 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        // GET /document-collections endpoint
-        $collectionsUrl = $apiBase . '/document-collections';
+        // GET /collections endpoint (correct path for IONOS Inference API)
+        $collectionsUrl = $apiBase . '/collections';
+        
+        // Debug: Log the URL being called
+        Log::add('Fetching collections from: ' . $collectionsUrl, Log::DEBUG, 'bears_aichatbot');
+        
         $response = $http->get($collectionsUrl, $headers, 30);
         
+        // Debug: Log response code
+        Log::add('Collections API response code: ' . $response->code, Log::DEBUG, 'bears_aichatbot');
+        
         if ($response->code >= 200 && $response->code < 300) {
+            // Debug: Log raw response body (first 500 chars)
+            Log::add('Collections API response body: ' . substr($response->body, 0, 500), Log::DEBUG, 'bears_aichatbot');
+            
             $data = json_decode($response->body, true);
             if (is_array($data)) {
+                // Debug: Log the structure of the response
+                Log::add('Response structure keys: ' . json_encode(array_keys($data)), Log::DEBUG, 'bears_aichatbot');
+                
                 // The API returns collections in 'items' array according to docs
-                $collections = $data['items'] ?? $data['collections'] ?? $data['data'] ?? [];
+                // But IONOS might return them directly as an array or in 'properties' wrapper
+                $collections = $data['items'] ?? $data['collections'] ?? $data['data'] ?? $data['properties'] ?? [];
                 
                 // If the response is directly an array of collections
                 if (!empty($data) && isset($data[0]) && (isset($data[0]['id']) || isset($data[0]['properties']))) {
                     $collections = $data;
                 }
+                
+                // Debug: Log number of collections found
+                Log::add('Collections found: ' . (is_array($collections) ? count($collections) : 'not an array'), Log::DEBUG, 'bears_aichatbot');
                 
                 if (is_array($collections)) {
                     // Process collections to extract properties if needed
@@ -412,17 +409,9 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
 function deleteCollection(string $collectionId, string $token, string $tokenId, string $endpoint = ''): array
 {
     try {
-        // Derive the API base URL from the configured endpoint
-        $apiBase = '';
-        
-        // Check if this is an IONOS inference endpoint
-        if (strpos($endpoint, 'inference') !== false && strpos($endpoint, 'ionos.com') !== false) {
-            // For IONOS inference endpoints, use the Model Hub API
-            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
-        } else {
-            // Fallback to default
-            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
-        }
+        // Use the correct IONOS Inference API endpoint for document collections
+        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+        $apiBase = 'https://inference.de-txl.ionos.com';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -435,8 +424,8 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        // DELETE /document-collections/{collectionId}
-        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
+        // DELETE /collections/{collectionId}
+        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Successfully deleted from IONOS, now clean up local database
@@ -472,7 +461,7 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
                 
             } catch (\Throwable $e) {
                 // Log database cleanup error but don't fail the operation
-                error_log('Bears AI Chatbot: Database cleanup error after collection deletion: ' . $e->getMessage());
+                Log::add('Database cleanup error after collection deletion: ' . $e->getMessage(), Log::WARNING, 'bears_aichatbot');
             }
             
             return ['success' => true, 'message' => 'Collection deleted successfully'];
@@ -706,52 +695,52 @@ function extractKeywords(string $message, ?Registry $params = null): array
     }
     
     // Debug logging
-    error_log('Bears AI Chatbot Component: Starting keyword extraction for message: "' . $message . '"');
-    error_log('Bears AI Chatbot Component: Using minLength=' . $minLength . ', maxLength=' . $maxLength . ', ignoreWords=' . count($ignoreWords));
+    Log::add('Starting keyword extraction for message: "' . $message . '"', Log::DEBUG, 'bears_aichatbot');
+    Log::add('Using minLength=' . $minLength . ', maxLength=' . $maxLength . ', ignoreWords=' . count($ignoreWords), Log::DEBUG, 'bears_aichatbot');
     
     // Convert to lowercase and remove special characters
     $originalMessage = $message;
     $message = mb_strtolower($message, 'UTF-8');
-    error_log('Bears AI Chatbot Component: After lowercase: "' . $message . '"');
+    Log::add('After lowercase: "' . $message . '"', Log::DEBUG, 'bears_aichatbot');
     
     $message = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $message);
-    error_log('Bears AI Chatbot Component: After removing special chars: "' . $message . '"');
+    Log::add('After removing special chars: "' . $message . '"', Log::DEBUG, 'bears_aichatbot');
     
     // Split into words
     $words = preg_split('/\s+/', trim($message));
-    error_log('Bears AI Chatbot Component: Split into words: ' . json_encode($words));
+    Log::add('Split into words: ' . json_encode($words), Log::DEBUG, 'bears_aichatbot');
     
     // Filter and process words
     $keywords = [];
-    error_log('Bears AI Chatbot Component: Starting word filtering...');
+    Log::add('Starting word filtering...', Log::DEBUG, 'bears_aichatbot');
     
     foreach ($words as $word) {
         $word = trim($word);
-        error_log('Bears AI Chatbot Component: Processing word "' . $word . '"');
+        Log::add('Processing word "' . $word . '"', Log::DEBUG, 'bears_aichatbot');
         
         // Skip if too short, too long, or is a ignore word
         if (mb_strlen($word) < $minLength) {
-            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - too short (< ' . $minLength . ')');
+            Log::add('Skipping "' . $word . '" - too short (< ' . $minLength . ')', Log::DEBUG, 'bears_aichatbot');
             continue;
         }
         
         if (mb_strlen($word) > $maxLength) {
-            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - too long (> ' . $maxLength . ')');
+            Log::add('Skipping "' . $word . '" - too long (> ' . $maxLength . ')', Log::DEBUG, 'bears_aichatbot');
             continue;
         }
         
         if (in_array($word, $ignoreWords)) {
-            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - ignore word');
+            Log::add('Skipping "' . $word . '" - ignore word', Log::DEBUG, 'bears_aichatbot');
             continue;
         }
         
         // Skip if it's just numbers
         if (is_numeric($word)) {
-            error_log('Bears AI Chatbot Component: Skipping "' . $word . '" - numeric');
+            Log::add('Skipping "' . $word . '" - numeric', Log::DEBUG, 'bears_aichatbot');
             continue;
         }
         
-        error_log('Bears AI Chatbot Component: Keeping "' . $word . '" as keyword');
+        Log::add('Keeping "' . $word . '" as keyword', Log::DEBUG, 'bears_aichatbot');
         $keywords[] = $word;
     }
     
@@ -760,7 +749,7 @@ function extractKeywords(string $message, ?Registry $params = null): array
     arsort($keywordCounts);
     
     $finalKeywords = array_slice(array_keys($keywordCounts), 0, 10);
-    error_log('Bears AI Chatbot Component: Final keywords for "' . $originalMessage . '": ' . json_encode($finalKeywords));
+    Log::add('Final keywords for "' . $originalMessage . '": ' . json_encode($finalKeywords), Log::DEBUG, 'bears_aichatbot');
     
     return $finalKeywords;
 }
@@ -871,7 +860,7 @@ function updateKeywordStats(string $message, int $totalTokens, string $outcome):
         
     } catch (\Throwable $e) {
         // Silently fail - keyword tracking shouldn't break the main functionality
-        error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage());
+        Log::add('Keyword tracking error: ' . $e->getMessage(), Log::WARNING, 'bears_aichatbot');
     }
 }
 
@@ -890,7 +879,7 @@ function getTokenUsageData(): array
         
         if (!in_array($usageTable, $tables)) {
             // Log for debugging
-            error_log('Bears AI Chatbot: Usage table does not exist: ' . $usageTable);
+            Log::add('Usage table does not exist: ' . $usageTable, Log::WARNING, 'bears_aichatbot');
             // Return empty data if table doesn't exist yet
             return [
                 'today' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
@@ -902,7 +891,7 @@ function getTokenUsageData(): array
         }
         
         // Log table exists
-        error_log('Bears AI Chatbot: Usage table exists: ' . $usageTable);
+        Log::add('Usage table exists: ' . $usageTable, Log::DEBUG, 'bears_aichatbot');
         
         // First, let's check if there's any data at all
         $countQuery = $db->getQuery(true)
@@ -911,7 +900,7 @@ function getTokenUsageData(): array
         $db->setQuery($countQuery);
         $totalRecords = (int)$db->loadResult();
         
-        error_log('Bears AI Chatbot: Total usage records in database: ' . $totalRecords);
+        Log::add('Total usage records in database: ' . $totalRecords, Log::DEBUG, 'bears_aichatbot');
         
         if ($totalRecords === 0) {
             // No data yet
@@ -934,7 +923,7 @@ function getTokenUsageData(): array
         $db->setQuery($rangeQuery);
         $dateRange = $db->loadObject();
         
-        error_log('Bears AI Chatbot: Data date range: ' . $dateRange->min_date . ' to ' . $dateRange->max_date);
+        Log::add('Data date range: ' . $dateRange->min_date . ' to ' . $dateRange->max_date, Log::DEBUG, 'bears_aichatbot');
         
         $now = new DateTime();
         
@@ -963,11 +952,11 @@ function getTokenUsageData(): array
             $db->setQuery($query);
             $result = $db->loadObject();
             
-            error_log('Bears AI Chatbot: Period ' . $period . ' (>= ' . $startDate . '): ' . 
+            Log::add('Period ' . $period . ' (>= ' . $startDate . '): ' . 
                      'records=' . ($result->record_count ?? 0) . ', ' .
                      'prompt=' . ($result->prompt_tokens ?? 0) . ', ' .
                      'completion=' . ($result->completion_tokens ?? 0) . ', ' .
-                     'total=' . ($result->total_tokens ?? 0));
+                     'total=' . ($result->total_tokens ?? 0), Log::DEBUG, 'bears_aichatbot');
             
             $usage[$period] = [
                 'prompt_tokens' => (int)($result->prompt_tokens ?? 0),
@@ -979,7 +968,7 @@ function getTokenUsageData(): array
         return $usage;
         
     } catch (\Throwable $e) {
-        error_log('Bears AI Chatbot: Error getting token usage data: ' . $e->getMessage());
+        Log::add('Error getting token usage data: ' . $e->getMessage(), Log::ERROR, 'bears_aichatbot');
         // Return empty data on error
         return [
             'today' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
@@ -1074,6 +1063,13 @@ function calculateUsageTrends(array $tokenUsage): array
     }
 }
 
+// Set up Joomla logging for this component
+Log::addLogger(
+    ['text_file' => 'bears_aichatbot.php'],
+    Log::ALL,
+    ['bears_aichatbot']
+);
+
 // Load component language
 $lang = Factory::getLanguage();
 $lang->load('com_bears_aichatbot', JPATH_ADMINISTRATOR);
@@ -1107,9 +1103,9 @@ if ($task === 'createCollection') {
     
     // Create the collection
     try {
-        // Use the correct IONOS Inference Model Hub API endpoint
-        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
-        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        // Use the correct IONOS Inference API endpoint for document collections
+        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+        $apiBase = 'https://inference.de-txl.ionos.com';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -1145,8 +1141,8 @@ if ($task === 'createCollection') {
             ]
         ];
         
-        // POST /document-collections
-        $response = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
+        // POST /collections
+        $response = $http->post($apiBase . '/collections', json_encode($payload), $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             $data = json_decode($response->body, true);
@@ -1198,9 +1194,9 @@ if ($task === 'deleteCollection') {
     
     // Delete the collection using the correct endpoint
     try {
-        // Use the correct IONOS Inference Model Hub API endpoint
-        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
-        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        // Use the correct IONOS Inference API endpoint for document collections
+        // Based on collections.ipynb: https://inference.de-txl.ionos.com/collections
+        $apiBase = 'https://inference.de-txl.ionos.com';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -1213,8 +1209,8 @@ if ($task === 'deleteCollection') {
             $headers['X-IONOS-Token-Id'] = $ionosTokenId;
         }
         
-        // DELETE /document-collections/{collectionId}
-        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
+        // DELETE /collections/{collectionId}
+        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Clear from database if it was the active collection

@@ -65,6 +65,7 @@
                 <field name="additional_urls" type="textarea" label="MOD_BEARS_AICHATBOT_ADDITIONAL_URLS_LABEL" description="MOD_BEARS_AICHATBOT_ADDITIONAL_URLS_DESC" rows="3" cols="50" filter="raw" />
                 <field name="button_label" type="text" default="Knowledgebase" label="MOD_BEARS_AICHATBOT_BUTTON_LABEL_LABEL" description="MOD_BEARS_AICHATBOT_BUTTON_LABEL_DESC"/>
                 <field name="intro_text" type="textarea" label="MOD_BEARS_AICHATBOT_INTRO_TEXT_LABEL" description="MOD_BEARS_AICHATBOT_INTRO_TEXT_DESC" rows="3" cols="50" default="Hello! I'm your AI assistant. Ask me anything about our knowledge base and I'll help you find the information you need." filter="raw" />
+                <field name="no_data_message" type="textarea" label="MOD_BEARS_AICHATBOT_NO_DATA_MESSAGE_LABEL" description="MOD_BEARS_AICHATBOT_NO_DATA_MESSAGE_DESC" rows="2" cols="50" default="I'm sorry I don't know how to answer that" filter="raw" />
                 <field name="include_sitemap"
                        type="radio"
                        default="1"

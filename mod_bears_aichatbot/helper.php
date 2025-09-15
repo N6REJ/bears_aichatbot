@@ -271,18 +271,24 @@ class ModBearsAichatbotHelper
             }
         }
         
+        // Get the configured no-data message
+        $noDataMessage = trim((string)$params->get('no_data_message', "I'm sorry I don't know how to answer that"));
+        if (empty($noDataMessage)) {
+            $noDataMessage = "I'm sorry I don't know how to answer that";
+        }
+        
         // If strict and no relevant KB found, refuse without calling the model
         $hasKb = (($kbStats['article_count'] ?? 0)
             + ($kbStats['kunena_count'] ?? 0)
             + ($kbStats['url_count'] ?? 0)
             + ($kbStats['retrieved'] ?? 0)) > 0;
         if ($strict && (!$hasKb || stripos($context, 'No knowledge available') !== false)) {
-            return ['success' => true, 'answer' => "I don't know based on the provided dataset.", 'kb' => $kbStats];
+            return ['success' => true, 'answer' => $noDataMessage, 'kb' => $kbStats];
         }
 
         // System prompt includes the KB context from Joomla articles
         $systemPrompt = ($strict ? (
-            "You are a knowledge base assistant for this Joomla site. Answer using ONLY the content inside <kb>. If the information is not fully supported by <kb>, respond exactly: 'I don't know based on the provided dataset.' Do not use prior knowledge, do not browse the web, and do not guess.\n\n"
+            "You are a knowledge base assistant for this Joomla site. Answer using ONLY the content inside <kb>. If the information is not fully supported by <kb>, respond exactly: '" . $noDataMessage . "' Do not use prior knowledge, do not browse the web, and do not guess.\n\n"
             . "IMPORTANT INSTRUCTIONS:\n"
             . "1. Use only the <kb> content for facts and instructions.\n"
             . "2. PRIORITIZE answering from the knowledge base content over providing links.\n"
@@ -465,7 +471,8 @@ class ModBearsAichatbotHelper
 
                 // Detect outcome: answered/refused
                 $ansLower = mb_strtolower($answer);
-                $outcome = (strpos($ansLower, "i don't know based on the provided dataset") !== false) ? 'refused' : 'answered';
+                $noDataLower = mb_strtolower($noDataMessage);
+                $outcome = (strpos($ansLower, $noDataLower) !== false || strpos($ansLower, "i don't know") !== false) ? 'refused' : 'answered';
                 // If status >= 400 treat as error
                 if ((int)$response->code >= 400) { $outcome = 'error'; }
 
