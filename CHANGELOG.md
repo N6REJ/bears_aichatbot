@@ -41,6 +41,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Add config folder to module manifest and integrate centralized configuration system ([0791133](https://github.com/N6REJ/bears_aichatbot/commit/0791133))
 * Implement collection creation functionality and improve collections view with enhanced UI interactions ([249aada](https://github.com/N6REJ/bears_aichatbot/commit/249aada))
 * Add limits configuration section and update IONOS API endpoints to use Model Hub v1 ([31c6f04](https://github.com/N6REJ/bears_aichatbot/commit/31c6f04))
+* Add configurable no-data message for AI chatbot responses ([e1772d5](https://github.com/N6REJ/bears_aichatbot/commit/e1772d5))
 
 ### Changed
 
@@ -230,6 +231,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Merge remote-tracking branch 'origin/main' ([7afe8b2](https://github.com/N6REJ/bears_aichatbot/commit/7afe8b2))
 * Update version to 2025.09.15 [skip ci] ([4c47f18](https://github.com/N6REJ/bears_aichatbot/commit/4c47f18))
 * Merge remote-tracking branch 'origin/main' ([e5c364a](https://github.com/N6REJ/bears_aichatbot/commit/e5c364a))
+* Update version to 2025.09.15 [skip ci] ([782c8b7](https://github.com/N6REJ/bears_aichatbot/commit/782c8b7))
+* Merge remote-tracking branch 'origin/main' ([3f6945a](https://github.com/N6REJ/bears_aichatbot/commit/3f6945a))
 
 ### Fixed
 
