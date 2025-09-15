@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.15.13] - 2025-09-15
+## [2025.09.15.14] - 2025-09-15
 
 ### Added
 
@@ -14,7 +14,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Update version to 2025.09.15.11 [skip ci] ([fe5fa43](https://github.com/N6REJ/bears_aichatbot/commit/fe5fa43))
 * Update version to 2025.09.15.12 [skip ci] ([38ffb32](https://github.com/N6REJ/bears_aichatbot/commit/38ffb32))
 * Merge remote-tracking branch 'origin/main' ([2c6351b](https://github.com/N6REJ/bears_aichatbot/commit/2c6351b))
+* Update version to 2025.09.15.13 [skip ci] ([4b3f113](https://github.com/N6REJ/bears_aichatbot/commit/4b3f113))
+* Increase default max response tokens from 512 to 2048 and add configurable system limits to module parameters ([abca06c](https://github.com/N6REJ/bears_aichatbot/commit/abca06c))
+* Merge remote-tracking branch 'origin/main' ([c77118e](https://github.com/N6REJ/bears_aichatbot/commit/c77118e))
 
