@@ -364,10 +364,29 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
                                 ['id' => $collection['id'] ?? ''],
                                 $collection['properties']
                             );
-                            // Keep metadata if present
+                            
+                            // Map metadata fields to expected format
                             if (isset($collection['metadata'])) {
                                 $processed['metadata'] = $collection['metadata'];
+                                // Map IONOS metadata fields to our expected fields
+                                $processed['created_at'] = $collection['metadata']['createdDate'] ?? null;
+                                $processed['updated_at'] = $collection['metadata']['lastModifiedDate'] ?? null;
                             }
+                            
+                            // Map other fields from properties
+                            $processed['document_count'] = $collection['properties']['documentsCount'] ?? 0;
+                            $processed['size_bytes'] = $collection['properties']['sizeBytes'] ?? 0;
+                            
+                            // Extract embedding model if available
+                            if (isset($collection['properties']['embedding']['model'])) {
+                                $processed['embedding_model'] = $collection['properties']['embedding']['model'];
+                            }
+                            
+                            // Set status if available
+                            if (isset($collection['properties']['status'])) {
+                                $processed['status'] = $collection['properties']['status'];
+                            }
+                            
                             $processedCollections[] = $processed;
                         } else {
                             // Already in flat structure or different format
@@ -1113,6 +1132,10 @@ $lang->load('com_bears_aichatbot', JPATH_ADMINISTRATOR);
 
 // Load component CSS
 HTMLHelper::_('stylesheet', 'com_bears_aichatbot/admin.css', ['version' => 'auto', 'relative' => true]);
+
+// Load Bootstrap for modals (Joomla 4/5)
+HTMLHelper::_('bootstrap.modal');
+HTMLHelper::_('bootstrap.dropdown');
 
 // Handle AJAX requests
 $input = Factory::getApplication()->input;

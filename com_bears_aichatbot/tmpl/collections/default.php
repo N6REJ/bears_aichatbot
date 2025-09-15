@@ -193,12 +193,12 @@ function formatDate($dateString) {
 </div>
 
 <!-- Modals and JavaScript -->
-<div class="modal fade" id="documentModal" tabindex="-1">
+<div class="modal fade" id="documentModal" tabindex="-1" aria-labelledby="documentModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><?php echo Text::_('COM_BEARS_AICHATBOT_COLLECTION_DOCUMENTS'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="documentModalLabel"><?php echo Text::_('COM_BEARS_AICHATBOT_COLLECTION_DOCUMENTS'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal('documentModal')"></button>
       </div>
       <div class="modal-body">
         <div id="documentsContent">
@@ -209,16 +209,19 @@ function formatDate($dateString) {
           </div>
         </div>
       </div>
+      <div class="modal-footer">
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="closeModal('documentModal')"><?php echo Text::_('COM_BEARS_AICHATBOT_CLOSE'); ?></button>
+      </div>
     </div>
   </div>
 </div>
 
-<div class="modal fade" id="queryModal" tabindex="-1">
+<div class="modal fade" id="queryModal" tabindex="-1" aria-labelledby="queryModalLabel" aria-hidden="true">
   <div class="modal-dialog modal-lg">
     <div class="modal-content">
       <div class="modal-header">
-        <h5 class="modal-title"><?php echo Text::_('COM_BEARS_AICHATBOT_TEST_QUERY'); ?></h5>
-        <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+        <h5 class="modal-title" id="queryModalLabel"><?php echo Text::_('COM_BEARS_AICHATBOT_TEST_QUERY'); ?></h5>
+        <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close" onclick="closeModal('queryModal')"></button>
       </div>
       <div class="modal-body">
         <div class="mb-3">
@@ -228,7 +231,7 @@ function formatDate($dateString) {
         <div id="queryResults"></div>
       </div>
       <div class="modal-footer">
-        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal"><?php echo Text::_('COM_BEARS_AICHATBOT_CLOSE'); ?></button>
+        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal" onclick="closeModal('queryModal')"><?php echo Text::_('COM_BEARS_AICHATBOT_CLOSE'); ?></button>
         <button type="button" class="btn btn-primary" onclick="executeQuery()"><?php echo Text::_('COM_BEARS_AICHATBOT_EXECUTE_QUERY'); ?></button>
       </div>
     </div>
@@ -289,8 +292,33 @@ function createCollection() {
 
 function viewDocuments(collectionId) {
     currentCollectionId = collectionId;
-    const modal = new bootstrap.Modal(document.getElementById('documentModal'));
-    modal.show();
+    
+    // Use Joomla's Bootstrap modal (already initialized)
+    const modalElement = document.getElementById('documentModal');
+    
+    // For Joomla 4/5, use the data-bs attributes
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        // Fallback for older Joomla or if Bootstrap isn't loaded
+        // Use jQuery if available
+        if (typeof jQuery !== 'undefined') {
+            jQuery('#documentModal').modal('show');
+        } else {
+            // Manual fallback
+            modalElement.classList.add('show');
+            modalElement.style.display = 'block';
+            modalElement.setAttribute('aria-modal', 'true');
+            modalElement.removeAttribute('aria-hidden');
+            
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'modal-backdrop-temp';
+            document.body.appendChild(backdrop);
+        }
+    }
     
     // Load documents via AJAX
     loadDocuments(collectionId);
@@ -298,11 +326,58 @@ function viewDocuments(collectionId) {
 
 function testQuery(collectionId) {
     currentCollectionId = collectionId;
-    const modal = new bootstrap.Modal(document.getElementById('queryModal'));
-    modal.show();
+    
+    // Use Joomla's Bootstrap modal (already initialized)
+    const modalElement = document.getElementById('queryModal');
+    
+    // For Joomla 4/5, use the data-bs attributes
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = bootstrap.Modal.getInstance(modalElement) || new bootstrap.Modal(modalElement);
+        modal.show();
+    } else {
+        // Fallback for older Joomla or if Bootstrap isn't loaded
+        // Use jQuery if available
+        if (typeof jQuery !== 'undefined') {
+            jQuery('#queryModal').modal('show');
+        } else {
+            // Manual fallback
+            modalElement.classList.add('show');
+            modalElement.style.display = 'block';
+            modalElement.setAttribute('aria-modal', 'true');
+            modalElement.removeAttribute('aria-hidden');
+            
+            // Add backdrop
+            const backdrop = document.createElement('div');
+            backdrop.className = 'modal-backdrop fade show';
+            backdrop.id = 'modal-backdrop-temp';
+            document.body.appendChild(backdrop);
+        }
+    }
     
     document.getElementById('queryInput').value = '';
     document.getElementById('queryResults').innerHTML = '';
+}
+
+// Add close modal function for manual fallback
+function closeModal(modalId) {
+    const modalElement = document.getElementById(modalId);
+    
+    if (typeof bootstrap !== 'undefined' && bootstrap.Modal) {
+        const modal = bootstrap.Modal.getInstance(modalElement);
+        if (modal) modal.hide();
+    } else if (typeof jQuery !== 'undefined') {
+        jQuery('#' + modalId).modal('hide');
+    } else {
+        // Manual close
+        modalElement.classList.remove('show');
+        modalElement.style.display = 'none';
+        modalElement.setAttribute('aria-hidden', 'true');
+        modalElement.removeAttribute('aria-modal');
+        
+        // Remove backdrop
+        const backdrop = document.getElementById('modal-backdrop-temp');
+        if (backdrop) backdrop.remove();
+    }
 }
 
 function deleteCollection(collectionId) {
