@@ -337,14 +337,18 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
                 // Debug: Log the structure of the response
                 Log::add('Response structure keys: ' . json_encode(array_keys($data)), Log::DEBUG, 'bears_aichatbot');
                 
-                // The API returns collections in 'items' array according to docs
-                // But IONOS might return them directly as an array or in 'properties' wrapper
+
+                // The API returns collections in 'items' array according to the logs
+                // The response structure is: {"href":"...", "id":"...", "items":[...], "type":"..."}
                 $collections = $data['items'] ?? $data['collections'] ?? $data['data'] ?? $data['properties'] ?? [];
                 
                 // If the response is directly an array of collections
                 if (!empty($data) && isset($data[0]) && (isset($data[0]['id']) || isset($data[0]['properties']))) {
                     $collections = $data;
                 }
+                
+                // Log what we found for debugging
+                Log::add('Collections extracted from items: ' . json_encode(is_array($collections) ? count($collections) : 'not an array'), Log::DEBUG, 'bears_aichatbot');
                 
                 // Debug: Log number of collections found
                 Log::add('Collections found: ' . (is_array($collections) ? count($collections) : 'not an array'), Log::DEBUG, 'bears_aichatbot');
@@ -483,14 +487,34 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
         } else {
             $errorBody = substr($response->body, 0, 500);
             $errorMsg = "Failed to delete collection (HTTP {$response->code})";
+            
+            // Log the full error for debugging
+            Log::add('Delete failed - HTTP ' . $response->code . ', Body: ' . $errorBody, Log::ERROR, 'bears_aichatbot');
+            
             if ($errorBody) {
                 $errorData = json_decode($errorBody, true);
-                if (is_array($errorData) && isset($errorData['error'])) {
-                    $errorMsg .= ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                if (is_array($errorData)) {
+                    if (isset($errorData['message'])) {
+                        $errorMsg .= ': ' . $errorData['message'];
+                    } elseif (isset($errorData['error'])) {
+                        $errorMsg .= ': ' . (is_string($errorData['error']) ? $errorData['error'] : json_encode($errorData['error']));
+                    } else {
+                        $errorMsg .= ': ' . $errorBody;
+                    }
                 } else {
                     $errorMsg .= ': ' . $errorBody;
                 }
             }
+            
+            // Special handling for 401 errors
+            if ($response->code === 401) {
+                $errorMsg .= '. Please check your IONOS API credentials and permissions.';
+                Log::add('401 Unauthorized - Token may not have delete permissions or may be invalid', Log::ERROR, 'bears_aichatbot');
+            } elseif ($response->code === 403) {
+                $errorMsg .= '. You do not have permission to delete this collection.';
+                Log::add('403 Forbidden - Collection may be protected or owned by another account', Log::ERROR, 'bears_aichatbot');
+            }
+            
             return ['success' => false, 'message' => $errorMsg];
         }
         
@@ -1187,6 +1211,9 @@ if ($task === 'deleteCollection') {
     // Handle AJAX delete collection request
     $collectionId = $input->getString('collection_id', '');
     
+    // Log the delete request
+    Log::add('Delete collection request received for ID: ' . $collectionId, Log::INFO, 'bears_aichatbot');
+    
     if (empty($collectionId)) {
         echo json_encode(['success' => false, 'message' => 'Collection ID is required']);
         exit;
@@ -1202,6 +1229,14 @@ if ($task === 'deleteCollection') {
         exit;
     }
     
+    // Use the deleteCollection function which has proper error handling
+    $result = deleteCollection($collectionId, $ionosToken, $ionosTokenId);
+    
+    // Return the result as JSON
+    echo json_encode($result);
+    exit;
+    
+    /* OLD CODE - replaced with function call above
     // Delete the collection using the correct endpoint
     try {
         // Use the correct IONOS Inference API endpoint for document collections
@@ -1250,6 +1285,7 @@ if ($task === 'deleteCollection') {
     }
     
     exit;
+    */
 }
 
 // Get the requested view
