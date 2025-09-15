@@ -21,6 +21,19 @@
     <license>GNU General Public License version 3 or later; see License.txt</license>
     <version>2025.09.06.8</version>
     <description>MOD_BEARS_AICHATBOT_XML_DESCRIPTION</description>
+    
+    <install>
+        <sql>
+            <file driver="mysql" charset="utf8">sql/install.mysql.utf8.sql</file>
+        </sql>
+    </install>
+    
+    <uninstall>
+        <sql>
+            <file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
+        </sql>
+    </uninstall>
+    
     <files>
         <filename module="mod_bears_aichatbot">mod_bears_aichatbot.php</filename>
         <filename>helper.php</filename>
@@ -28,6 +41,7 @@
         <folder>tmpl</folder>
         <folder>language</folder>
         <folder>media</folder>
+        <folder>sql</folder>
     </files>
     <languages>
         <language tag="en-GB">language/en-GB/en-GB.mod_bears_aichatbot.ini</language>
@@ -101,4 +115,8 @@
             </fieldset>
         </fields>
     </config>
+    
+    <updateservers>
+        <server type="extension" priority="1" name="Bears AI Chatbot Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
+    </updateservers>
 </extension>
