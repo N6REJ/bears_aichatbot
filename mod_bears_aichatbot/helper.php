@@ -1266,28 +1266,28 @@ class ModBearsAichatbotHelper
                 ])
                 ->values(implode(',', [
                     (int)$moduleId,
-                    $db->quote($collectionId !== '' ? $collectionId : null),
+                    $collectionId !== '' ? $db->quote($collectionId) : 'NULL',
                     $db->quote($model),
                     $db->quote($endpoint),
                     (int)$prompt,
                     (int)$completion,
                     (int)$total,
-                    $retrieved === null ? 'NULL' : (string)(int)$retrieved,
+                    $retrieved === null ? 'NULL' : (int)$retrieved,
                     (int)$articleCount,
                     (int)$kunenaCount,
                     (int)$urlCount,
                     (int)$msgLen,
                     (int)$ansLen,
                     (int)$statusCode,
-                    $durationMs === null ? 'NULL' : (string)(int)$durationMs,
-                    $requestBytes === null ? 'NULL' : (string)(int)$requestBytes,
-                    $responseBytes === null ? 'NULL' : (string)(int)$responseBytes,
+                    $durationMs === null ? 'NULL' : (int)$durationMs,
+                    $requestBytes === null ? 'NULL' : (int)$requestBytes,
+                    $responseBytes === null ? 'NULL' : (int)$responseBytes,
                     $outcome === null ? 'NULL' : $db->quote($outcome),
-                    $retrievedTopScore === null ? 'NULL' : (string)number_format($retrievedTopScore,4,'.',''),
-                    (string)$pp,
-                    (string)$pc,
+                    $retrievedTopScore === null ? 'NULL' : number_format($retrievedTopScore, 4, '.', ''),
+                    number_format($pp, 6, '.', ''),
+                    number_format($pc, 6, '.', ''),
                     $db->quote($cur),
-                    (string)$est,
+                    number_format($est, 6, '.', ''),
                 ]));
             $db->setQuery($q)->execute();
         } catch (\Throwable $e) {
@@ -1414,6 +1414,52 @@ class ModBearsAichatbotHelper
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
                 $db->setQuery($ddl)->execute();
             } else {
+                // Check if table has foreign key constraints that need to be removed
+                try {
+                    // First, check for and drop any foreign key constraints
+                    $checkFKQuery = "SELECT CONSTRAINT_NAME 
+                                     FROM information_schema.KEY_COLUMN_USAGE 
+                                     WHERE TABLE_NAME = '{$keywordsTable}' 
+                                     AND CONSTRAINT_NAME LIKE '%_ibfk_%'
+                                     AND REFERENCED_TABLE_NAME IS NOT NULL";
+                    $db->setQuery($checkFKQuery);
+                    $foreignKeys = $db->loadColumn();
+                    
+                    if (!empty($foreignKeys)) {
+                        foreach ($foreignKeys as $fkName) {
+                            try {
+                                $dropFK = "ALTER TABLE `{$prefix}aichatbot_keywords` DROP FOREIGN KEY `{$fkName}`";
+                                $db->setQuery($dropFK)->execute();
+                                \Joomla\CMS\Log\Log::add(
+                                    'Dropped foreign key constraint: ' . $fkName,
+                                    \Joomla\CMS\Log\Log::INFO,
+                                    'bears_aichatbot'
+                                );
+                            } catch (\Throwable $e) {
+                                // Ignore if already dropped
+                            }
+                        }
+                    }
+                    
+                    // Also check for and drop usage_id column if it exists
+                    $columns = $db->getTableColumns($keywordsTable);
+                    if (isset($columns['usage_id'])) {
+                        try {
+                            $dropCol = "ALTER TABLE `{$prefix}aichatbot_keywords` DROP COLUMN `usage_id`";
+                            $db->setQuery($dropCol)->execute();
+                            \Joomla\CMS\Log\Log::add(
+                                'Dropped usage_id column from keywords table',
+                                \Joomla\CMS\Log\Log::INFO,
+                                'bears_aichatbot'
+                            );
+                        } catch (\Throwable $e) {
+                            // Ignore if already dropped
+                        }
+                    }
+                } catch (\Throwable $e) {
+                    // Ignore constraint check errors
+                }
+                
                 // Check if table has the correct columns and add missing ones
                 $columns = $db->getTableColumns($keywordsTable);
                 
