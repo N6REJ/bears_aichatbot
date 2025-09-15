@@ -707,22 +707,17 @@ function syncArticlesToCollection(string $collectionId, string $token, string $t
                     // Log more details for 401 errors
                     if ($response->code === 401) {
                         Log::add('401 Unauthorized for document sync. Check if token has document write permissions.', Log::ERROR, 'bears_aichatbot');
-                        Log::add('Collection ID: ' . $collectionId, Log::ERROR, 'bears_aichatbot');
-                        Log::add('Document URL: ' . $documentUrl, Log::ERROR, 'bears_aichatbot');
-                        Log::add('Token (first 20 chars): ' . substr($token, 0, 20) . '...', Log::ERROR, 'bears_aichatbot');
-                        Log::add('Token ID: ' . substr($tokenId, 0, 8) . '...', Log::ERROR, 'bears_aichatbot');
                         
-                        // Try to parse error response
-                        $errorData = json_decode($response->body, true);
-                        if ($errorData) {
-                            Log::add('Error details: ' . json_encode($errorData), Log::ERROR, 'bears_aichatbot');
-                        }
-                        
-                        // Stop after first 401 to avoid spamming logs
-                        if ($failed === 1) {
-                            Log::add('Stopping sync due to authorization errors. Please check your IONOS token permissions.', Log::ERROR, 'bears_aichatbot');
-                            break; // Exit the foreach loop
-                        }
+                        // Return error immediately for 401
+                        echo json_encode([
+                            'success' => false,
+                            'message' => 'Authorization failed: Your IONOS token does not have permission to add documents to collections. Please check your token permissions in the IONOS console.',
+                            'synced' => $synced,
+                            'failed' => $failed,
+                            'total' => count($articles),
+                            'error_code' => 401
+                        ]);
+                        exit;
                     }
                 }
             } catch (\Throwable $e) {
@@ -1455,6 +1450,9 @@ if ($task === 'syncDocuments') {
     // Handle sync documents request - return JSON instead of SSE
     header('Content-Type: application/json');
     
+    // Log the start of sync process
+    Log::add('syncDocuments task started', Log::INFO, 'bears_aichatbot');
+    
     // Get IONOS configuration
     $moduleConfig = getModuleConfig();
     $ionosToken = $moduleConfig['token'] ?? '';
@@ -1463,8 +1461,10 @@ if ($task === 'syncDocuments') {
     $chunkSize = $moduleConfig['chunk_size'] ?? 8192;
     $chunkOverlap = $moduleConfig['chunk_overlap'] ?? 200;
     
+    Log::add('Module config loaded - chunk_size: ' . $chunkSize . ', chunk_overlap: ' . $chunkOverlap, Log::INFO, 'bears_aichatbot');
+    
     if (empty($ionosToken)) {
-        sendSSEMessage('error', ['success' => false, 'message' => 'IONOS API credentials not configured']);
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
         exit;
     }
     
