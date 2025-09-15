@@ -13,6 +13,9 @@ use Joomla\CMS\Http\HttpFactory;
 \defined('_JEXEC') or die;
 // phpcs:enable PSR1.Files.SideEffects
 
+// Load configuration file
+require_once __DIR__ . '/config/aichatbot.php';
+
 class ModBearsAichatbotHelper
 {
     protected static $lastContextStats = [];
@@ -304,12 +307,13 @@ class ModBearsAichatbotHelper
                 ['role' => 'system', 'content' => $systemPrompt],
                 ['role' => 'user',   'content' => $message],
             ],
-            'max_tokens'  => 512,
+            'max_tokens'  => BearsAIChatbotConfig::get('LIMITS.max_response_tokens', 512),
             'temperature' => $strict ? 0.0 : 0.2,
         ];
 
         // OpenAI-compatible chat completions endpoint (IONOS Model Hub)
-        $url = $endpoint !== '' ? $endpoint : 'https://openai.inference.de-txl.ionos.com/v1/chat/completions';
+        $defaultEndpoint = BearsAIChatbotConfig::getEndpoint('ionos', 'chat');
+        $url = $endpoint !== '' ? $endpoint : $defaultEndpoint;
 
         try {
             $http = HttpFactory::getHttp();
@@ -530,13 +534,14 @@ class ModBearsAichatbotHelper
         $hadLikes = false;
 
         // Budget for context to avoid exceeding token limits
-        $maxTotal = 30000;
+        $maxTotal = BearsAIChatbotConfig::get('LIMITS.max_context_length', 30000);
         $contextParts = [];
         $total = 0;
 
-        // Article fetch limit (configurable, default 500)
-        $limit = (int) $params->get('article_limit', 500);
-        if ($limit < 1) { $limit = 500; }
+        // Article fetch limit (configurable, default from config)
+        $defaultLimit = BearsAIChatbotConfig::get('LIMITS.max_article_fetch', 500);
+        $limit = (int) $params->get('article_limit', $defaultLimit);
+        if ($limit < 1) { $limit = $defaultLimit; }
 
         // Additional knowledge URLs
         $extraUrls = trim((string) $params->get('additional_urls', ''));
@@ -1188,14 +1193,14 @@ class ModBearsAichatbotHelper
             $msgLen = mb_strlen($message ?? '', 'UTF-8');
             $ansLen = mb_strlen($answer ?? '', 'UTF-8');
 
-            // Pricing for IONOS Model Hub "standard" package (per 1K tokens)
-            // Reference: https://cloud.ionos.com/managed/ai-model-hub#prices
-            // Defaults; can be overridden by component params later if needed
-            $pp = 0.0004; // prompt $/1K
-            $pc = 0.0006; // completion $/1K
-            $cur = 'USD';
+            // Get pricing from configuration file
+            $pricing = BearsAIChatbotConfig::getTokenPricing('ionos', 'standard');
+            $pp = $pricing['prompt'] ?? 0.0004; // prompt $/1K
+            $pc = $pricing['completion'] ?? 0.0006; // completion $/1K
+            $cur = $pricing['currency'] ?? 'USD';
+            
             try {
-                // If component params exist, allow override via component configuration later
+                // Allow component params to override if needed
                 $compParams = \Joomla\CMS\Component\ComponentHelper::getParams('com_bears_aichatbot');
                 $pp = (float)($compParams->get('price_prompt_standard', $pp));
                 $pc = (float)($compParams->get('price_completion_standard', $pc));

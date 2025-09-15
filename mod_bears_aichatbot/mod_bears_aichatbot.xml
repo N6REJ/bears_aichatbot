@@ -42,6 +42,7 @@
         <folder>language</folder>
         <folder>media</folder>
         <folder>sql</folder>
+        <folder>config</folder>
     </files>
     <languages>
         <language tag="en-GB">language/en-GB/en-GB.mod_bears_aichatbot.ini</language>
