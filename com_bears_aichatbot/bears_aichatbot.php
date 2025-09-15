@@ -299,18 +299,30 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
 function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpoint): array
 {
     try {
-        // Extract base URL from the endpoint (remove /v1/chat/completions if present)
-        $apiBase = $endpoint;
-        if (strpos($apiBase, '/v1/chat/completions') !== false) {
-            $apiBase = str_replace('/v1/chat/completions', '', $apiBase);
-        } elseif (strpos($apiBase, '/chat/completions') !== false) {
-            $apiBase = str_replace('/chat/completions', '', $apiBase);
-        }
+        // Derive the API base URL from the configured endpoint
+        // The endpoint parameter contains the chat completions URL
+        // We need to extract the base URL for document collections
+        $apiBase = '';
         
-        // Ensure we have the inference base URL
-        if (strpos($apiBase, 'inference') === false) {
-            // Fallback to known working endpoint
-            $apiBase = 'https://inference.de-txl.ionos.com';
+        // Check if this is an IONOS inference endpoint
+        if (strpos($endpoint, 'inference') !== false && strpos($endpoint, 'ionos.com') !== false) {
+            // For IONOS inference endpoints, use the Model Hub API
+            // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
+            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        } else {
+            // Fallback: try to extract base URL from endpoint
+            // Remove /v1/chat/completions or /chat/completions to get base
+            $apiBase = $endpoint;
+            if (strpos($apiBase, '/v1/chat/completions') !== false) {
+                $apiBase = str_replace('/v1/chat/completions', '', $apiBase);
+            } elseif (strpos($apiBase, '/chat/completions') !== false) {
+                $apiBase = str_replace('/chat/completions', '', $apiBase);
+            }
+            
+            // If we still don't have a valid base, use the default
+            if (empty($apiBase) || strpos($apiBase, 'http') !== 0) {
+                $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+            }
         }
         
         $http = HttpFactory::getHttp();
@@ -324,8 +336,8 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        // Try the collections endpoint
-        $collectionsUrl = $apiBase . '/collections';
+        // GET /document-collections endpoint
+        $collectionsUrl = $apiBase . '/document-collections';
         $response = $http->get($collectionsUrl, $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
@@ -397,12 +409,20 @@ function fetchCollectionsFromIONOS(string $token, string $tokenId, string $endpo
 /**
  * Delete a collection from IONOS API and clean up local database
  */
-function deleteCollection(string $collectionId, string $token, string $tokenId): array
+function deleteCollection(string $collectionId, string $token, string $tokenId, string $endpoint = ''): array
 {
     try {
-        // Use the correct IONOS API endpoint for document collections
-        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
-        $apiBase = 'https://api.ionos.com/inference-modelhub';
+        // Derive the API base URL from the configured endpoint
+        $apiBase = '';
+        
+        // Check if this is an IONOS inference endpoint
+        if (strpos($endpoint, 'inference') !== false && strpos($endpoint, 'ionos.com') !== false) {
+            // For IONOS inference endpoints, use the Model Hub API
+            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        } else {
+            // Fallback to default
+            $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
+        }
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -415,8 +435,8 @@ function deleteCollection(string $collectionId, string $token, string $tokenId):
             $headers['X-IONOS-Token-Id'] = $tokenId;
         }
         
-        // Delete collection from IONOS API: DELETE /v1/document-collections/{collectionId}
-        $response = $http->delete($apiBase . '/v1/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
+        // DELETE /document-collections/{collectionId}
+        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Successfully deleted from IONOS, now clean up local database
@@ -1087,8 +1107,9 @@ if ($task === 'createCollection') {
     
     // Create the collection
     try {
-        // Use the correct IONOS Inference API endpoint
-        $apiBase = 'https://inference.de-txl.ionos.com';
+        // Use the correct IONOS Inference Model Hub API endpoint
+        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
+        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -1096,6 +1117,11 @@ if ($task === 'createCollection') {
             'Accept' => 'application/json',
             'Content-Type' => 'application/json'
         ];
+        
+        // Add X-IONOS-Token-Id if provided
+        if ($ionosTokenId) {
+            $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+        }
         
         $payload = [
             'properties' => [
@@ -1119,7 +1145,8 @@ if ($task === 'createCollection') {
             ]
         ];
         
-        $response = $http->post($apiBase . '/collections', json_encode($payload), $headers, 30);
+        // POST /document-collections
+        $response = $http->post($apiBase . '/document-collections', json_encode($payload), $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             $data = json_decode($response->body, true);
@@ -1171,7 +1198,9 @@ if ($task === 'deleteCollection') {
     
     // Delete the collection using the correct endpoint
     try {
-        $apiBase = 'https://inference.de-txl.ionos.com';
+        // Use the correct IONOS Inference Model Hub API endpoint
+        // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/
+        $apiBase = 'https://api.ionos.com/inference-modelhub/v1';
         
         $http = HttpFactory::getHttp();
         $headers = [
@@ -1179,7 +1208,13 @@ if ($task === 'deleteCollection') {
             'Accept' => 'application/json'
         ];
         
-        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
+        // Add X-IONOS-Token-Id if provided
+        if ($ionosTokenId) {
+            $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+        }
+        
+        // DELETE /document-collections/{collectionId}
+        $response = $http->delete($apiBase . '/document-collections/' . rawurlencode($collectionId), [], $headers, 30);
         
         if ($response->code >= 200 && $response->code < 300) {
             // Clear from database if it was the active collection
