@@ -542,10 +542,61 @@ function syncDocuments() {
     }
     
     // Show loading state
-    const btn = event.target;
+    const btn = event.target || document.querySelector('[onclick="syncDocuments()"]');
     const originalText = btn.innerHTML;
     btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing Articles...';
     btn.disabled = true;
+    
+    // Create a prominent progress overlay
+    const progressOverlay = document.createElement('div');
+    progressOverlay.className = 'position-fixed top-0 start-0 w-100 h-100 d-flex align-items-center justify-content-center';
+    progressOverlay.style.backgroundColor = 'rgba(0, 0, 0, 0.7)';
+    progressOverlay.style.zIndex = '10000';
+    progressOverlay.innerHTML = `
+        <div class="card" style="min-width: 400px;">
+            <div class="card-body">
+                <h5 class="card-title text-center mb-3">
+                    <i class="fas fa-sync-alt fa-spin me-2"></i>Syncing Articles to Collection
+                </h5>
+                <div class="progress mb-3" style="height: 25px;">
+                    <div class="progress-bar progress-bar-striped progress-bar-animated bg-primary" 
+                         role="progressbar" 
+                         style="width: 0%"
+                         aria-valuenow="0" 
+                         aria-valuemin="0" 
+                         aria-valuemax="100">0%</div>
+                </div>
+                <p class="text-center mb-2" id="sync-status">Initializing sync process...</p>
+                <small class="text-muted d-block text-center" id="sync-details">Please wait, this may take a few moments</small>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(progressOverlay);
+    
+    const progressBar = progressOverlay.querySelector('.progress-bar');
+    const statusText = progressOverlay.querySelector('#sync-status');
+    const detailsText = progressOverlay.querySelector('#sync-details');
+    
+    // Simulate progress while waiting for response
+    let progress = 0;
+    const progressInterval = setInterval(() => {
+        if (progress < 90) {
+            progress += Math.random() * 10;
+            progress = Math.min(progress, 90);
+            progressBar.style.width = progress + '%';
+            progressBar.textContent = Math.round(progress) + '%';
+            progressBar.setAttribute('aria-valuenow', Math.round(progress));
+            
+            // Update status messages
+            if (progress < 30) {
+                statusText.textContent = 'Connecting to IONOS API...';
+            } else if (progress < 60) {
+                statusText.textContent = 'Processing articles...';
+            } else {
+                statusText.textContent = 'Uploading documents to collection...';
+            }
+        }
+    }, 500);
     
     fetch('index.php?option=com_bears_aichatbot&task=syncDocuments', {
         method: 'POST',
@@ -556,17 +607,42 @@ function syncDocuments() {
     })
     .then(response => response.json())
     .then(data => {
+        clearInterval(progressInterval);
+        
+        // Complete the progress bar
+        progressBar.style.width = '100%';
+        progressBar.textContent = '100%';
+        progressBar.setAttribute('aria-valuenow', 100);
+        progressBar.classList.remove('progress-bar-animated');
+        
         if (data.success) {
-            alert(data.message);
-            // Reload to show updated document counts
-            window.location.reload();
+            progressBar.classList.add('bg-success');
+            statusText.textContent = 'Sync completed successfully!';
+            detailsText.innerHTML = `<strong>${data.synced || 0} articles synced</strong>` + 
+                                   (data.failed > 0 ? ` (${data.failed} failed)` : '');
+            
+            setTimeout(() => {
+                progressOverlay.remove();
+                alert(data.message);
+                window.location.reload();
+            }, 2000);
         } else {
-            alert('Sync failed: ' + data.message);
+            progressBar.classList.add('bg-danger');
+            statusText.textContent = 'Sync failed!';
+            detailsText.textContent = data.message || 'Unknown error occurred';
+            
+            setTimeout(() => {
+                progressOverlay.remove();
+                alert('Sync failed: ' + data.message);
+            }, 3000);
         }
+        
         btn.innerHTML = originalText;
         btn.disabled = false;
     })
     .catch(error => {
+        clearInterval(progressInterval);
+        progressOverlay.remove();
         alert('Sync error: ' + error.message);
         btn.innerHTML = originalText;
         btn.disabled = false;
