@@ -1,14 +1,10 @@
 --
--- Update to version 2025.09.15.15
--- Fix table structure for existing installations
+-- Update to version 2025.09.15.16
+-- Safe update that handles existing tables and columns
 --
 
--- Since we can't use IF NOT EXISTS in older MySQL, we'll drop and recreate tables
--- This is safe as we're preserving data where possible
-
--- Recreate usage table with correct structure
-DROP TABLE IF EXISTS `#__aichatbot_usage`;
-CREATE TABLE `#__aichatbot_usage` (
+-- Create usage table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_usage` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `created_at` DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
   `module_id` INT DEFAULT NULL,
@@ -40,9 +36,8 @@ CREATE TABLE `#__aichatbot_usage` (
   KEY `idx_outcome` (`outcome`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Recreate keywords table with correct structure
-DROP TABLE IF EXISTS `#__aichatbot_keywords`;
-CREATE TABLE `#__aichatbot_keywords` (
+-- Create keywords table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_keywords` (
   `id` INT NOT NULL AUTO_INCREMENT,
   `keyword` VARCHAR(100) NOT NULL,
   `usage_count` INT DEFAULT 1,
@@ -59,9 +54,35 @@ CREATE TABLE `#__aichatbot_keywords` (
   KEY `idx_last_used` (`last_used`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Recreate state table with all columns
-DROP TABLE IF EXISTS `#__aichatbot_state`;
-CREATE TABLE `#__aichatbot_state` (
+-- Create docs table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_docs` (
+  `content_id` INT NOT NULL,
+  `remote_id` VARCHAR(255) NOT NULL,
+  `content_hash` VARCHAR(64) NOT NULL,
+  `last_synced` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `state` TINYINT(1) DEFAULT 1,
+  PRIMARY KEY (`content_id`),
+  UNIQUE KEY `idx_remote_id` (`remote_id`),
+  KEY `idx_last_synced` (`last_synced`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Create jobs table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_jobs` (
+  `id` INT NOT NULL AUTO_INCREMENT,
+  `content_id` INT NOT NULL,
+  `action` VARCHAR(20) NOT NULL,
+  `status` VARCHAR(20) DEFAULT 'queued',
+  `attempts` INT DEFAULT 0,
+  `last_error` TEXT,
+  `created_at` DATETIME DEFAULT CURRENT_TIMESTAMP,
+  `updated_at` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_content_id` (`content_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Create state table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_state` (
   `id` INT NOT NULL DEFAULT 1,
   `collection_id` VARCHAR(191) DEFAULT NULL,
   `last_sync` DATETIME DEFAULT NULL,
@@ -73,5 +94,12 @@ CREATE TABLE `#__aichatbot_state` (
   PRIMARY KEY (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
--- Insert default state record
+-- Create collection_stats table only if it doesn't exist
+CREATE TABLE IF NOT EXISTS `#__aichatbot_collection_stats` (
+  `stat_date` DATE NOT NULL,
+  `docs_count` INT NOT NULL DEFAULT 0,
+  PRIMARY KEY (`stat_date`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Insert default state record if it doesn't exist
 INSERT IGNORE INTO `#__aichatbot_state` (`id`) VALUES (1);
