@@ -2,7 +2,7 @@
 /**
  * Bears AI Chatbot - System Status View
  *
- * @version 2025.09.15.1
+ * @version 2025.09.15.2
  * @package Bears AI Chatbot
  * @author N6REJ
  * @email troy@hallhome.us
