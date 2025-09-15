@@ -5,7 +5,7 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
-## [2025.09.15] - 2025-09-15
+## [2025.09.15.1] - 2025-09-15
 
 ### Added
 
@@ -50,9 +50,6 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Changed
 
-* Update version to 2025.09.12.63 [skip ci] ([6e94d10](https://github.com/N6REJ/bears_aichatbot/commit/6e94d10))
-* Bump version to 2025.09.13.01 ([1417a97](https://github.com/N6REJ/bears_aichatbot/commit/1417a97))
-* Merge remote-tracking branch 'origin/main' ([08052ad](https://github.com/N6REJ/bears_aichatbot/commit/08052ad))
 * Update version to 2025.09.13 [skip ci] ([2c46fa4](https://github.com/N6REJ/bears_aichatbot/commit/2c46fa4))
 * Update version to 2025.09.13.1 [skip ci] ([d3fae1d](https://github.com/N6REJ/bears_aichatbot/commit/d3fae1d))
 * Update version to 2025.09.13.01 and simplify component architecture by removing custom controller/dispatcher resolution logic, adding proper language file loading in HtmlView, and fixing menu title translation key in manifest ([7a94345](https://github.com/N6REJ/bears_aichatbot/commit/7a94345))
@@ -268,6 +265,9 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 * Update version to 2025.09.15.2 [skip ci] ([73edadc](https://github.com/N6REJ/bears_aichatbot/commit/73edadc))
 * Enhance document synchronization error handling and logging with detailed token information ([fec8a5c](https://github.com/N6REJ/bears_aichatbot/commit/fec8a5c))
 * Merge remote-tracking branch 'origin/main' ([1d0c770](https://github.com/N6REJ/bears_aichatbot/commit/1d0c770))
+* Update version to 2025.09.15 [skip ci] ([6d64c93](https://github.com/N6REJ/bears_aichatbot/commit/6d64c93))
+* Simplify 401 error handling in document synchronization with immediate exit and enhanced logging ([c77f74e](https://github.com/N6REJ/bears_aichatbot/commit/c77f74e))
+* Merge remote-tracking branch 'origin/main' ([2ddb155](https://github.com/N6REJ/bears_aichatbot/commit/2ddb155))
 
 ### Fixed
 
