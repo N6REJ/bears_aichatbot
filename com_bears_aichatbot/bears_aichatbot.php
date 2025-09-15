@@ -546,6 +546,164 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
 }
 
 /**
+ * Sync articles to a collection
+ */
+function syncArticlesToCollection(string $collectionId, string $token, string $tokenId): array
+{
+    $synced = 0;
+    $failed = 0;
+    
+    try {
+        $db = Factory::getContainer()->get('DatabaseDriver');
+        
+        // Get selected categories from module config
+        $moduleQuery = $db->getQuery(true)
+            ->select($db->quoteName('params'))
+            ->from($db->quoteName('#__modules'))
+            ->where($db->quoteName('module') . ' = ' . $db->quote('mod_bears_aichatbot'))
+            ->where($db->quoteName('published') . ' = 1')
+            ->setLimit(1);
+        $db->setQuery($moduleQuery);
+        $moduleParams = new Registry($db->loadResult());
+        
+        $selectedCategories = $moduleParams->get('selected_categories', []);
+        if (is_string($selectedCategories)) {
+            $selectedCategories = array_filter(array_map('intval', explode(',', $selectedCategories)));
+        }
+        
+        // Get articles from selected categories
+        $query = $db->getQuery(true)
+            ->select(['id', 'title', 'introtext', 'fulltext', 'catid', 'created', 'modified'])
+            ->from($db->quoteName('#__content'))
+            ->where($db->quoteName('state') . ' = 1');
+        
+        if (!empty($selectedCategories)) {
+            $query->where($db->quoteName('catid') . ' IN (' . implode(',', $selectedCategories) . ')');
+        }
+        
+        $db->setQuery($query);
+        $articles = $db->loadObjectList();
+        
+        // Use the IONOS Inference API for documents
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        $http = HttpFactory::getHttp();
+        
+        foreach ($articles as $article) {
+            try {
+                // Prepare document content
+                $content = strip_tags($article->title . "\n\n" . $article->introtext . "\n\n" . $article->fulltext);
+                $content = preg_replace('/\s+/', ' ', $content);
+                $content = trim($content);
+                
+                // Skip empty articles
+                if (empty($content) || strlen($content) < 50) {
+                    continue;
+                }
+                
+                // Prepare document payload for IONOS Inference API
+                // According to API docs: https://api.ionos.com/docs/inference-modelhub/v1/#tag/Document-Collections
+                $documentPayload = [
+                    'properties' => [
+                        'content' => $content,
+                        'metadata' => [
+                            'article_id' => (string)$article->id,
+                            'title' => $article->title,
+                            'category_id' => (string)$article->catid,
+                            'created' => $article->created,
+                            'modified' => $article->modified,
+                            'source' => 'joomla_article'
+                        ]
+                    ]
+                ];
+                
+                $headers = [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ];
+                
+                if ($tokenId) {
+                    $headers['X-IONOS-Token-Id'] = $tokenId;
+                }
+                
+                // POST document to collection
+                // API endpoint: POST /collections/{collectionId}/documents
+                $documentUrl = $apiBase . '/collections/' . rawurlencode($collectionId) . '/documents';
+                
+                Log::add('Syncing article ID ' . $article->id . ' to collection ' . $collectionId, Log::DEBUG, 'bears_aichatbot');
+                Log::add('Document payload: ' . json_encode($documentPayload), Log::DEBUG, 'bears_aichatbot');
+                
+                $response = $http->post($documentUrl, json_encode($documentPayload), $headers, 30);
+                
+                if ($response->code >= 200 && $response->code < 300) {
+                    $synced++;
+                    
+                    // Store document mapping in database
+                    $docData = json_decode($response->body, true);
+                    $documentId = $docData['id'] ?? $docData['document_id'] ?? 'doc-' . $article->id;
+                    
+                    // Ensure docs table exists
+                    $createTableQuery = "CREATE TABLE IF NOT EXISTS `#__aichatbot_docs` (
+                        `content_id` INT NOT NULL PRIMARY KEY,
+                        `remote_id` VARCHAR(255) NOT NULL,
+                        `content_hash` VARCHAR(64) NOT NULL,
+                        `last_synced` DATETIME NOT NULL,
+                        `state` TINYINT NOT NULL DEFAULT 1,
+                        KEY `idx_remote_id` (`remote_id`),
+                        KEY `idx_state` (`state`)
+                    ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
+                    $db->setQuery($createTableQuery)->execute();
+                    
+                    // Check if mapping exists
+                    $checkQuery = $db->getQuery(true)
+                        ->select('content_id')
+                        ->from($db->quoteName('#__aichatbot_docs'))
+                        ->where($db->quoteName('content_id') . ' = ' . (int)$article->id)
+                        ->setLimit(1);
+                    $db->setQuery($checkQuery);
+                    $exists = $db->loadResult();
+                    
+                    if (!$exists) {
+                        // Insert new mapping
+                        $insertQuery = $db->getQuery(true)
+                            ->insert($db->quoteName('#__aichatbot_docs'))
+                            ->columns(['content_id', 'remote_id', 'content_hash', 'last_synced', 'state'])
+                            ->values(implode(',', [
+                                (int)$article->id,
+                                $db->quote($documentId),
+                                $db->quote(hash('sha256', $content)),
+                                $db->quote(date('Y-m-d H:i:s')),
+                                1
+                            ]));
+                        $db->setQuery($insertQuery)->execute();
+                    } else {
+                        // Update existing mapping
+                        $updateQuery = $db->getQuery(true)
+                            ->update($db->quoteName('#__aichatbot_docs'))
+                            ->set($db->quoteName('remote_id') . ' = ' . $db->quote($documentId))
+                            ->set($db->quoteName('content_hash') . ' = ' . $db->quote(hash('sha256', $content)))
+                            ->set($db->quoteName('last_synced') . ' = ' . $db->quote(date('Y-m-d H:i:s')))
+                            ->where($db->quoteName('content_id') . ' = ' . (int)$article->id);
+                        $db->setQuery($updateQuery)->execute();
+                    }
+                } else {
+                    $failed++;
+                    Log::add('Failed to sync article ID ' . $article->id . ': HTTP ' . $response->code . ' - ' . substr($response->body, 0, 200), Log::WARNING, 'bears_aichatbot');
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                Log::add('Error syncing article ID ' . $article->id . ': ' . $e->getMessage(), Log::ERROR, 'bears_aichatbot');
+            }
+        }
+        
+    } catch (\Throwable $e) {
+        Log::add('Error in syncArticlesToCollection: ' . $e->getMessage(), Log::ERROR, 'bears_aichatbot');
+    }
+    
+    return ['synced' => $synced, 'failed' => $failed];
+}
+
+/**
  * Get IONOS configuration from the first published Bears AI Chatbot module
  */
 function getModuleConfig(): array
@@ -1209,7 +1367,7 @@ if ($task === 'createCollection') {
             $collectionId = $data['id'] ?? $data['collection_id'] ?? null;
             
             if ($collectionId) {
-                // Optionally save as active collection
+                // Save as active collection
                 $db = Factory::getContainer()->get('DatabaseDriver');
                 $updateQuery = $db->getQuery(true)
                     ->update($db->quoteName('#__aichatbot_state'))
@@ -1217,7 +1375,24 @@ if ($task === 'createCollection') {
                     ->where($db->quoteName('id') . ' = 1');
                 $db->setQuery($updateQuery)->execute();
                 
-                echo json_encode(['success' => true, 'message' => 'Collection created successfully', 'collection_id' => $collectionId]);
+                // Automatically sync articles to the new collection
+                $syncResult = syncArticlesToCollection($collectionId, $ionosToken, $ionosTokenId);
+                
+                $message = 'Collection created successfully';
+                if ($syncResult['synced'] > 0) {
+                    $message .= ' and populated with ' . $syncResult['synced'] . ' articles';
+                }
+                if ($syncResult['failed'] > 0) {
+                    $message .= ' (' . $syncResult['failed'] . ' articles failed to sync)';
+                }
+                
+                echo json_encode([
+                    'success' => true, 
+                    'message' => $message, 
+                    'collection_id' => $collectionId,
+                    'synced' => $syncResult['synced'],
+                    'failed' => $syncResult['failed']
+                ]);
             } else {
                 echo json_encode(['success' => false, 'message' => 'Collection created but no ID returned']);
             }
@@ -1226,6 +1401,291 @@ if ($task === 'createCollection') {
             $errorMsg = $errorBody['message'] ?? $errorBody['error'] ?? 'Failed to create collection';
             echo json_encode(['success' => false, 'message' => $errorMsg]);
         }
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    
+    exit;
+}
+
+if ($task === 'syncDocuments') {
+    // Handle AJAX sync documents request
+    header('Content-Type: application/json');
+    
+    // Get IONOS configuration
+    $moduleConfig = getModuleConfig();
+    $ionosToken = $moduleConfig['token'] ?? '';
+    $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    $collectionId = $moduleConfig['collection_id'] ?? '';
+    
+    if (empty($ionosToken) || empty($collectionId)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials or collection not configured']);
+        exit;
+    }
+    
+    try {
+        $db = Factory::getContainer()->get('DatabaseDriver');
+        
+        // Get selected categories from module config
+        $moduleQuery = $db->getQuery(true)
+            ->select($db->quoteName('params'))
+            ->from($db->quoteName('#__modules'))
+            ->where($db->quoteName('module') . ' = ' . $db->quote('mod_bears_aichatbot'))
+            ->where($db->quoteName('published') . ' = 1')
+            ->setLimit(1);
+        $db->setQuery($moduleQuery);
+        $moduleParams = new Registry($db->loadResult());
+        
+        $selectedCategories = $moduleParams->get('selected_categories', []);
+        if (is_string($selectedCategories)) {
+            $selectedCategories = array_filter(array_map('intval', explode(',', $selectedCategories)));
+        }
+        
+        // Get articles from selected categories
+        $query = $db->getQuery(true)
+            ->select(['id', 'title', 'introtext', 'fulltext', 'catid', 'created', 'modified'])
+            ->from($db->quoteName('#__content'))
+            ->where($db->quoteName('state') . ' = 1');
+        
+        if (!empty($selectedCategories)) {
+            $query->where($db->quoteName('catid') . ' IN (' . implode(',', $selectedCategories) . ')');
+        }
+        
+        $db->setQuery($query);
+        $articles = $db->loadObjectList();
+        
+        $synced = 0;
+        $failed = 0;
+        
+        // Use the new IONOS Inference API for documents
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        $http = HttpFactory::getHttp();
+        
+        foreach ($articles as $article) {
+            try {
+                // Prepare document content
+                $content = strip_tags($article->title . "\n\n" . $article->introtext . "\n\n" . $article->fulltext);
+                $content = preg_replace('/\s+/', ' ', $content);
+                $content = trim($content);
+                
+                // Skip empty articles
+                if (empty($content)) {
+                    continue;
+                }
+                
+                // Prepare document payload for IONOS Inference API
+                $documentPayload = [
+                    'content' => $content,
+                    'metadata' => [
+                        'article_id' => $article->id,
+                        'title' => $article->title,
+                        'category_id' => $article->catid,
+                        'created' => $article->created,
+                        'modified' => $article->modified,
+                        'source' => 'joomla_article'
+                    ]
+                ];
+                
+                $headers = [
+                    'Authorization' => 'Bearer ' . $ionosToken,
+                    'Accept' => 'application/json',
+                    'Content-Type' => 'application/json'
+                ];
+                
+                if ($ionosTokenId) {
+                    $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+                }
+                
+                // POST document to collection
+                $documentUrl = $apiBase . '/collections/' . $collectionId . '/documents';
+                $response = $http->post($documentUrl, json_encode($documentPayload), $headers, 30);
+                
+                if ($response->code >= 200 && $response->code < 300) {
+                    $synced++;
+                    
+                    // Store document mapping in database
+                    $docData = json_decode($response->body, true);
+                    $documentId = $docData['id'] ?? $docData['document_id'] ?? 'doc-' . $article->id;
+                    
+                    // Check if mapping exists
+                    $checkQuery = $db->getQuery(true)
+                        ->select('content_id')
+                        ->from($db->quoteName('#__aichatbot_docs'))
+                        ->where($db->quoteName('content_id') . ' = ' . (int)$article->id)
+                        ->setLimit(1);
+                    $db->setQuery($checkQuery);
+                    $exists = $db->loadResult();
+                    
+                    if (!$exists) {
+                        // Insert new mapping
+                        $insertQuery = $db->getQuery(true)
+                            ->insert($db->quoteName('#__aichatbot_docs'))
+                            ->columns(['content_id', 'remote_id', 'content_hash', 'last_synced', 'state'])
+                            ->values(implode(',', [
+                                (int)$article->id,
+                                $db->quote($documentId),
+                                $db->quote(hash('sha256', $content)),
+                                $db->quote(date('Y-m-d H:i:s')),
+                                1
+                            ]));
+                        $db->setQuery($insertQuery)->execute();
+                    } else {
+                        // Update existing mapping
+                        $updateQuery = $db->getQuery(true)
+                            ->update($db->quoteName('#__aichatbot_docs'))
+                            ->set($db->quoteName('remote_id') . ' = ' . $db->quote($documentId))
+                            ->set($db->quoteName('content_hash') . ' = ' . $db->quote(hash('sha256', $content)))
+                            ->set($db->quoteName('last_synced') . ' = ' . $db->quote(date('Y-m-d H:i:s')))
+                            ->where($db->quoteName('content_id') . ' = ' . (int)$article->id);
+                        $db->setQuery($updateQuery)->execute();
+                    }
+                } else {
+                    $failed++;
+                    Log::add('Failed to sync article ID ' . $article->id . ': HTTP ' . $response->code, Log::WARNING, 'bears_aichatbot');
+                }
+            } catch (\Throwable $e) {
+                $failed++;
+                Log::add('Error syncing article ID ' . $article->id . ': ' . $e->getMessage(), Log::ERROR, 'bears_aichatbot');
+            }
+        }
+        
+        echo json_encode([
+            'success' => true,
+            'message' => "Synced $synced articles successfully" . ($failed > 0 ? ", $failed failed" : ""),
+            'synced' => $synced,
+            'failed' => $failed,
+            'total' => count($articles)
+        ]);
+        
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    
+    exit;
+}
+
+if ($task === 'getDocuments') {
+    // Handle AJAX get documents request
+    header('Content-Type: application/json');
+    
+    $collectionId = $input->getString('collection_id', '');
+    
+    if (empty($collectionId)) {
+        echo json_encode(['success' => false, 'message' => 'Collection ID is required']);
+        exit;
+    }
+    
+    // Get IONOS configuration
+    $moduleConfig = getModuleConfig();
+    $ionosToken = $moduleConfig['token'] ?? '';
+    $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    
+    if (empty($ionosToken)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
+        exit;
+    }
+    
+    try {
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        $http = HttpFactory::getHttp();
+        
+        $headers = [
+            'Authorization' => 'Bearer ' . $ionosToken,
+            'Accept' => 'application/json'
+        ];
+        
+        if ($ionosTokenId) {
+            $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+        }
+        
+        // GET documents from collection
+        $documentsUrl = $apiBase . '/collections/' . $collectionId . '/documents';
+        $response = $http->get($documentsUrl, $headers, 30);
+        
+        if ($response->code >= 200 && $response->code < 300) {
+            $data = json_decode($response->body, true);
+            $documents = $data['items'] ?? $data['documents'] ?? [];
+            
+            echo json_encode([
+                'success' => true,
+                'documents' => $documents,
+                'count' => count($documents)
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to fetch documents (HTTP ' . $response->code . ')'
+            ]);
+        }
+        
+    } catch (\Throwable $e) {
+        echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
+    }
+    
+    exit;
+}
+
+if ($task === 'testQuery') {
+    // Handle AJAX test query request
+    header('Content-Type: application/json');
+    
+    $collectionId = $input->getString('collection_id', '');
+    $query = $input->getString('query', '');
+    
+    if (empty($collectionId) || empty($query)) {
+        echo json_encode(['success' => false, 'message' => 'Collection ID and query are required']);
+        exit;
+    }
+    
+    // Get IONOS configuration
+    $moduleConfig = getModuleConfig();
+    $ionosToken = $moduleConfig['token'] ?? '';
+    $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    
+    if (empty($ionosToken)) {
+        echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
+        exit;
+    }
+    
+    try {
+        $apiBase = 'https://inference.de-txl.ionos.com';
+        $http = HttpFactory::getHttp();
+        
+        $headers = [
+            'Authorization' => 'Bearer ' . $ionosToken,
+            'Accept' => 'application/json',
+            'Content-Type' => 'application/json'
+        ];
+        
+        if ($ionosTokenId) {
+            $headers['X-IONOS-Token-Id'] = $ionosTokenId;
+        }
+        
+        // Search documents in collection
+        $searchPayload = [
+            'query' => $query,
+            'limit' => 5
+        ];
+        
+        $searchUrl = $apiBase . '/collections/' . $collectionId . '/search';
+        $response = $http->post($searchUrl, json_encode($searchPayload), $headers, 30);
+        
+        if ($response->code >= 200 && $response->code < 300) {
+            $data = json_decode($response->body, true);
+            $results = $data['results'] ?? $data['items'] ?? [];
+            
+            echo json_encode([
+                'success' => true,
+                'results' => $results,
+                'count' => count($results)
+            ]);
+        } else {
+            echo json_encode([
+                'success' => false,
+                'message' => 'Failed to search documents (HTTP ' . $response->code . ')'
+            ]);
+        }
+        
     } catch (\Throwable $e) {
         echo json_encode(['success' => false, 'message' => 'Error: ' . $e->getMessage()]);
     }

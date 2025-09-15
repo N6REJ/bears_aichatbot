@@ -64,6 +64,9 @@ function formatDate($dateString) {
           <i class="fas fa-trash-alt"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_ALL'); ?>
         </button>
         <?php endif; ?>
+        <button type="button" class="btn btn-success" onclick="syncDocuments()">
+          <i class="fas fa-file-upload"></i> Sync Articles to Collection
+        </button>
         <button type="button" class="btn btn-primary" onclick="refreshCollections()">
           <i class="fas fa-sync-alt"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_REFRESH'); ?>
         </button>
@@ -533,9 +536,84 @@ function deleteAllCollections() {
     deleteNextCollection(0);
 }
 
+function syncDocuments() {
+    if (!confirm('This will sync all articles from selected categories to the active collection. Continue?')) {
+        return;
+    }
+    
+    // Show loading state
+    const btn = event.target;
+    const originalText = btn.innerHTML;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Syncing Articles...';
+    btn.disabled = true;
+    
+    fetch('index.php?option=com_bears_aichatbot&task=syncDocuments', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            alert(data.message);
+            // Reload to show updated document counts
+            window.location.reload();
+        } else {
+            alert('Sync failed: ' + data.message);
+        }
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    })
+    .catch(error => {
+        alert('Sync error: ' + error.message);
+        btn.innerHTML = originalText;
+        btn.disabled = false;
+    });
+}
+
 function loadDocuments(collectionId) {
-    // This would load documents via AJAX
-    document.getElementById('documentsContent').innerHTML = '<p>Document loading functionality would be implemented here</p>';
+    // Load documents via AJAX
+    document.getElementById('documentsContent').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Loading...</span></div></div>';
+    
+    fetch('index.php?option=com_bears_aichatbot&task=getDocuments&collection_id=' + encodeURIComponent(collectionId), {
+        method: 'GET',
+        headers: {
+            'X-Requested-With': 'XMLHttpRequest'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.documents) {
+            let html = '';
+            if (data.documents.length === 0) {
+                html = '<p class="text-center">No documents in this collection yet. Click "Sync Articles to Collection" to add your Joomla articles.</p>';
+            } else {
+                html = '<div class="list-group">';
+                data.documents.forEach(doc => {
+                    const metadata = doc.metadata || {};
+                    html += `
+                        <div class="list-group-item">
+                            <h6>${metadata.title || 'Untitled Document'}</h6>
+                            <small class="text-muted">
+                                Article ID: ${metadata.article_id || 'N/A'} | 
+                                Created: ${metadata.created || 'N/A'}
+                            </small>
+                            <p class="mb-0 mt-2">${(doc.content || '').substring(0, 200)}...</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            document.getElementById('documentsContent').innerHTML = html;
+        } else {
+            document.getElementById('documentsContent').innerHTML = '<p class="text-danger">Failed to load documents: ' + (data.message || 'Unknown error') + '</p>';
+        }
+    })
+    .catch(error => {
+        document.getElementById('documentsContent').innerHTML = '<p class="text-danger">Error loading documents: ' + error.message + '</p>';
+    });
 }
 
 function executeQuery() {
@@ -545,7 +623,50 @@ function executeQuery() {
         return;
     }
     
-    // This would execute the query via AJAX
-    document.getElementById('queryResults').innerHTML = '<p>Query execution functionality would be implemented here</p>';
+    // Show loading state
+    document.getElementById('queryResults').innerHTML = '<div class="text-center"><div class="spinner-border" role="status"><span class="visually-hidden">Searching...</span></div></div>';
+    
+    fetch('index.php?option=com_bears_aichatbot&task=testQuery', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'X-Requested-With': 'XMLHttpRequest'
+        },
+        body: 'collection_id=' + encodeURIComponent(currentCollectionId) + '&query=' + encodeURIComponent(query)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.results) {
+            let html = '';
+            if (data.results.length === 0) {
+                html = '<p>No results found for your query.</p>';
+            } else {
+                html = '<h6>Search Results:</h6><div class="list-group">';
+                data.results.forEach((result, index) => {
+                    const score = result.score || result.relevance || 0;
+                    const content = result.content || result.text || '';
+                    const metadata = result.metadata || {};
+                    
+                    html += `
+                        <div class="list-group-item">
+                            <div class="d-flex justify-content-between">
+                                <h6>Result ${index + 1}</h6>
+                                <span class="badge bg-info">Score: ${score.toFixed(3)}</span>
+                            </div>
+                            <small class="text-muted">Article: ${metadata.title || 'Unknown'}</small>
+                            <p class="mb-0 mt-2">${content.substring(0, 300)}...</p>
+                        </div>
+                    `;
+                });
+                html += '</div>';
+            }
+            document.getElementById('queryResults').innerHTML = html;
+        } else {
+            document.getElementById('queryResults').innerHTML = '<p class="text-danger">Search failed: ' + (data.message || 'Unknown error') + '</p>';
+        }
+    })
+    .catch(error => {
+        document.getElementById('queryResults').innerHTML = '<p class="text-danger">Search error: ' + error.message + '</p>';
+    });
 }
 </script>
