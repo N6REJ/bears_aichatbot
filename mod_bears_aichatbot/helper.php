@@ -376,7 +376,82 @@ class ModBearsAichatbotHelper
 
             // Log token usage metrics if available
             try {
+                // Debug: Log the raw response body structure using Joomla's logging
+                \Joomla\CMS\Log\Log::addLogger(
+                    ['text_file' => 'bears_aichatbot.php'],
+                    \Joomla\CMS\Log\Log::ALL,
+                    ['bears_aichatbot']
+                );
+                
+                \Joomla\CMS\Log\Log::add(
+                    'Raw API response keys: ' . json_encode(array_keys($body)),
+                    \Joomla\CMS\Log\Log::DEBUG,
+                    'bears_aichatbot'
+                );
+                
+                if (isset($body['usage'])) {
+                    \Joomla\CMS\Log\Log::add(
+                        'Usage object found: ' . json_encode($body['usage']),
+                        \Joomla\CMS\Log\Log::INFO,
+                        'bears_aichatbot'
+                    );
+                } else {
+                    \Joomla\CMS\Log\Log::add(
+                        'No usage object in response - will use fallback',
+                        \Joomla\CMS\Log\Log::WARNING,
+                        'bears_aichatbot'
+                    );
+                }
+                
+                // Primary: standard OpenAI-compatible usage object
                 $usage = is_array($body['usage'] ?? null) ? $body['usage'] : [];
+
+                // Fallback A: alternative top-level fields seen on some providers
+                if (empty($usage)) {
+                    $alt = [
+                        'prompt_tokens'     => $body['prompt_tokens']     ?? $body['input_tokens']       ?? $body['inputTokenCount']  ?? null,
+                        'completion_tokens' => $body['completion_tokens'] ?? $body['output_tokens']      ?? $body['outputTokenCount'] ?? null,
+                        'total_tokens'      => $body['total_tokens']      ?? $body['token_count']        ?? $body['tokenCount']       ?? null,
+                    ];
+                    $alt = array_filter($alt, static function($v){ return $v !== null; });
+                    if (!empty($alt)) { $usage = $alt; }
+                }
+
+                // Fallback B: read usage from response headers if present
+                if (empty($usage)) {
+                    $headersResp = [];
+                    try { $headersResp = (array) ($response->headers ?? []); } catch (\Throwable $e) {}
+                    $h = []; // Initialize the $h array
+                    foreach ($headersResp as $hk => $hv) {
+                        $key = is_string($hk) ? strtolower($hk) : (string)$hk;
+                        $h[$key] = is_array($hv) ? implode(',', $hv) : (string)$hv;
+                    }
+                    $pt = $h['x-usage-prompt-tokens'] ?? $h['x-openai-usage-prompt-tokens'] ?? $h['x-usage-input-tokens'] ?? null;
+                    $ct = $h['x-usage-completion-tokens'] ?? $h['x-openai-usage-completion-tokens'] ?? $h['x-usage-output-tokens'] ?? null;
+                    $tt = $h['x-usage-total-tokens'] ?? $h['x-openai-usage-total-tokens'] ?? null;
+                    if ($pt !== null || $ct !== null || $tt !== null) {
+                        $usage = [
+                            'prompt_tokens'     => (int)$pt,
+                            'completion_tokens' => (int)$ct,
+                            'total_tokens'      => (int)$tt,
+                        ];
+                    }
+                }
+
+                // Fallback C: last-resort estimate when provider omits usage entirely
+                if (empty($usage)) {
+                    $reqChars = mb_strlen((string)$requestBody, '8bit');
+                    $ansChars = mb_strlen((string)$answer, 'UTF-8');
+                    $estPrompt = (int) ceil($reqChars / 4.0); // rough heuristic
+                    $estCompletion = (int) ceil($ansChars / 4.0);
+                    $usage = [
+                        'prompt_tokens'     => $estPrompt,
+                        'completion_tokens' => $estCompletion,
+                        'total_tokens'      => $estPrompt + $estCompletion,
+                        '_estimated'        => true,
+                    ];
+                }
+
                 // Detect outcome: answered/refused
                 $ansLower = mb_strtolower($answer);
                 $outcome = (strpos($ansLower, "i don't know based on the provided dataset") !== false) ? 'refused' : 'answered';
@@ -579,48 +654,6 @@ class ModBearsAichatbotHelper
                 if (!$items) {
                     self::$lastContextStats['note'] = 'No matches in selected categories; falling back to site-wide recent articles.';
                 }
-            }
-        }
-
-        // If no categories are selected or no items found, do a site-wide search
-        if (empty($items)) {
-            if ($strict) {
-                // Site-wide keyword-filtered search in strict mode
-                $qAll = $db->getQuery(true)
-                    ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext']))
-                    ->from($db->quoteName('#__content'))
-                    ->where($db->quoteName('state') . ' = 1');
-
-                $terms = preg_split('/\s+/', mb_strtolower(trim($userMessage)));
-                $likes = [];
-                $maxTerms = 5;
-                if (!empty($terms)) {
-                    foreach ($terms as $t) {
-                        $t = trim($t);
-                        if (mb_strlen($t) < 3) continue;
-                        $kw = $db->escape($t, true);
-                        $like = $db->quote('%' . $kw . '%', false);
-                        $likes[] = '(' . $db->quoteName('title') . ' LIKE ' . $like . ' OR ' . $db->quoteName('introtext') . ' LIKE ' . $like . ' OR ' . $db->quoteName('fulltext') . ' LIKE ' . $like . ')';
-                        if (count($likes) >= $maxTerms) break;
-                    }
-                }
-                if (!empty($likes)) {
-                    $qAll->where('(' . implode(' OR ', $likes) . ')');
-                    $qAll->order($db->escape('modified DESC, created DESC'));
-                    $db->setQuery($qAll, 0, $limit);
-                    $items = (array) $db->loadAssocList();
-                } else {
-                    // No usable keywords; leave items empty to trigger refusal
-                    $items = [];
-                }
-            } else {
-                $qAll = $db->getQuery(true)
-                    ->select($db->quoteName(['id', 'title', 'introtext', 'fulltext']))
-                    ->from($db->quoteName('#__content'))
-                    ->where($db->quoteName('state') . ' = 1')
-                    ->order($db->escape('modified DESC, created DESC'));
-                $db->setQuery($qAll, 0, $limit);
-                $items = (array) $db->loadAssocList();
             }
         }
 
@@ -1269,7 +1302,13 @@ class ModBearsAichatbotHelper
   KEY `idx_last_used` (`last_used`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4";
             $db->setQuery($ddl)->execute();
-            error_log('Bears AI Chatbot: Keywords table created/verified successfully');
+            
+            // Set up Joomla logging for this component
+            \Joomla\CMS\Log\Log::addLogger(
+                ['text_file' => 'bears_aichatbot.php'],
+                \Joomla\CMS\Log\Log::ALL,
+                ['bears_aichatbot']
+            );
             
             // Extract keywords from the message using configurable settings
             $keywords = self::extractKeywords($message, $params);
@@ -1288,18 +1327,31 @@ class ModBearsAichatbotHelper
             }
             
             // Debug logging to help troubleshoot keyword extraction
-            error_log('Bears AI Chatbot: Message "' . $message . '" extracted keywords: ' . json_encode($keywords));
-            error_log('Bears AI Chatbot: Keyword extraction params - minLength: ' . $minLength . ', maxLength: ' . $maxLength . ', ignoreWords count: ' . $ignoreWordsCount);
+            \Joomla\CMS\Log\Log::add(
+                'Message "' . $message . '" extracted keywords: ' . json_encode($keywords),
+                \Joomla\CMS\Log\Log::DEBUG,
+                'bears_aichatbot'
+            );
             
             if (empty($keywords)) {
-                error_log('Bears AI Chatbot: No keywords extracted from message: "' . $message . '"');
-                // Let's also test the extraction process step by step
+                \Joomla\CMS\Log\Log::add(
+                    'No keywords extracted from message: "' . $message . '"',
+                    \Joomla\CMS\Log\Log::WARNING,
+                    'bears_aichatbot'
+                );
+                
+                // Debug: test the extraction process step by step
                 $testMessage = mb_strtolower($message, 'UTF-8');
                 $testMessage = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', $testMessage);
                 $testWords = preg_split('/\s+/', trim($testMessage));
-                error_log('Bears AI Chatbot: Test words after processing: ' . json_encode($testWords));
                 
-                // Test each word against filters
+                \Joomla\CMS\Log\Log::add(
+                    'Test words after processing: ' . json_encode($testWords),
+                    \Joomla\CMS\Log\Log::DEBUG,
+                    'bears_aichatbot'
+                );
+                
+                // Test each word against filters for debugging
                 foreach ($testWords as $word) {
                     $word = trim($word);
                     if ($word === '') continue;
@@ -1312,9 +1364,11 @@ class ModBearsAichatbotHelper
                     if (is_numeric($word)) $reasons[] = 'numeric';
                     
                     if (!empty($reasons)) {
-                        error_log('Bears AI Chatbot: Word "' . $word . '" filtered out: ' . implode(', ', $reasons));
-                    } else {
-                        error_log('Bears AI Chatbot: Word "' . $word . '" should have been kept (length: ' . $wordLength . ')');
+                        \Joomla\CMS\Log\Log::add(
+                            'Word "' . $word . '" filtered out: ' . implode(', ', $reasons),
+                            \Joomla\CMS\Log\Log::DEBUG,
+                            'bears_aichatbot'
+                        );
                     }
                 }
                 return;
@@ -1324,7 +1378,11 @@ class ModBearsAichatbotHelper
             $wasAnswered = ($outcome === 'answered') ? 1 : 0;
             $wasRefused = ($outcome === 'refused') ? 1 : 0;
             
-            error_log('Bears AI Chatbot: Processing keywords with outcome: ' . $outcome . ' (answered=' . $wasAnswered . ', refused=' . $wasRefused . ')');
+            \Joomla\CMS\Log\Log::add(
+                'Processing ' . count($keywords) . ' keywords with outcome: ' . $outcome . ' (answered=' . $wasAnswered . ', refused=' . $wasRefused . ')',
+                \Joomla\CMS\Log\Log::INFO,
+                'bears_aichatbot'
+            );
             
             foreach ($keywords as $keyword) {
                 // Check if keyword exists
@@ -1358,7 +1416,12 @@ class ModBearsAichatbotHelper
                         ->where($db->quoteName('id') . ' = ' . (int)$existing->id);
                     
                     $db->setQuery($updateQuery)->execute();
-                    error_log('Bears AI Chatbot: Updated existing keyword "' . $keyword . '" (usage: ' . $newUsageCount . ')');
+                    
+                    \Joomla\CMS\Log\Log::add(
+                        'Updated existing keyword "' . $keyword . '" (usage: ' . $newUsageCount . ', success_rate: ' . number_format($newSuccessRate, 2) . '%)',
+                        \Joomla\CMS\Log\Log::INFO,
+                        'bears_aichatbot'
+                    );
                     
                 } else {
                     // Insert new keyword
@@ -1387,13 +1450,22 @@ class ModBearsAichatbotHelper
                         ]));
                     
                     $db->setQuery($insertQuery)->execute();
-                    error_log('Bears AI Chatbot: Inserted new keyword "' . $keyword . '" (success_rate: ' . $successRate . '%)');
+                    
+                    \Joomla\CMS\Log\Log::add(
+                        'Inserted new keyword "' . $keyword . '" (success_rate: ' . $successRate . '%)',
+                        \Joomla\CMS\Log\Log::INFO,
+                        'bears_aichatbot'
+                    );
                 }
             }
             
         } catch (\Throwable $e) {
             // Log the error for debugging
-            error_log('Bears AI Chatbot: Keyword tracking error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
+            \Joomla\CMS\Log\Log::add(
+                'Keyword tracking error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine(),
+                \Joomla\CMS\Log\Log::ERROR,
+                'bears_aichatbot'
+            );
         }
     }
 }
