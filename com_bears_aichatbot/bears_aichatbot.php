@@ -221,7 +221,8 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                         
                         // Clean up test collection
                         try {
-                            $deleteUrl = str_replace('/document-collections', '/document-collections/' . rawurlencode($testCollectionId), $workingEndpoint);
+                            // Use correct delete endpoint: /collections/{id}
+                            $deleteUrl = $workingEndpoint . '/' . rawurlencode($testCollectionId);
                             $deleteResponse = $http->delete($deleteUrl, [], $headers, 10);
                             if ($deleteResponse->code >= 200 && $deleteResponse->code < 300) {
                                 $info[] = "🧹 Test collection cleaned up successfully";
@@ -425,7 +426,16 @@ function deleteCollection(string $collectionId, string $token, string $tokenId, 
         }
         
         // DELETE /collections/{collectionId}
-        $response = $http->delete($apiBase . '/collections/' . rawurlencode($collectionId), [], $headers, 30);
+        $deleteUrl = $apiBase . '/collections/' . rawurlencode($collectionId);
+        
+        // Log the delete attempt
+        Log::add('Attempting to delete collection: ' . $collectionId . ' at URL: ' . $deleteUrl, Log::INFO, 'bears_aichatbot');
+        Log::add('Using Token ID: ' . substr($tokenId, 0, 8) . '...', Log::DEBUG, 'bears_aichatbot');
+        
+        $response = $http->delete($deleteUrl, [], $headers, 30);
+        
+        // Log the response
+        Log::add('Delete response code: ' . $response->code, Log::INFO, 'bears_aichatbot');
         
         if ($response->code >= 200 && $response->code < 300) {
             // Successfully deleted from IONOS, now clean up local database

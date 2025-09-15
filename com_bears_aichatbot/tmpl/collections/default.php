@@ -59,6 +59,11 @@ function formatDate($dateString) {
         <a href="<?php echo \Joomla\CMS\Router\Route::_('index.php?option=com_bears_aichatbot&view=dashboard'); ?>" class="btn btn-secondary">
           <i class="fas fa-arrow-left"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_BACK_TO_DASHBOARD'); ?>
         </a>
+        <?php if (!empty($collections)): ?>
+        <button type="button" class="btn btn-danger" onclick="deleteAllCollections()">
+          <i class="fas fa-trash-alt"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_DELETE_ALL'); ?>
+        </button>
+        <?php endif; ?>
         <button type="button" class="btn btn-primary" onclick="refreshCollections()">
           <i class="fas fa-sync-alt"></i> <?php echo Text::_('COM_BEARS_AICHATBOT_REFRESH'); ?>
         </button>
@@ -345,6 +350,112 @@ function deleteCollection(collectionId) {
             }
         });
     }
+}
+
+function deleteAllCollections() {
+    // Get all collection IDs from the page
+    const collections = <?php echo json_encode($collections); ?>;
+    
+    if (collections.length === 0) {
+        alert('No collections to delete');
+        return;
+    }
+    
+    const confirmMessage = 'Are you sure you want to delete ALL ' + collections.length + ' collections?\n\n' +
+                          'This action cannot be undone and will permanently delete:\n' +
+                          '• All collections\n' +
+                          '• All documents in those collections\n' +
+                          '• All associated data\n\n' +
+                          'Type "DELETE ALL" to confirm:';
+    
+    const userConfirmation = prompt(confirmMessage);
+    
+    if (userConfirmation !== 'DELETE ALL') {
+        alert('Deletion cancelled. You must type "DELETE ALL" to confirm.');
+        return;
+    }
+    
+    // Show loading state on the button
+    const deleteAllButton = document.querySelector('[onclick="deleteAllCollections()"]');
+    if (deleteAllButton) {
+        deleteAllButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Deleting All Collections...';
+        deleteAllButton.disabled = true;
+    }
+    
+    // Track deletion progress
+    let deleted = 0;
+    let failed = 0;
+    const errors = [];
+    
+    // Create a progress display
+    const progressDiv = document.createElement('div');
+    progressDiv.className = 'alert alert-info position-fixed top-50 start-50 translate-middle';
+    progressDiv.style.zIndex = '9999';
+    progressDiv.innerHTML = '<h5>Deleting Collections...</h5><div class="progress"><div class="progress-bar" role="progressbar" style="width: 0%"></div></div><p class="mt-2 mb-0">Processing: 0 / ' + collections.length + '</p>';
+    document.body.appendChild(progressDiv);
+    
+    const progressBar = progressDiv.querySelector('.progress-bar');
+    const progressText = progressDiv.querySelector('p');
+    
+    // Function to delete a single collection
+    function deleteNextCollection(index) {
+        if (index >= collections.length) {
+            // All done
+            progressDiv.remove();
+            
+            let message = 'Deletion complete!\n\n';
+            message += 'Successfully deleted: ' + deleted + ' collections\n';
+            if (failed > 0) {
+                message += 'Failed to delete: ' + failed + ' collections\n\n';
+                message += 'Errors:\n' + errors.join('\n');
+            }
+            
+            alert(message);
+            
+            // Reload the page
+            window.location.reload();
+            return;
+        }
+        
+        const collection = collections[index];
+        const collectionId = collection.id || collection.collection_id;
+        const collectionName = collection.name || 'Unknown';
+        
+        // Update progress
+        const progress = Math.round((index / collections.length) * 100);
+        progressBar.style.width = progress + '%';
+        progressText.textContent = 'Processing: ' + (index + 1) + ' / ' + collections.length + ' - ' + collectionName;
+        
+        // Delete the collection
+        fetch('index.php?option=com_bears_aichatbot&task=deleteCollection', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/x-www-form-urlencoded',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: 'collection_id=' + encodeURIComponent(collectionId)
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                deleted++;
+            } else {
+                failed++;
+                errors.push(collectionName + ': ' + (data.message || 'Unknown error'));
+            }
+            // Continue with next collection
+            deleteNextCollection(index + 1);
+        })
+        .catch(error => {
+            failed++;
+            errors.push(collectionName + ': ' + error.message);
+            // Continue with next collection even if this one failed
+            deleteNextCollection(index + 1);
+        });
+    }
+    
+    // Start the deletion process
+    deleteNextCollection(0);
 }
 
 function loadDocuments(collectionId) {
