@@ -613,6 +613,47 @@ function syncDocuments() {
     let syncedCount = 0;
     let failedCount = 0;
     
+    // Start with initial progress to show activity
+    setTimeout(() => {
+        progressBar.style.width = '5%';
+        progressBar.textContent = '5%';
+        progressBar.setAttribute('aria-valuenow', 5);
+        statusText.textContent = 'Connecting to server...';
+        detailsText.textContent = 'Preparing to sync articles';
+    }, 100);
+    
+    // Simulate progress stages while waiting for response
+    let progressInterval = setInterval(() => {
+        let currentProgress = parseInt(progressBar.getAttribute('aria-valuenow'));
+        if (currentProgress < 90) {
+            let newProgress = Math.min(currentProgress + Math.random() * 5, 90);
+            progressBar.style.width = newProgress + '%';
+            progressBar.textContent = Math.floor(newProgress) + '%';
+            progressBar.setAttribute('aria-valuenow', newProgress);
+            
+            // Update status based on progress
+            if (newProgress < 20) {
+                statusText.textContent = 'Checking collection status...';
+                detailsText.textContent = 'Verifying IONOS connection';
+            } else if (newProgress < 40) {
+                statusText.textContent = 'Loading articles...';
+                detailsText.textContent = 'Fetching articles from selected categories';
+            } else if (newProgress < 60) {
+                statusText.textContent = 'Processing articles...';
+                detailsText.textContent = 'Preparing documents for sync';
+                syncCountersDiv.classList.remove('d-none');
+            } else if (newProgress < 80) {
+                statusText.textContent = 'Syncing to collection...';
+                detailsText.textContent = 'Uploading documents to IONOS';
+                currentArticleDiv.classList.remove('d-none');
+                articleTitleSpan.textContent = 'Processing batch...';
+            } else {
+                statusText.textContent = 'Finalizing sync...';
+                detailsText.textContent = 'Almost complete';
+            }
+        }
+    }, 500);
+    
     // Use regular AJAX instead of SSE (SSE not working properly in Joomla)
     fetch('index.php?option=com_bears_aichatbot&task=syncDocuments', {
         method: 'GET',
@@ -623,17 +664,55 @@ function syncDocuments() {
     })
     .then(response => response.json())
     .then(data => {
-        // Hide progress overlay
-        progressOverlay.remove();
+        // Stop the progress simulation
+        clearInterval(progressInterval);
+        
+        // Set to 100% complete
+        progressBar.style.width = '100%';
+        progressBar.textContent = '100%';
+        progressBar.setAttribute('aria-valuenow', 100);
+        progressBar.classList.remove('progress-bar-animated');
         
         if (data.success) {
-            // Show success message
-            alert(data.message);
-            // Reload the page to refresh collections
-            window.location.reload();
+            // Show success state
+            progressBar.classList.add('bg-success');
+            statusText.textContent = 'Sync completed successfully!';
+            detailsText.textContent = data.message;
+            
+            // Update counters if available
+            if (data.synced !== undefined) {
+                syncedCountSpan.textContent = data.synced;
+            }
+            if (data.failed !== undefined) {
+                failedCountSpan.textContent = data.failed;
+            }
+            
+            // Wait a moment then reload
+            setTimeout(() => {
+                progressOverlay.remove();
+                alert(data.message);
+                window.location.reload();
+            }, 2000);
         } else {
-            // Show error message
-            alert('Sync failed: ' + data.message);
+            // Show error state
+            progressBar.classList.add('bg-danger');
+            statusText.textContent = 'Sync failed!';
+            detailsText.textContent = data.message;
+            currentArticleDiv.classList.add('d-none');
+            
+            // Update counters if available
+            if (data.synced !== undefined) {
+                syncedCountSpan.textContent = data.synced;
+            }
+            if (data.failed !== undefined) {
+                failedCountSpan.textContent = data.failed;
+            }
+            
+            // Wait a moment then close
+            setTimeout(() => {
+                progressOverlay.remove();
+                alert('Sync failed: ' + data.message);
+            }, 3000);
         }
         
         // Re-enable button
@@ -641,11 +720,21 @@ function syncDocuments() {
         btn.disabled = false;
     })
     .catch(error => {
-        // Hide progress overlay
-        progressOverlay.remove();
+        // Stop the progress simulation
+        clearInterval(progressInterval);
         
-        console.error('Sync error:', error);
-        alert('An error occurred during sync: ' + error.message);
+        // Show error state
+        progressBar.classList.remove('progress-bar-animated');
+        progressBar.classList.add('bg-warning');
+        statusText.textContent = 'Connection error';
+        detailsText.textContent = 'Failed to communicate with server';
+        currentArticleDiv.classList.add('d-none');
+        
+        setTimeout(() => {
+            progressOverlay.remove();
+            console.error('Sync error:', error);
+            alert('An error occurred during sync: ' + error.message);
+        }, 3000);
         
         // Re-enable button
         btn.innerHTML = originalText;
@@ -654,14 +743,15 @@ function syncDocuments() {
     
     return;
     
-    // OLD SSE CODE - DISABLED
-    const eventSource_DISABLED = new EventSource('index.php?option=com_bears_aichatbot&task=syncDocuments');
+    // OLD SSE CODE - DISABLED - This code is kept for reference but not executed
+    /*
+    const eventSource = new EventSource('index.php?option=com_bears_aichatbot&task=syncDocuments');
     
-    eventSource_DISABLED.addEventListener('start', function(e) {
+    eventSource.addEventListener('start', function(e) {
         const data = JSON.parse(e.data);
         totalArticles = data.total;
         statusText.textContent = data.message;
-        detailsText.textContent = `Processing ${totalArticles} articles...`;
+        detailsText.textContent = 'Processing ' + totalArticles + ' articles...';
     });
     
     eventSource.addEventListener('progress', function(e) {
@@ -679,7 +769,7 @@ function syncDocuments() {
         articleTitleSpan.textContent = data.article_title + ' (ID: ' + data.article_id + ')';
         
         // Update status
-        statusText.textContent = `Processing article ${currentIndex} of ${totalArticles}`;
+        statusText.textContent = 'Processing article ' + currentIndex + ' of ' + totalArticles;
         
         // Show counters
         syncCountersDiv.classList.remove('d-none');
@@ -799,6 +889,7 @@ function syncDocuments() {
         btn.innerHTML = originalText;
         btn.disabled = false;
     };
+    */
 }
 
 function loadDocuments(collectionId) {
