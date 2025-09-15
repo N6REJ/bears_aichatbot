@@ -1555,8 +1555,8 @@ class ModBearsAichatbotHelper
                         ->update($db->quoteName('#__aichatbot_keywords'))
                         ->set($db->quoteName('usage_count') . ' = ' . (int)$newUsageCount)
                         ->set($db->quoteName('total_tokens') . ' = ' . (int)$newTotalTokens)
-                        ->set($db->quoteName('avg_tokens') . ' = ' . number_format($newAvgTokens, 2))
-                        ->set($db->quoteName('success_rate') . ' = ' . number_format($newSuccessRate, 2))
+                        ->set($db->quoteName('avg_tokens') . ' = ' . number_format($newAvgTokens, 2, '.', ''))
+                        ->set($db->quoteName('success_rate') . ' = ' . number_format($newSuccessRate, 2, '.', ''))
                         ->set($db->quoteName('answered_count') . ' = ' . (int)$newAnsweredCount)
                         ->set($db->quoteName('refused_count') . ' = ' . (int)$newRefusedCount)
                         ->set($db->quoteName('last_used') . ' = NOW()')
@@ -1589,9 +1589,9 @@ class ModBearsAichatbotHelper
                         ->values(implode(',', [
                             $db->quote($keyword),
                             1,
-                            number_format($avgTokens, 2),
+                            number_format($avgTokens, 2, '.', ''), // No thousands separator
                             (int)$totalTokens,
-                            number_format($successRate, 2),
+                            number_format($successRate, 2, '.', ''), // No thousands separator
                             (int)$wasAnswered,
                             (int)$wasRefused
                         ]));

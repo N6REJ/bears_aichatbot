@@ -838,6 +838,8 @@ function getTokenUsageData(): array
         $usageTable = $prefix . 'aichatbot_usage';
         
         if (!in_array($usageTable, $tables)) {
+            // Log for debugging
+            error_log('Bears AI Chatbot: Usage table does not exist: ' . $usageTable);
             // Return empty data if table doesn't exist yet
             return [
                 'today' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
@@ -848,7 +850,44 @@ function getTokenUsageData(): array
             ];
         }
         
+        // Log table exists
+        error_log('Bears AI Chatbot: Usage table exists: ' . $usageTable);
+        
+        // First, let's check if there's any data at all
+        $countQuery = $db->getQuery(true)
+            ->select('COUNT(*) as total')
+            ->from($db->quoteName('#__aichatbot_usage'));
+        $db->setQuery($countQuery);
+        $totalRecords = (int)$db->loadResult();
+        
+        error_log('Bears AI Chatbot: Total usage records in database: ' . $totalRecords);
+        
+        if ($totalRecords === 0) {
+            // No data yet
+            return [
+                'today' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+                '7day' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+                '30day' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+                '6mo' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+                'ytd' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
+            ];
+        }
+        
+        // Get the date range of existing data
+        $rangeQuery = $db->getQuery(true)
+            ->select([
+                'MIN(' . $db->quoteName('created_at') . ') as min_date',
+                'MAX(' . $db->quoteName('created_at') . ') as max_date'
+            ])
+            ->from($db->quoteName('#__aichatbot_usage'));
+        $db->setQuery($rangeQuery);
+        $dateRange = $db->loadObject();
+        
+        error_log('Bears AI Chatbot: Data date range: ' . $dateRange->min_date . ' to ' . $dateRange->max_date);
+        
         $now = new DateTime();
+        
+        // Fix the date calculations - clone $now for each modification
         $periods = [
             'today' => $now->format('Y-m-d') . ' 00:00:00',
             '7day' => (clone $now)->modify('-7 days')->format('Y-m-d H:i:s'),
@@ -862,15 +901,22 @@ function getTokenUsageData(): array
         foreach ($periods as $period => $startDate) {
             $query = $db->getQuery(true)
                 ->select([
-                    'SUM(' . $db->quoteName('prompt_tokens') . ') AS prompt_tokens',
-                    'SUM(' . $db->quoteName('completion_tokens') . ') AS completion_tokens',
-                    'SUM(' . $db->quoteName('total_tokens') . ') AS total_tokens'
+                    'COALESCE(SUM(' . $db->quoteName('prompt_tokens') . '), 0) AS prompt_tokens',
+                    'COALESCE(SUM(' . $db->quoteName('completion_tokens') . '), 0) AS completion_tokens',
+                    'COALESCE(SUM(' . $db->quoteName('total_tokens') . '), 0) AS total_tokens',
+                    'COUNT(*) as record_count'
                 ])
                 ->from($db->quoteName('#__aichatbot_usage'))
                 ->where($db->quoteName('created_at') . ' >= ' . $db->quote($startDate));
             
             $db->setQuery($query);
             $result = $db->loadObject();
+            
+            error_log('Bears AI Chatbot: Period ' . $period . ' (>= ' . $startDate . '): ' . 
+                     'records=' . ($result->record_count ?? 0) . ', ' .
+                     'prompt=' . ($result->prompt_tokens ?? 0) . ', ' .
+                     'completion=' . ($result->completion_tokens ?? 0) . ', ' .
+                     'total=' . ($result->total_tokens ?? 0));
             
             $usage[$period] = [
                 'prompt_tokens' => (int)($result->prompt_tokens ?? 0),
@@ -882,6 +928,7 @@ function getTokenUsageData(): array
         return $usage;
         
     } catch (\Throwable $e) {
+        error_log('Bears AI Chatbot: Error getting token usage data: ' . $e->getMessage());
         // Return empty data on error
         return [
             'today' => ['prompt_tokens' => 0, 'completion_tokens' => 0, 'total_tokens' => 0],
