@@ -162,6 +162,25 @@
                        step="0.1"
                        label="MOD_BEARS_AICHATBOT_TEMPERATURE_LABEL" 
                        description="MOD_BEARS_AICHATBOT_TEMPERATURE_DESC" />
+                <field name="chunk_size" 
+                       type="list" 
+                       default="8192" 
+                       label="MOD_BEARS_AICHATBOT_CHUNK_SIZE_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_CHUNK_SIZE_DESC">
+                    <option value="512">512 characters (~100 words)</option>
+                    <option value="1024">1024 characters (~200 words)</option>
+                    <option value="2048">2048 characters (~400 words)</option>
+                    <option value="4096">4096 characters (~800 words)</option>
+                    <option value="8192">8192 characters (~1600 words)</option>
+                </field>
+                <field name="chunk_overlap" 
+                       type="number" 
+                       default="200" 
+                       min="50" 
+                       max="500" 
+                       step="50"
+                       label="MOD_BEARS_AICHATBOT_CHUNK_OVERLAP_LABEL" 
+                       description="MOD_BEARS_AICHATBOT_CHUNK_OVERLAP_DESC" />
             </fieldset>
             <fieldset name="keywords" label="MOD_BEARS_AICHATBOT_FIELDSET_KEYWORDS">
                 <field name="keyword_min_length" type="number" default="3" min="1" max="10" label="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_LABEL" description="MOD_BEARS_AICHATBOT_KEYWORD_MIN_LENGTH_DESC" />

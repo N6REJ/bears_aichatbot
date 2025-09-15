@@ -193,8 +193,8 @@ function checkCollectionStatus(string $token, string $tokenId, string $endpoint)
                             'enabled' => true,
                             'strategy' => [
                                 'config' => [
-                                    'chunk_overlap' => 50,
-                                    'chunk_size' => 512
+                                    'chunk_overlap' => 200,
+                                    'chunk_size' => 2048
                                 ]
                             ]
                         ],
@@ -760,6 +760,10 @@ function getModuleConfig(): array
         
         $params = new Registry($module->params);
         
+        // Get chunk configuration from module params
+        $chunkSize = (int)$params->get('chunk_size', 8192);
+        $chunkOverlap = (int)$params->get('chunk_overlap', 200);
+        
         // Get collection ID from centralized state table
         $collectionId = '';
         try {
@@ -782,6 +786,8 @@ function getModuleConfig(): array
             'model' => trim((string)$params->get('ionos_model', '')),
             'endpoint' => trim((string)$params->get('ionos_endpoint', '')),
             'module_id' => $module->id,
+            'chunk_size' => $chunkSize,
+            'chunk_overlap' => $chunkOverlap,
         ];
     } catch (\Throwable $e) {
         return [];
@@ -1344,6 +1350,8 @@ if ($task === 'createCollection') {
     $moduleConfig = getModuleConfig();
     $ionosToken = $moduleConfig['token'] ?? '';
     $ionosTokenId = $moduleConfig['token_id'] ?? '';
+    $chunkSize = $moduleConfig['chunk_size'] ?? 8192;
+    $chunkOverlap = $moduleConfig['chunk_overlap'] ?? 200;
     
     if (empty($ionosToken)) {
         echo json_encode(['success' => false, 'message' => 'IONOS API credentials not configured']);
@@ -1376,8 +1384,8 @@ if ($task === 'createCollection') {
                     'enabled' => true,
                     'strategy' => [
                         'config' => [
-                            'chunk_overlap' => 50,
-                            'chunk_size' => 512
+                            'chunk_overlap' => (int)$chunkOverlap,
+                            'chunk_size' => (int)$chunkSize
                         ]
                     ]
                 ],
@@ -1468,6 +1476,8 @@ if ($task === 'syncDocuments') {
     $ionosToken = $moduleConfig['token'] ?? '';
     $ionosTokenId = $moduleConfig['token_id'] ?? '';
     $collectionId = $moduleConfig['collection_id'] ?? '';
+    $chunkSize = $moduleConfig['chunk_size'] ?? 8192;
+    $chunkOverlap = $moduleConfig['chunk_overlap'] ?? 200;
     
     if (empty($ionosToken)) {
         sendSSEMessage('error', ['success' => false, 'message' => 'IONOS API credentials not configured']);
@@ -1499,8 +1509,8 @@ if ($task === 'syncDocuments') {
                         'enabled' => true,
                         'strategy' => [
                             'config' => [
-                                'chunk_overlap' => 50,
-                                'chunk_size' => 512
+                                'chunk_overlap' => (int)$chunkOverlap,
+                                'chunk_size' => (int)$chunkSize
                             ]
                         ]
                     ],
