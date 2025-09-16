@@ -9,9 +9,12 @@ export class TTSManager {
     this.speaking = false;
     this.supported = false;
     this.initialized = false;
+    this.rate = 0.9;  // Default slightly slower for clarity
+    this.pitch = 1.0; // Default normal pitch
+    this.volume = 0.8; // Default 80% volume
   }
 
-  init(defaultSetting = false) {
+  init(defaultSetting = false, rate = 0.9, pitch = 1.0, volume = 0.8) {
     // Prevent multiple initializations
     if (this.initialized) {
       return;
@@ -28,6 +31,10 @@ export class TTSManager {
     }
     
     this.defaultEnabled = defaultSetting;
+    this.rate = rate;
+    this.pitch = pitch;
+    this.volume = volume;
+    
     const saved = localStorage.getItem('bears_chat_tts');
     
     if (saved !== null) {
@@ -50,29 +57,58 @@ export class TTSManager {
     if (!cleanText) return;
     
     try {
-      const utterance = new SpeechSynthesisUtterance(cleanText);
-      utterance.rate = 1.0;  // Normal speed
-      utterance.pitch = 1.0; // Normal pitch
-      utterance.volume = 0.8; // 80% volume
-      
-      // Set language if available
-      utterance.lang = document.documentElement.lang || 'en-US';
-      
-      // Track speaking state
-      utterance.onstart = () => {
-        this.speaking = true;
+      // Ensure voices are loaded before speaking
+      const speakText = () => {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = this.rate;   // Use configured rate (default 0.9 for slightly slower)
+        utterance.pitch = this.pitch;  // Use configured pitch
+        utterance.volume = this.volume; // Use configured volume
+        
+        // Set language if available
+        utterance.lang = document.documentElement.lang || 'en-US';
+        
+        // Try to select a voice that matches the language
+        const voices = window.speechSynthesis.getVoices();
+        if (voices.length > 0) {
+          const lang = utterance.lang.substring(0, 2); // Get language code (e.g., 'en' from 'en-US')
+          const voice = voices.find(v => v.lang.startsWith(lang)) || voices[0];
+          if (voice) {
+            utterance.voice = voice;
+          }
+        }
+        
+        // Track speaking state
+        utterance.onstart = () => {
+          this.speaking = true;
+          console.debug('[TTSManager] TTS started');
+        };
+        
+        utterance.onend = () => {
+          this.speaking = false;
+          console.debug('[TTSManager] TTS ended');
+        };
+        
+        utterance.onerror = (event) => {
+          this.speaking = false;
+          console.error('[TTSManager] TTS error:', event.error);
+        };
+        
+        // Speak the text
+        window.speechSynthesis.speak(utterance);
       };
       
-      utterance.onend = () => {
-        this.speaking = false;
-      };
-      
-      utterance.onerror = () => {
-        this.speaking = false;
-      };
-      
-      // Speak the text
-      window.speechSynthesis.speak(utterance);
+      // Check if voices are already loaded
+      if (window.speechSynthesis.getVoices().length > 0) {
+        speakText();
+      } else {
+        // Wait for voices to load
+        window.speechSynthesis.addEventListener('voiceschanged', function onVoicesChanged() {
+          window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+          speakText();
+        });
+        // Trigger voice loading
+        window.speechSynthesis.getVoices();
+      }
     } catch (e) {
       console.error('[TTSManager] TTS error:', e);
     }

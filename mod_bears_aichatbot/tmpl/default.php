@@ -30,6 +30,9 @@ $offsetSide   = (int) $params->get('chat_offset_side', 20);
      data-sound-notifications="<?php echo (int) $params->get('sound_notifications', 0); ?>"
      data-connection-check-interval="<?php echo (int) $params->get('connection_check_interval', 0); ?>"
      data-text-to-speech="<?php echo (int) $params->get('text_to_speech', 0); ?>"
+     data-tts-rate="<?php echo (float) $params->get('tts_rate', 0.9); ?>"
+     data-tts-pitch="<?php echo (float) $params->get('tts_pitch', 1.0); ?>"
+     data-tts-volume="<?php echo (float) $params->get('tts_volume', 0.8); ?>"
      role="complementary"
      aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_ARIA_LABEL'); ?>">
     

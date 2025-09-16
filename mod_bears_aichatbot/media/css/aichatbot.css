@@ -56,6 +56,8 @@
   /* Smooth transitions when opening/closing */
   transition: opacity 0.3s ease, transform 0.3s ease;
   position: relative;
+  /* Prevent layout shifts from toolbar buttons */
+  contain: layout style;
 }
 
 /* Custom resize handle for better visibility */
@@ -120,6 +122,9 @@
   background: var(--bs-primary, #4078C0);
   color: var(--bs-primary-text, #fff);
   padding: 10px 12px;
+  position: relative;
+  /* Prevent toolbar from affecting header height */
+  min-height: 42px;
 }
 
 .bears-aichatbot-title {
@@ -735,17 +740,20 @@
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  transition: all 0.2s ease;
+  transition: background-color 0.2s ease, border-color 0.2s ease;
   padding: 0;
+  position: relative;
+  overflow: hidden;
 }
 
 .bears-toolbar-btn:hover {
   background: rgba(255, 255, 255, 0.3);
-  transform: translateY(-2px);
+  /* Removed transform to prevent box jumping */
 }
 
 .bears-toolbar-btn:active {
-  transform: translateY(0);
+  background: rgba(255, 255, 255, 0.4);
+  /* Removed transform to prevent box jumping */
 }
 
 .bears-toolbar-btn svg {
@@ -753,10 +761,7 @@
   height: 16px;
 }
 
-.bears-toolbar-btn.sound-btn.enabled {
-  background: rgba(40, 167, 69, 0.3);
-  border-color: rgba(40, 167, 69, 0.5);
-}
+/* Removed duplicate - now defined below without animation */
 
 /* Dark mode toolbar buttons */
 .bears-dark-mode .bears-toolbar-btn {
@@ -876,26 +881,16 @@
   opacity: 0.7;
 }
 
-/* Sound wave animation for sound notifications */
-@keyframes bears-sound-wave {
-  0% {
-    transform: scale(1);
-    opacity: 1;
-  }
-  100% {
-    transform: scale(1.5);
-    opacity: 0;
-  }
+/* Sound wave animation for sound notifications - REMOVED to prevent box jumping */
+/* Visual indication now handled by background color change only */
+.bears-toolbar-btn.sound-btn.enabled {
+  background: rgba(40, 167, 69, 0.4);
+  border-color: rgba(40, 167, 69, 0.6);
 }
 
-.bears-toolbar-btn.sound-btn.enabled::after {
-  content: '';
-  position: absolute;
-  width: 100%;
-  height: 100%;
-  border-radius: 6px;
-  border: 2px solid rgba(40, 167, 69, 0.5);
-  animation: bears-sound-wave 1.5s infinite;
+.bears-toolbar-btn.tts-btn.enabled {
+  background: rgba(40, 167, 69, 0.4);
+  border-color: rgba(40, 167, 69, 0.6);
 }
 
 /* Copy conversation button special styling */
@@ -957,11 +952,11 @@
 
 /* Reduced motion for new animations */
 @media (prefers-reduced-motion: reduce) {
-  .bears-toolbar-btn.sound-btn.enabled::after {
-    animation: none !important;
-  }
-  
   .bears-notification {
     transition: opacity 0.1s !important;
+  }
+  
+  .bears-toolbar-btn {
+    transition: none !important;
   }
 }

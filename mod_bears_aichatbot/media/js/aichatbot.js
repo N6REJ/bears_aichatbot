@@ -2,8 +2,12 @@
   // Helper function to get language strings (fallback to English if not available)
   function getLanguageString(key, fallback) {
     // Try to get from Joomla language system if available
-    if (typeof Joomla !== 'undefined' && Joomla.Text && Joomla.Text._(key)) {
-      return Joomla.Text._(key);
+    if (typeof Joomla !== 'undefined' && Joomla.Text && typeof Joomla.Text._ === 'function') {
+      const translated = Joomla.Text._(key);
+      // If Joomla returns the key itself, it means no translation was found
+      if (translated && translated !== key) {
+        return translated;
+      }
     }
     return fallback || key;
   }
@@ -15,8 +19,11 @@
     speaking: false,
     supported: false,
     initialized: false, // Flag to prevent multiple initializations
+    rate: 0.9,  // Default slightly slower for clarity
+    pitch: 1.0, // Default normal pitch
+    volume: 0.8, // Default 80% volume
     
-    init: function(defaultSetting = false) {
+    init: function(defaultSetting = false, rate = 0.9, pitch = 1.0, volume = 0.8) {
       // Prevent multiple initializations
       if (this.initialized) {
         // Already initialized, don't re-initialize
@@ -35,6 +42,10 @@
       }
       
       this.defaultEnabled = defaultSetting;
+      this.rate = rate;
+      this.pitch = pitch;
+      this.volume = volume;
+      
       const saved = localStorage.getItem('bears_chat_tts');
       if (saved !== null) {
         // User has a saved preference, use it
@@ -56,29 +67,58 @@
       if (!cleanText) return;
       
       try {
-        const utterance = new SpeechSynthesisUtterance(cleanText);
-        utterance.rate = 1.0;  // Normal speed
-        utterance.pitch = 1.0; // Normal pitch
-        utterance.volume = 0.8; // 80% volume
-        
-        // Set language if available
-        utterance.lang = document.documentElement.lang || 'en-US';
-        
-        // Track speaking state
-        utterance.onstart = () => {
-          this.speaking = true;
+        // Ensure voices are loaded before speaking
+        const speakText = () => {
+          const utterance = new SpeechSynthesisUtterance(cleanText);
+          utterance.rate = this.rate;   // Use configured rate (default 0.9 for slightly slower)
+          utterance.pitch = this.pitch;  // Use configured pitch
+          utterance.volume = this.volume; // Use configured volume
+          
+          // Set language if available
+          utterance.lang = document.documentElement.lang || 'en-US';
+          
+          // Try to select a voice that matches the language
+          const voices = window.speechSynthesis.getVoices();
+          if (voices.length > 0) {
+            const lang = utterance.lang.substring(0, 2); // Get language code (e.g., 'en' from 'en-US')
+            const voice = voices.find(v => v.lang.startsWith(lang)) || voices[0];
+            if (voice) {
+              utterance.voice = voice;
+            }
+          }
+          
+          // Track speaking state
+          utterance.onstart = () => {
+            this.speaking = true;
+            console.debug('[Bears AI Chatbot] TTS started');
+          };
+          
+          utterance.onend = () => {
+            this.speaking = false;
+            console.debug('[Bears AI Chatbot] TTS ended');
+          };
+          
+          utterance.onerror = (event) => {
+            this.speaking = false;
+            console.error('[Bears AI Chatbot] TTS error:', event.error);
+          };
+          
+          // Speak the text
+          window.speechSynthesis.speak(utterance);
         };
         
-        utterance.onend = () => {
-          this.speaking = false;
-        };
-        
-        utterance.onerror = () => {
-          this.speaking = false;
-        };
-        
-        // Speak the text
-        window.speechSynthesis.speak(utterance);
+        // Check if voices are already loaded
+        if (window.speechSynthesis.getVoices().length > 0) {
+          speakText();
+        } else {
+          // Wait for voices to load
+          window.speechSynthesis.addEventListener('voiceschanged', function onVoicesChanged() {
+            window.speechSynthesis.removeEventListener('voiceschanged', onVoicesChanged);
+            speakText();
+          });
+          // Trigger voice loading
+          window.speechSynthesis.getVoices();
+        }
       } catch (e) {
         console.error('[Bears AI Chatbot] TTS error:', e);
       }
@@ -907,12 +947,15 @@
     const soundNotifications = instance.getAttribute('data-sound-notifications') === '1';
     const connectionCheckInterval = parseInt(instance.getAttribute('data-connection-check-interval') || '60', 10);
     const textToSpeech = instance.getAttribute('data-text-to-speech') === '1';
+    const ttsRate = parseFloat(instance.getAttribute('data-tts-rate') || '0.9');
+    const ttsPitch = parseFloat(instance.getAttribute('data-tts-pitch') || '1.0');
+    const ttsVolume = parseFloat(instance.getAttribute('data-tts-volume') || '0.8');
     
     // Initialize sound manager with module default setting
     SoundManager.init(soundNotifications);
     
-    // Initialize TTS manager with module default setting
-    TTSManager.init(textToSpeech);
+    // Initialize TTS manager with module default settings including voice parameters
+    TTSManager.init(textToSpeech, ttsRate, ttsPitch, ttsVolume);
     
     try {
       console.debug('[Bears AI Chatbot] init', { moduleId, ajaxUrl, position, offsetBottom, offsetSide, darkMode });

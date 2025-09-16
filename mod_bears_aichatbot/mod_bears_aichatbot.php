@@ -15,6 +15,35 @@ use Joomla\CMS\Helper\ModuleHelper;
 $app = Factory::getApplication();
 $doc = $app->getDocument();
 
+// Load language strings for JavaScript
+Text::script('MOD_BEARS_AICHATBOT_OPEN_CHAT');
+Text::script('MOD_BEARS_AICHATBOT_CLOSE_CHAT');
+Text::script('MOD_BEARS_AICHATBOT_CHAT_OPENED');
+Text::script('MOD_BEARS_AICHATBOT_CHAT_CLOSED');
+Text::script('MOD_BEARS_AICHATBOT_USER_MESSAGE');
+Text::script('MOD_BEARS_AICHATBOT_BOT_MESSAGE');
+Text::script('MOD_BEARS_AICHATBOT_ERROR_MESSAGE');
+Text::script('MOD_BEARS_AICHATBOT_THINKING');
+Text::script('MOD_BEARS_AICHATBOT_PROCESSING');
+Text::script('MOD_BEARS_AICHATBOT_COPY_CONVERSATION');
+Text::script('MOD_BEARS_AICHATBOT_TOGGLE_SOUND');
+Text::script('MOD_BEARS_AICHATBOT_TOGGLE_DARK');
+Text::script('MOD_BEARS_AICHATBOT_TOGGLE_TTS');
+Text::script('MOD_BEARS_AICHATBOT_STATUS_ONLINE');
+Text::script('MOD_BEARS_AICHATBOT_STATUS_OFFLINE');
+Text::script('MOD_BEARS_AICHATBOT_CONVERSATION_HEADER');
+Text::script('MOD_BEARS_AICHATBOT_YOU');
+Text::script('MOD_BEARS_AICHATBOT_AI');
+Text::script('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED');
+Text::script('MOD_BEARS_AICHATBOT_COPY_FAILED');
+Text::script('MOD_BEARS_AICHATBOT_NO_MESSAGES');
+Text::script('MOD_BEARS_AICHATBOT_SOUND_ON');
+Text::script('MOD_BEARS_AICHATBOT_SOUND_OFF');
+Text::script('MOD_BEARS_AICHATBOT_TTS_ON');
+Text::script('MOD_BEARS_AICHATBOT_TTS_OFF');
+Text::script('MOD_BEARS_AICHATBOT_TTS_NOT_SUPPORTED');
+Text::script('MOD_BEARS_AICHATBOT_OFFLINE_ERROR');
+
 // Params
 $introText   = $params->get('intro_text');
 $position    = $params->get('chat_position', 'bottom-right');

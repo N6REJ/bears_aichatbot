@@ -39,7 +39,10 @@ export class ChatBot {
       darkMode: instance.getAttribute('data-dark-mode') === '1',
       soundNotifications: instance.getAttribute('data-sound-notifications') === '1',
       connectionCheckInterval: parseInt(instance.getAttribute('data-connection-check-interval') || '60', 10),
-      textToSpeech: instance.getAttribute('data-text-to-speech') === '1'
+      textToSpeech: instance.getAttribute('data-text-to-speech') === '1',
+      ttsRate: parseFloat(instance.getAttribute('data-tts-rate') || '0.9'),
+      ttsPitch: parseFloat(instance.getAttribute('data-tts-pitch') || '1.0'),
+      ttsVolume: parseFloat(instance.getAttribute('data-tts-volume') || '0.8')
     };
   }
 
@@ -50,7 +53,7 @@ export class ChatBot {
     
     // Initialize managers
     this.soundManager.init(this.config.soundNotifications);
-    this.ttsManager.init(this.config.textToSpeech);
+    this.ttsManager.init(this.config.textToSpeech, this.config.ttsRate, this.config.ttsPitch, this.config.ttsVolume);
     this.darkModeManager.init(this.instance, this.config.darkMode);
     
     // Apply styles and configuration
