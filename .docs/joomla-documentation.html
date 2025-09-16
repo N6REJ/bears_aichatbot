@@ -286,8 +286,9 @@
         <ul>
             <li><strong>Auto Dark Mode:</strong> Automatically detects and follows system dark mode preference</li>
             <li><strong>Copy Conversation:</strong> One-click copy of entire chat history with timestamps</li>
-            <li><strong>Connection Status:</strong> Real-time online/offline indicator with auto-reconnection</li>
+            <li><strong>Connection Status:</strong> Optional online/offline indicator (configurable interval, disabled by default)</li>
             <li><strong>Sound Notifications:</strong> Optional sounds for sent/received messages and errors</li>
+            <li><strong>Text-to-Speech:</strong> Browser-based narration of AI responses (configurable default)</li>
             <li><strong>Persistent Preferences:</strong> User settings saved in browser localStorage</li>
         </ul>
 
@@ -665,8 +666,12 @@
                 <p>Switch between light and dark themes manually. When not manually set, the chatbot automatically detects and follows your system's dark mode preference.</p>
             </div>
             <div class="bears-feature-card">
+                <h4>🔊 Text-to-Speech</h4>
+                <p>Click the speaker icon to enable AI response narration. Uses your browser's built-in speech synthesis with automatic language detection. User preference is saved locally.</p>
+            </div>
+            <div class="bears-feature-card">
                 <h4>🔌 Connection Status</h4>
-                <p>Real-time indicator showing online/offline status. Prevents message sending when offline and automatically detects when connection is restored.</p>
+                <p>Optional indicator showing online/offline status. Configurable check interval (0 to disable, 10-300 seconds). Disabled by default for better performance.</p>
             </div>
         </div>
 
@@ -700,10 +705,16 @@
                     <td>Automatic detection</td>
                 </tr>
                 <tr>
+                    <td><strong>Text-to-Speech</strong></td>
+                    <td>Default on/off in module</td>
+                    <td>Toggle button in chat</td>
+                    <td>Saved in localStorage</td>
+                </tr>
+                <tr>
                     <td><strong>Connection Status</strong></td>
-                    <td>Always enabled</td>
+                    <td>Interval in seconds (0=disabled)</td>
                     <td>View only</td>
-                    <td>Real-time monitoring</td>
+                    <td>Optional monitoring</td>
                 </tr>
             </tbody>
         </table>
@@ -725,12 +736,22 @@
             <li><strong>Format:</strong> Uses embedded base64 WAV files (no external dependencies)</li>
         </ul>
 
+        <h3>Text-to-Speech Details</h3>
+        <ul>
+            <li><strong>Browser Support:</strong> Works in Chrome, Firefox, Safari, Edge, and mobile browsers</li>
+            <li><strong>Voice Selection:</strong> Uses system default voice for detected language</li>
+            <li><strong>Text Processing:</strong> Automatically removes HTML and markdown for clean speech</li>
+            <li><strong>Interruption:</strong> Stops speaking when user sends new message</li>
+            <li><strong>Volume:</strong> Set at 80% for clear but non-intrusive narration</li>
+        </ul>
+
         <h3>Connection Status Behavior</h3>
         <ul>
+            <li><strong>Configurable:</strong> Set check interval in module settings (0 to disable)</li>
             <li><strong>Online (Green):</strong> Normal operation, all features available</li>
             <li><strong>Offline (Red):</strong> Message sending disabled, user notified</li>
-            <li><strong>Auto-Check:</strong> Connection checked every 30 seconds</li>
-            <li><strong>Instant Detection:</strong> Immediate update on connection change</li>
+            <li><strong>Performance:</strong> Disabled by default to reduce network requests</li>
+            <li><strong>Smart Checking:</strong> Pauses when tab is hidden to save resources</li>
         </ul>
 
         <h2 id="accessibility">Accessibility Features <span class="bears-badge">WCAG 2.1 AA</span></h2>

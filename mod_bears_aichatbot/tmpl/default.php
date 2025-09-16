@@ -28,6 +28,8 @@ $offsetSide   = (int) $params->get('chat_offset_side', 20);
      data-button-label="<?php echo htmlspecialchars($params->get('button_label', 'Knowledgebase'), ENT_QUOTES, 'UTF-8'); ?>"
      data-dark-mode="<?php echo (int) $params->get('dark_mode', 0); ?>"
      data-sound-notifications="<?php echo (int) $params->get('sound_notifications', 0); ?>"
+     data-connection-check-interval="<?php echo (int) $params->get('connection_check_interval', 0); ?>"
+     data-text-to-speech="<?php echo (int) $params->get('text_to_speech', 0); ?>"
      role="complementary"
      aria-label="<?php echo Text::_('MOD_BEARS_AICHATBOT_ARIA_LABEL'); ?>">
     
