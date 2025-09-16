@@ -261,6 +261,7 @@
   const ConnectionStatus = {
     online: true,
     indicator: null,
+    button: null,
     intervalId: null,
     onlineHandler: null,
     offlineHandler: null,
@@ -268,7 +269,7 @@
     lastCheckTime: 0,
     enabled: true,
     
-    init: function(container, ajaxUrl, intervalSeconds) {
+    init: function(toolbar, ajaxUrl, intervalSeconds) {
       // Set check interval from config (convert seconds to milliseconds)
       // If intervalSeconds is 0, disable connection checking
       if (typeof intervalSeconds === 'number') {
@@ -279,15 +280,21 @@
         this.checkInterval = intervalSeconds * 1000;
       }
       
-      // Create status indicator
-      const indicator = document.createElement('div');
-      indicator.className = 'bears-connection-status';
-      indicator.innerHTML = `
-        <span class="bears-status-dot"></span>
-        <span class="bears-status-text"></span>
-      `;
-      container.appendChild(indicator);
-      this.indicator = indicator;
+      // Create status button in toolbar
+      const statusBtn = document.createElement('button');
+      statusBtn.className = 'bears-toolbar-btn connection-btn';
+      statusBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_CONNECTION_STATUS', 'Connection status'));
+      statusBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_CONNECTION_STATUS', 'Connection status');
+      statusBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="1"></circle><path d="M12 7a5 5 0 0 1 5 5M12 3a9 9 0 0 1 9 9M12 17a5 5 0 0 0-5-5M12 21a9 9 0 0 0-9-9"></path></svg>';
+      
+      // Add to toolbar if provided
+      if (toolbar) {
+        // Insert at the beginning of toolbar
+        toolbar.insertBefore(statusBtn, toolbar.firstChild);
+      }
+      
+      this.button = statusBtn;
+      this.indicator = statusBtn;
       this.ajaxUrl = ajaxUrl;
       
       // Initial status based on navigator.onLine
@@ -341,18 +348,19 @@
     
     updateStatus: function(isOnline) {
       this.online = isOnline;
-      if (this.indicator) {
-        const dot = this.indicator.querySelector('.bears-status-dot');
-        const text = this.indicator.querySelector('.bears-status-text');
-        
+      if (this.button) {
         if (isOnline) {
-          dot.className = 'bears-status-dot online';
-          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_ONLINE', 'Connected');
-          this.indicator.classList.remove('offline');
+          this.button.classList.add('online');
+          this.button.classList.remove('offline');
+          this.button.title = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_ONLINE', 'Connected');
+          // WiFi icon for online
+          this.button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>';
         } else {
-          dot.className = 'bears-status-dot offline';
-          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_OFFLINE', 'Offline');
-          this.indicator.classList.add('offline');
+          this.button.classList.add('offline');
+          this.button.classList.remove('online');
+          this.button.title = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_OFFLINE', 'Offline');
+          // WiFi off icon for offline
+          this.button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>';
         }
       }
     },
@@ -1113,9 +1121,8 @@
     }
 
     // Initialize connection status indicator with ajax URL and interval from config
-    const windowEl = instance.querySelector('.bears-aichatbot-window');
-    if (windowEl && connectionCheckInterval > 0) {
-      ConnectionStatus.init(windowEl, ajaxUrl, connectionCheckInterval);
+    if (toolbar && connectionCheckInterval > 0) {
+      ConnectionStatus.init(toolbar, ajaxUrl, connectionCheckInterval);
       // Store connection status reference for cleanup only if enabled
       instance._connectionStatus = ConnectionStatus.enabled ? ConnectionStatus : null;
     }
