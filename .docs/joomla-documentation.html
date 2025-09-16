@@ -75,7 +75,7 @@
 </head>
 <body>
     <div class="container">
-        <h1>Bears AI Chatbot for Joomla 5 <span class="bears-badge">v2025.09.14</span></h1>
+        <h1>Bears AI Chatbot for Joomla 5 <span class="bears-badge">v2025.09.15</span></h1>
         
         <div class="bears-alert">
             <strong>Complete Documentation:</strong> An AI knowledgebase chatbot solution for Joomla 5 with Retrieval-Augmented Generation (RAG) powered by IONOS AI Model Hub Document Collections, plus comprehensive analytics and keyword extraction.
@@ -125,8 +125,8 @@
                 <p>Complete accessibility support with screen reader compatibility, keyboard navigation, and ARIA labels.</p>
             </div>
             <div class="bears-feature-card">
-                <h4>🎨 Customizable UI</h4>
-                <p>Flexible positioning, dark mode support, and responsive design that works on all devices.</p>
+                <h4>🎨 Customizable UI <span class="bears-badge">ENHANCED</span></h4>
+                <p>Flexible positioning, auto dark mode detection, sound notifications, copy conversation, and responsive design.</p>
             </div>
             <div class="bears-feature-card">
                 <h4>⚙️ Automated Management</h4>
@@ -277,8 +277,18 @@
             <li><strong>Position:</strong> Bottom-right, bottom-left, middle-right, middle-left</li>
             <li><strong>Dimensions:</strong> Width (default: 400px), Height (default: 500px)</li>
             <li><strong>Offsets:</strong> Distance from edges in pixels</li>
-            <li><strong>Dark Mode:</strong> Enable dark theme</li>
+            <li><strong>Dark Mode:</strong> Manual enable or auto-detection based on system preference</li>
+            <li><strong>Sound Notifications:</strong> Default on/off for message sounds (users can toggle)</li>
             <li><strong>Button Label:</strong> Custom text for side position buttons</li>
+        </ul>
+
+        <h4>User Experience Features <span class="bears-badge">NEW</span></h4>
+        <ul>
+            <li><strong>Auto Dark Mode:</strong> Automatically detects and follows system dark mode preference</li>
+            <li><strong>Copy Conversation:</strong> One-click copy of entire chat history with timestamps</li>
+            <li><strong>Connection Status:</strong> Real-time online/offline indicator with auto-reconnection</li>
+            <li><strong>Sound Notifications:</strong> Optional sounds for sent/received messages and errors</li>
+            <li><strong>Persistent Preferences:</strong> User settings saved in browser localStorage</li>
         </ul>
 
         <h2 id="scheduler-tasks">Scheduler Tasks & Content Processing</h2>
@@ -633,6 +643,95 @@
         <div class="bears-alert">
             <strong>Success Indicator:</strong> Once the Reconcile task runs successfully, your chatbot will use AI-powered document retrieval instead of basic search, providing much more accurate and contextual responses.
         </div>
+
+        <h2 id="user-interface">User Interface Features <span class="bears-badge">NEW</span></h2>
+
+        <div class="bears-alert">
+            <strong>Enhanced UX:</strong> The chatbot now includes several convenience features for improved user experience.
+        </div>
+
+        <h3>Chat Toolbar Controls</h3>
+        <div class="bears-feature-grid">
+            <div class="bears-feature-card">
+                <h4>📋 Copy Conversation</h4>
+                <p>Click the copy button to copy the entire chat history to clipboard. The conversation is formatted with timestamps and role labels (You/AI) for easy sharing or documentation.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🔊 Sound Notifications</h4>
+                <p>Toggle sound effects on/off for messages. Includes distinct sounds for sent messages, received responses, and errors. User preference is saved locally.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🌙 Dark Mode Toggle</h4>
+                <p>Switch between light and dark themes manually. When not manually set, the chatbot automatically detects and follows your system's dark mode preference.</p>
+            </div>
+            <div class="bears-feature-card">
+                <h4>🔌 Connection Status</h4>
+                <p>Real-time indicator showing online/offline status. Prevents message sending when offline and automatically detects when connection is restored.</p>
+            </div>
+        </div>
+
+        <h3>Configuration Options</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>Feature</th>
+                    <th>Admin Setting</th>
+                    <th>User Control</th>
+                    <th>Persistence</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Dark Mode</strong></td>
+                    <td>Enable/Disable in module</td>
+                    <td>Toggle button in chat</td>
+                    <td>Saved in localStorage</td>
+                </tr>
+                <tr>
+                    <td><strong>Sound Notifications</strong></td>
+                    <td>Default on/off in module</td>
+                    <td>Toggle button in chat</td>
+                    <td>Saved in localStorage</td>
+                </tr>
+                <tr>
+                    <td><strong>Auto Dark Mode</strong></td>
+                    <td>Active when dark mode disabled</td>
+                    <td>Follows system preference</td>
+                    <td>Automatic detection</td>
+                </tr>
+                <tr>
+                    <td><strong>Connection Status</strong></td>
+                    <td>Always enabled</td>
+                    <td>View only</td>
+                    <td>Real-time monitoring</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <h3>User Preference Priority</h3>
+        <ol>
+            <li><strong>User Toggle:</strong> If user manually toggles a setting, their preference takes priority</li>
+            <li><strong>Saved Preference:</strong> User preferences are saved in browser localStorage</li>
+            <li><strong>Module Default:</strong> If no user preference exists, module settings are used</li>
+            <li><strong>System Detection:</strong> For dark mode, system preference is detected when not manually set</li>
+        </ol>
+
+        <h3>Sound Notification Details</h3>
+        <ul>
+            <li><strong>Message Sent:</strong> Brief confirmation sound when user sends a message</li>
+            <li><strong>Message Received:</strong> Notification sound when AI responds</li>
+            <li><strong>Error Sound:</strong> Alert sound for errors or connection issues</li>
+            <li><strong>Volume:</strong> Set at 30% for non-intrusive notifications</li>
+            <li><strong>Format:</strong> Uses embedded base64 WAV files (no external dependencies)</li>
+        </ul>
+
+        <h3>Connection Status Behavior</h3>
+        <ul>
+            <li><strong>Online (Green):</strong> Normal operation, all features available</li>
+            <li><strong>Offline (Red):</strong> Message sending disabled, user notified</li>
+            <li><strong>Auto-Check:</strong> Connection checked every 30 seconds</li>
+            <li><strong>Instant Detection:</strong> Immediate update on connection change</li>
+        </ul>
 
         <h2 id="accessibility">Accessibility Features <span class="bears-badge">WCAG 2.1 AA</span></h2>
 

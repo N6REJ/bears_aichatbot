@@ -8,6 +8,201 @@
     return fallback || key;
   }
 
+  // Sound notification system
+  const SoundManager = {
+    enabled: true,
+    defaultEnabled: false,
+    sounds: {
+      messageSent: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
+      messageReceived: 'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4AAAB/f39/f39/f39/f39/f38=',
+      error: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+    },
+    
+    play: function(soundType) {
+      if (!this.enabled) return;
+      try {
+        const audio = new Audio(this.sounds[soundType] || this.sounds.messageSent);
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch (e) {}
+    },
+    
+    toggle: function() {
+      this.enabled = !this.enabled;
+      localStorage.setItem('bears_chat_sounds', this.enabled ? '1' : '0');
+      return this.enabled;
+    },
+    
+    init: function(defaultSetting = false) {
+      this.defaultEnabled = defaultSetting;
+      const saved = localStorage.getItem('bears_chat_sounds');
+      if (saved !== null) {
+        // User has a saved preference, use it
+        this.enabled = saved === '1';
+      } else {
+        // No saved preference, use the module default
+        this.enabled = this.defaultEnabled;
+      }
+    }
+  };
+
+  // Auto dark mode detection
+  function detectDarkMode() {
+    // Check system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return true;
+    }
+    // Check if user has saved preference
+    const saved = localStorage.getItem('bears_chat_dark_mode');
+    if (saved !== null) {
+      return saved === '1';
+    }
+    return false;
+  }
+
+  // Apply dark mode based on system preference or saved setting
+  function applyAutoDarkMode(instance) {
+    const shouldUseDark = detectDarkMode();
+    if (shouldUseDark) {
+      instance.classList.add('bears-dark-mode');
+    }
+    
+    // Listen for system dark mode changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        if (localStorage.getItem('bears_chat_dark_mode') === null) {
+          // Only auto-switch if user hasn't manually set preference
+          if (e.matches) {
+            instance.classList.add('bears-dark-mode');
+          } else {
+            instance.classList.remove('bears-dark-mode');
+          }
+        }
+      });
+    }
+  }
+
+  // Connection status manager
+  const ConnectionStatus = {
+    online: true,
+    indicator: null,
+    
+    init: function(container) {
+      // Create status indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'bears-connection-status';
+      indicator.innerHTML = `
+        <span class="bears-status-dot"></span>
+        <span class="bears-status-text"></span>
+      `;
+      container.appendChild(indicator);
+      this.indicator = indicator;
+      
+      // Initial status
+      this.updateStatus(navigator.onLine);
+      
+      // Listen for online/offline events
+      window.addEventListener('online', () => this.updateStatus(true));
+      window.addEventListener('offline', () => this.updateStatus(false));
+      
+      // Periodic connection check
+      setInterval(() => this.checkConnection(), 30000);
+    },
+    
+    updateStatus: function(isOnline) {
+      this.online = isOnline;
+      if (this.indicator) {
+        const dot = this.indicator.querySelector('.bears-status-dot');
+        const text = this.indicator.querySelector('.bears-status-text');
+        
+        if (isOnline) {
+          dot.className = 'bears-status-dot online';
+          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_ONLINE', 'Connected');
+          this.indicator.classList.remove('offline');
+        } else {
+          dot.className = 'bears-status-dot offline';
+          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_OFFLINE', 'Offline');
+          this.indicator.classList.add('offline');
+        }
+      }
+    },
+    
+    checkConnection: async function() {
+      try {
+        const response = await fetch(window.location.origin + '/favicon.ico', {
+          method: 'HEAD',
+          cache: 'no-cache'
+        });
+        this.updateStatus(response.ok);
+      } catch {
+        this.updateStatus(false);
+      }
+    }
+  };
+
+  // Copy conversation functionality
+  function copyConversation(messages) {
+    const messageElements = messages.querySelectorAll('.message');
+    let conversationText = getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_HEADER', 'Chat Conversation') + '\n';
+    conversationText += '=' .repeat(50) + '\n\n';
+    
+    messageElements.forEach((msg) => {
+      const isUser = msg.classList.contains('user');
+      const bubble = msg.querySelector('.bubble');
+      const text = bubble ? bubble.textContent.trim() : '';
+      
+      if (text) {
+        const role = isUser ? getLanguageString('MOD_BEARS_AICHATBOT_YOU', 'You') : getLanguageString('MOD_BEARS_AICHATBOT_AI', 'AI');
+        const timestamp = new Date().toLocaleTimeString();
+        conversationText += `[${timestamp}] ${role}:\n${text}\n\n`;
+      }
+    });
+    
+    // Try modern clipboard API first
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      navigator.clipboard.writeText(conversationText).then(() => {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED', 'Conversation copied to clipboard!'), 'success');
+      }).catch(() => {
+        fallbackCopy(conversationText);
+      });
+    } else {
+      fallbackCopy(conversationText);
+    }
+  }
+
+  function fallbackCopy(text) {
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.style.position = 'fixed';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    try {
+      document.execCommand('copy');
+      showNotification(getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED', 'Conversation copied to clipboard!'), 'success');
+    } catch (e) {
+      showNotification(getLanguageString('MOD_BEARS_AICHATBOT_COPY_FAILED', 'Failed to copy conversation'), 'error');
+    }
+    document.body.removeChild(textarea);
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `bears-notification ${type}`;
+    notification.textContent = message;
+    notification.setAttribute('role', 'alert');
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
   // Announce message to screen readers
   function announceToScreenReader(message, priority = 'polite') {
     const announcement = document.createElement('div');
@@ -325,14 +520,22 @@
     const openHeight = parseInt(instance.getAttribute('data-open-height') || '500', 10);
     const buttonLabel = instance.getAttribute('data-button-label') || 'Knowledgebase';
     const darkMode = instance.getAttribute('data-dark-mode') === '1';
+    const soundNotifications = instance.getAttribute('data-sound-notifications') === '1';
+    
+    // Initialize sound manager with module default setting
+    SoundManager.init(soundNotifications);
     
     try {
       console.debug('[Bears AI Chatbot] init', { moduleId, ajaxUrl, position, offsetBottom, offsetSide, darkMode });
     } catch (e) {}
     
-    // Apply dark mode if enabled
+    // Apply dark mode if enabled or auto-detected
     if (darkMode) {
       instance.classList.add('bears-dark-mode');
+      localStorage.setItem('bears_chat_dark_mode', '1');
+    } else {
+      // Apply auto dark mode detection
+      applyAutoDarkMode(instance);
     }
 
     // Apply offsets via CSS variables
@@ -375,6 +578,73 @@
       closeBtn.type = 'button';
       closeBtn.textContent = '×';
       headerEl.appendChild(closeBtn);
+    }
+
+    // Add toolbar buttons (copy conversation, sound toggle)
+    if (headerEl) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'bears-chat-toolbar';
+      
+      // Copy conversation button
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'bears-toolbar-btn copy-btn';
+      copyBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation'));
+      copyBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation');
+      copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      
+      // Sound toggle button
+      const soundBtn = document.createElement('button');
+      soundBtn.className = 'bears-toolbar-btn sound-btn' + (SoundManager.enabled ? ' enabled' : '');
+      soundBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'));
+      soundBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications');
+      soundBtn.innerHTML = SoundManager.enabled ? 
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' :
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+      
+      // Dark mode toggle button
+      const darkBtn = document.createElement('button');
+      darkBtn.className = 'bears-toolbar-btn dark-btn';
+      darkBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode'));
+      darkBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode');
+      darkBtn.innerHTML = instance.classList.contains('bears-dark-mode') ?
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+      
+      toolbar.appendChild(copyBtn);
+      toolbar.appendChild(soundBtn);
+      toolbar.appendChild(darkBtn);
+      headerEl.insertBefore(toolbar, closeBtn);
+      
+      // Event listeners for toolbar buttons
+      copyBtn.addEventListener('click', () => {
+        const messages = instance.querySelector('.bears-aichatbot-messages');
+        copyConversation(messages);
+      });
+      
+      soundBtn.addEventListener('click', () => {
+        const enabled = SoundManager.toggle();
+        soundBtn.classList.toggle('enabled', enabled);
+        soundBtn.innerHTML = enabled ? 
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' :
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        showNotification(enabled ? 
+          getLanguageString('MOD_BEARS_AICHATBOT_SOUND_ON', 'Sound notifications enabled') : 
+          getLanguageString('MOD_BEARS_AICHATBOT_SOUND_OFF', 'Sound notifications disabled'), 'info');
+      });
+      
+      darkBtn.addEventListener('click', () => {
+        const isDark = instance.classList.toggle('bears-dark-mode');
+        localStorage.setItem('bears_chat_dark_mode', isDark ? '1' : '0');
+        darkBtn.innerHTML = isDark ?
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+      });
+    }
+
+    // Initialize connection status indicator
+    const windowEl = instance.querySelector('.bears-aichatbot-window');
+    if (windowEl) {
+      ConnectionStatus.init(windowEl);
     }
 
     function openChat() {
@@ -564,9 +834,18 @@
     async function sendMessage() {
       const text = (input.value || '').trim();
       if (!text) return;
+      
+      // Check connection status
+      if (!ConnectionStatus.online) {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_OFFLINE_ERROR', 'You are offline. Please check your connection.'), 'error');
+        SoundManager.play('error');
+        return;
+      }
+      
       openChat();
       try { console.debug('[Bears AI Chatbot] sending message', { moduleId, text }); } catch (e) {}
       appendMessage('user', text);
+      SoundManager.play('messageSent');
       input.value = '';
       setLoading(true);
 
@@ -601,6 +880,7 @@
             // Small delay to show "Processing" before displaying the answer
             await new Promise(resolve => setTimeout(resolve, 300));
             appendMessage('bot', payload.answer);
+            SoundManager.play('messageReceived');
           } else if (payload.error) {
             let err = 'Error: ' + payload.error;
             if (payload.status && !/status\s+\d+/.test(err)) {
@@ -612,19 +892,25 @@
             }
             try { console.warn('[Bears AI Chatbot] error payload', payload); } catch (e) {}
             appendMessage('bot', err);
+            SoundManager.play('error');
           } else if ('message' in payload) {
             appendMessage('bot', String(payload.message));
+            SoundManager.play('messageReceived');
           } else {
             appendMessage('bot', 'No response.');
+            SoundManager.play('error');
           }
         } else if (typeof payload === 'string') {
           appendMessage('bot', payload);
+          SoundManager.play('messageReceived');
         } else {
           appendMessage('bot', 'Unexpected response.');
+          SoundManager.play('error');
         }
       } catch (e) {
         try { console.error('[Bears AI Chatbot] fetch error', e); } catch (ignored) {}
         appendMessage('bot', 'Error: ' + (e && e.message ? e.message : 'Network error'));
+        SoundManager.play('error');
       } finally {
         setLoading(false);
       }

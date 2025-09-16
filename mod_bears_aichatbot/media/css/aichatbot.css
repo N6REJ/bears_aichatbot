@@ -711,3 +711,257 @@
     linear-gradient(135deg, transparent 6px, #aaa 6px, #aaa 7px, transparent 7px),
     linear-gradient(135deg, transparent 10px, #aaa 10px, #aaa 11px, transparent 11px);
 }
+
+/* NEW FEATURES STYLES */
+
+/* Chat toolbar for copy, sound, and dark mode buttons */
+.bears-chat-toolbar {
+  position: absolute;
+  top: 10px;
+  right: 40px;
+  display: flex;
+  gap: 8px;
+  z-index: 10;
+}
+
+.bears-toolbar-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: 1px solid rgba(255, 255, 255, 0.3);
+  color: #fff;
+  width: 32px;
+  height: 32px;
+  border-radius: 6px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  padding: 0;
+}
+
+.bears-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+  transform: translateY(-2px);
+}
+
+.bears-toolbar-btn:active {
+  transform: translateY(0);
+}
+
+.bears-toolbar-btn svg {
+  width: 16px;
+  height: 16px;
+}
+
+.bears-toolbar-btn.sound-btn.enabled {
+  background: rgba(40, 167, 69, 0.3);
+  border-color: rgba(40, 167, 69, 0.5);
+}
+
+/* Dark mode toolbar buttons */
+.bears-dark-mode .bears-toolbar-btn {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.bears-dark-mode .bears-toolbar-btn:hover {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+/* Connection status indicator */
+.bears-connection-status {
+  position: absolute;
+  top: 50px;
+  right: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px 8px;
+  background: rgba(255, 255, 255, 0.9);
+  border-radius: 12px;
+  font-size: 11px;
+  z-index: 5;
+  transition: all 0.3s ease;
+}
+
+.bears-connection-status.offline {
+  background: rgba(255, 200, 200, 0.95);
+}
+
+.bears-status-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  transition: all 0.3s ease;
+}
+
+.bears-status-dot.online {
+  background: #28a745;
+  box-shadow: 0 0 0 2px rgba(40, 167, 69, 0.2);
+}
+
+.bears-status-dot.offline {
+  background: #dc3545;
+  box-shadow: 0 0 0 2px rgba(220, 53, 69, 0.2);
+}
+
+.bears-status-text {
+  color: #333;
+  font-weight: 500;
+}
+
+.bears-connection-status.offline .bears-status-text {
+  color: #c00;
+}
+
+/* Dark mode connection status */
+.bears-dark-mode .bears-connection-status {
+  background: rgba(30, 30, 30, 0.9);
+}
+
+.bears-dark-mode .bears-status-text {
+  color: #e0e0e0;
+}
+
+.bears-dark-mode .bears-connection-status.offline {
+  background: rgba(60, 20, 20, 0.95);
+}
+
+.bears-dark-mode .bears-connection-status.offline .bears-status-text {
+  color: #faa;
+}
+
+/* Notification system */
+.bears-notification {
+  position: fixed;
+  top: 20px;
+  right: 20px;
+  padding: 12px 20px;
+  background: #333;
+  color: #fff;
+  border-radius: 8px;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 10000;
+  opacity: 0;
+  transform: translateX(100%);
+  transition: all 0.3s ease;
+  max-width: 300px;
+  font-size: 14px;
+}
+
+.bears-notification.show {
+  opacity: 1;
+  transform: translateX(0);
+}
+
+.bears-notification.success {
+  background: #28a745;
+}
+
+.bears-notification.error {
+  background: #dc3545;
+}
+
+.bears-notification.info {
+  background: #17a2b8;
+}
+
+/* Auto dark mode detection indicator */
+.bears-aichatbot[data-auto-dark="true"] .bears-aichatbot-header::after {
+  content: '🌙';
+  position: absolute;
+  top: 10px;
+  left: 10px;
+  font-size: 16px;
+  opacity: 0.7;
+}
+
+/* Sound wave animation for sound notifications */
+@keyframes bears-sound-wave {
+  0% {
+    transform: scale(1);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.5);
+    opacity: 0;
+  }
+}
+
+.bears-toolbar-btn.sound-btn.enabled::after {
+  content: '';
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 6px;
+  border: 2px solid rgba(40, 167, 69, 0.5);
+  animation: bears-sound-wave 1.5s infinite;
+}
+
+/* Copy conversation button special styling */
+.bears-toolbar-btn.copy-btn:active {
+  background: rgba(40, 167, 69, 0.4);
+  border-color: rgba(40, 167, 69, 0.6);
+}
+
+/* Responsive adjustments for toolbar */
+@media (max-width: 480px) {
+  .bears-chat-toolbar {
+    right: 45px;
+    gap: 4px;
+  }
+  
+  .bears-toolbar-btn {
+    width: 28px;
+    height: 28px;
+  }
+  
+  .bears-connection-status {
+    top: 45px;
+    font-size: 10px;
+  }
+  
+  .bears-notification {
+    right: 10px;
+    left: 10px;
+    max-width: none;
+  }
+}
+
+/* Accessibility improvements for new features */
+.bears-toolbar-btn:focus,
+.bears-toolbar-btn:focus-visible {
+  outline: 2px solid #fff !important;
+  outline-offset: 1px !important;
+}
+
+.bears-dark-mode .bears-toolbar-btn:focus,
+.bears-dark-mode .bears-toolbar-btn:focus-visible {
+  outline-color: #4d94ff !important;
+}
+
+/* High contrast mode support for new features */
+@media (prefers-contrast: high) {
+  .bears-toolbar-btn {
+    border-width: 2px !important;
+  }
+  
+  .bears-connection-status {
+    border: 1px solid !important;
+  }
+  
+  .bears-notification {
+    border: 2px solid !important;
+  }
+}
+
+/* Reduced motion for new animations */
+@media (prefers-reduced-motion: reduce) {
+  .bears-toolbar-btn.sound-btn.enabled::after {
+    animation: none !important;
+  }
+  
+  .bears-notification {
+    transition: opacity 0.1s !important;
+  }
+}

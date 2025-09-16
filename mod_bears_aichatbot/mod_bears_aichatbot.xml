@@ -101,6 +101,15 @@
                     <option value="0">JNO</option>
                     <option value="1">JYES</option>
                 </field>
+                <field name="sound_notifications"
+                       type="radio"
+                       default="0"
+                       class="btn-group btn-group-yesno"
+                       label="MOD_BEARS_AICHATBOT_SOUND_NOTIFICATIONS_LABEL"
+                       description="MOD_BEARS_AICHATBOT_SOUND_NOTIFICATIONS_DESC">
+                    <option value="0">JNO</option>
+                    <option value="1">JYES</option>
+                </field>
             </fieldset>
             <fieldset name="configuration" label="MOD_BEARS_AICHATBOT_FIELDSET_CONFIGURATION">
                 <field name="retrieval_top_k" type="number" default="6" min="1" max="20" label="MOD_BEARS_AICHATBOT_TOPK_LABEL" description="MOD_BEARS_AICHATBOT_TOPK_DESC" />
