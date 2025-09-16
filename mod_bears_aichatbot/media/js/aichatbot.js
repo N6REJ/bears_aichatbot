@@ -353,14 +353,14 @@
           this.button.classList.add('online');
           this.button.classList.remove('offline');
           this.button.title = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_ONLINE', 'Connected');
-          // WiFi icon for online
-          this.button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M5 12.55a11 11 0 0 1 14.08 0"></path><path d="M1.42 9a16 16 0 0 1 21.16 0"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>';
+          // Font Awesome WiFi icon for online
+          this.button.innerHTML = '<i class="fas fa-wifi"></i>';
         } else {
           this.button.classList.add('offline');
           this.button.classList.remove('online');
           this.button.title = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_OFFLINE', 'Offline');
-          // WiFi off icon for offline
-          this.button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="1" y1="1" x2="23" y2="23"></line><path d="M16.72 11.06A10.94 10.94 0 0 1 19 12.55"></path><path d="M5 12.55a10.94 10.94 0 0 1 5.17-2.39"></path><path d="M10.71 5.05A16 16 0 0 1 22.58 9"></path><path d="M1.42 9a15.91 15.91 0 0 1 4.7-2.88"></path><path d="M8.53 16.11a6 6 0 0 1 6.95 0"></path><line x1="12" y1="20" x2="12.01" y2="20"></line></svg>';
+          // Font Awesome exclamation-triangle icon for offline
+          this.button.innerHTML = '<i class="fas fa-exclamation-triangle"></i>';
         }
       }
     },
@@ -1035,41 +1035,41 @@
       const toolbar = document.createElement('div');
       toolbar.className = 'bears-chat-toolbar';
       
-      // Copy conversation button
+      // Copy conversation button - using Font Awesome copy icon
       const copyBtn = document.createElement('button');
       copyBtn.className = 'bears-toolbar-btn copy-btn';
       copyBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation'));
       copyBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation');
-      copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      copyBtn.innerHTML = '<i class="fas fa-copy"></i>';
       
-      // Sound toggle button - using bell icon for notifications
+      // Sound toggle button - using Font Awesome bell icon for notifications
       const soundBtn = document.createElement('button');
       soundBtn.className = 'bears-toolbar-btn sound-btn' + (SoundManager.enabled ? ' enabled' : '');
       soundBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'));
       soundBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications');
-      // Bell icon for sound notifications
+      // Font Awesome bell icon for sound notifications
       soundBtn.innerHTML = SoundManager.enabled ? 
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>' :
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+        '<i class="fas fa-bell"></i>' :
+        '<i class="fas fa-bell-slash"></i>';
       
-      // Dark mode toggle button
+      // Dark mode toggle button - using Font Awesome sun/moon icons
       const darkBtn = document.createElement('button');
       darkBtn.className = 'bears-toolbar-btn dark-btn';
       darkBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode'));
       darkBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode');
       darkBtn.innerHTML = instance.classList.contains('bears-dark-mode') ?
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+        '<i class="fas fa-sun"></i>' :
+        '<i class="fas fa-moon"></i>';
       
-      // Text-to-speech toggle button - using message/speech bubble icon
+      // Text-to-speech toggle button - using Font Awesome comment-dots icon
       const ttsBtn = document.createElement('button');
       ttsBtn.className = 'bears-toolbar-btn tts-btn' + (TTSManager.enabled ? ' enabled' : '');
       ttsBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_TTS', 'Toggle text-to-speech'));
       ttsBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_TTS', 'Toggle text-to-speech');
-      // Message/speech bubble icon for TTS
+      // Font Awesome comment-dots icon for TTS (speech/talking)
       ttsBtn.innerHTML = TTSManager.enabled ? 
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><circle cx="12" cy="12" r="1"></circle><circle cx="8" cy="12" r="1"></circle><circle cx="16" cy="12" r="1"></circle></svg>' :
-        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>';
+        '<i class="fas fa-comment-dots"></i>' :
+        '<i class="fas fa-comment-slash"></i>';
       
       // Only show TTS button if supported
       if (TTSManager.supported) {
@@ -1090,10 +1090,10 @@
       soundBtn.addEventListener('click', () => {
         const enabled = SoundManager.toggle();
         soundBtn.classList.toggle('enabled', enabled);
-        // Bell icon for sound notifications
+        // Font Awesome bell icon for sound notifications
         soundBtn.innerHTML = enabled ? 
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path></svg>' :
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M18 8A6 6 0 0 0 6 8c0 7-3 9-3 9h18s-3-2-3-9"></path><path d="M13.73 21a2 2 0 0 1-3.46 0"></path><line x1="1" y1="1" x2="23" y2="23"></line></svg>';
+          '<i class="fas fa-bell"></i>' :
+          '<i class="fas fa-bell-slash"></i>';
         showNotification(enabled ? 
           getLanguageString('MOD_BEARS_AICHATBOT_SOUND_ON', 'Sound notifications enabled') : 
           getLanguageString('MOD_BEARS_AICHATBOT_SOUND_OFF', 'Sound notifications disabled'), 'info');
@@ -1103,8 +1103,8 @@
         const isDark = instance.classList.toggle('bears-dark-mode');
         localStorage.setItem('bears_chat_dark_mode', isDark ? '1' : '0');
         darkBtn.innerHTML = isDark ?
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
-          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+          '<i class="fas fa-sun"></i>' :
+          '<i class="fas fa-moon"></i>';
       });
       
       // TTS button event listener
@@ -1112,10 +1112,10 @@
         ttsBtn.addEventListener('click', () => {
           const enabled = TTSManager.toggle();
           ttsBtn.classList.toggle('enabled', enabled);
-          // Message/speech bubble icon for TTS
+          // Font Awesome comment-dots icon for TTS
           ttsBtn.innerHTML = enabled ? 
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><circle cx="12" cy="12" r="1"></circle><circle cx="8" cy="12" r="1"></circle><circle cx="16" cy="12" r="1"></circle></svg>' :
-            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"></path><line x1="2" y1="2" x2="22" y2="22"></line></svg>';
+            '<i class="fas fa-comment-dots"></i>' :
+            '<i class="fas fa-comment-slash"></i>';
           showNotification(enabled ? 
             getLanguageString('MOD_BEARS_AICHATBOT_TTS_ON', 'Text-to-speech enabled') : 
             getLanguageString('MOD_BEARS_AICHATBOT_TTS_OFF', 'Text-to-speech disabled'), 'info');

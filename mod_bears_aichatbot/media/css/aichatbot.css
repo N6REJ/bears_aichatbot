@@ -756,6 +756,13 @@
   /* Removed transform to prevent box jumping */
 }
 
+/* Font Awesome icons in toolbar buttons */
+.bears-toolbar-btn i {
+  font-size: 14px;
+  line-height: 1;
+}
+
+/* Legacy SVG support (fallback) */
 .bears-toolbar-btn svg {
   width: 16px;
   height: 16px;
