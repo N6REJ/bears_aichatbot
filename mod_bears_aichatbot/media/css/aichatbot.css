@@ -60,50 +60,71 @@
   contain: layout style;
 }
 
-/* Resize handle - visible corner grip */
+/* Resize handle - larger and darker */
 .bears-aichatbot--open .bears-aichatbot-window::after {
   content: '';
   position: absolute;
   bottom: 0;
   right: 0;
-  width: 16px;
-  height: 16px;
+  width: 24px;
+  height: 24px;
   cursor: nwse-resize;
   pointer-events: auto;
   z-index: 10;
   background-image: 
-    linear-gradient(45deg, transparent 40%, #999 40%, #999 50%, transparent 50%),
-    linear-gradient(45deg, transparent 65%, #999 65%, #999 75%, transparent 75%);
-  background-size: 8px 8px;
-  background-position: 0 0, 4px 4px;
+    linear-gradient(45deg, transparent 35%, #444 35%, #444 55%, transparent 55%),
+    linear-gradient(45deg, transparent 60%, #444 60%, #444 80%, transparent 80%);
+  background-size: 10px 10px;
+  background-position: 0 0, 5px 5px;
   border-bottom-right-radius: 10px;
-  opacity: 0.5;
+  opacity: 0.7;
   transition: opacity 0.2s ease;
 }
 
-/* Move resize handle to left for right-positioned modules */
-.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot-window::after,
-.bears-aichatbot[data-position="middle-right"] .bears-aichatbot-window::after {
+/* Move resize handle to left for right-positioned modules - with stronger specificity */
+.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot--open .bears-aichatbot-window::after,
+.bears-aichatbot[data-position="middle-right"] .bears-aichatbot--open .bears-aichatbot-window::after {
   right: auto !important;
   left: 0 !important;
   cursor: nesw-resize;
   background-image: 
-    linear-gradient(-45deg, transparent 40%, #999 40%, #999 50%, transparent 50%),
-    linear-gradient(-45deg, transparent 65%, #999 65%, #999 75%, transparent 75%);
-  border-bottom-right-radius: 0;
-  border-bottom-left-radius: 10px;
+    linear-gradient(-45deg, transparent 35%, #444 35%, #444 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 60%, #444 60%, #444 80%, transparent 80%);
+  background-position: 10px 0, 5px 5px;
+  border-bottom-right-radius: 0 !important;
+  border-bottom-left-radius: 10px !important;
 }
 
-/* Also handle when class is on window itself */
-.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot--open .bears-aichatbot-window::after,
-.bears-aichatbot[data-position="middle-right"] .bears-aichatbot--open .bears-aichatbot-window::after {
+/* Even more specific selector for right-side positioning */
+body .bears-aichatbot[data-position="bottom-right"] .bears-aichatbot--open .bears-aichatbot-window::after,
+body .bears-aichatbot[data-position="middle-right"] .bears-aichatbot--open .bears-aichatbot-window::after {
   right: auto !important;
   left: 0 !important;
 }
 
 /* Hover state - increase visibility */
 .bears-aichatbot--open .bears-aichatbot-window:hover::after {
-  opacity: 0.8;
+  opacity: 1;
+}
+
+/* JavaScript-assisted positioning for resize handle */
+.bears-aichatbot-window.resize-left::after {
+  right: auto !important;
+  left: 0 !important;
+  cursor: nesw-resize !important;
+  background-image: 
+    linear-gradient(-45deg, transparent 35%, #444 35%, #444 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 60%, #444 60%, #444 80%, transparent 80%) !important;
+  background-position: 10px 0, 5px 5px !important;
+  border-bottom-right-radius: 0 !important;
+  border-bottom-left-radius: 10px !important;
+}
+
+/* Dark mode with JavaScript-assisted positioning */
+.bears-dark-mode .bears-aichatbot-window.resize-left::after {
+  background-image: 
+    linear-gradient(-45deg, transparent 35%, #ddd 35%, #ddd 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 60%, #ddd 60%, #ddd 80%, transparent 80%) !important;
 }
 
 /* Remove the dots - we don't need them with the new design */
@@ -711,16 +732,23 @@
 /* Dark mode resize handle */
 .bears-dark-mode.bears-aichatbot--open .bears-aichatbot-window::after {
   background-image: 
-    linear-gradient(45deg, transparent 40%, #ccc 40%, #ccc 50%, transparent 50%),
-    linear-gradient(45deg, transparent 65%, #ccc 65%, #ccc 75%, transparent 75%);
+    linear-gradient(45deg, transparent 35%, #ddd 35%, #ddd 55%, transparent 55%),
+    linear-gradient(45deg, transparent 60%, #ddd 60%, #ddd 80%, transparent 80%);
 }
 
-/* Dark mode left-positioned resize handle */
-.bears-dark-mode.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot-window::after,
-.bears-dark-mode.bears-aichatbot[data-position="middle-right"] .bears-aichatbot-window::after {
+/* Dark mode left-positioned resize handle - with stronger specificity */
+.bears-dark-mode.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot--open .bears-aichatbot-window::after,
+.bears-dark-mode.bears-aichatbot[data-position="middle-right"] .bears-aichatbot--open .bears-aichatbot-window::after {
   background-image: 
-    linear-gradient(-45deg, transparent 40%, #ccc 40%, #ccc 50%, transparent 50%),
-    linear-gradient(-45deg, transparent 65%, #ccc 65%, #ccc 75%, transparent 75%);
+    linear-gradient(-45deg, transparent 35%, #ddd 35%, #ddd 55%, transparent 55%),
+    linear-gradient(-45deg, transparent 60%, #ddd 60%, #ddd 80%, transparent 80%);
+}
+
+/* Even more specific dark mode selector */
+body .bears-dark-mode.bears-aichatbot[data-position="bottom-right"] .bears-aichatbot--open .bears-aichatbot-window::after,
+body .bears-dark-mode.bears-aichatbot[data-position="middle-right"] .bears-aichatbot--open .bears-aichatbot-window::after {
+  right: auto !important;
+  left: 0 !important;
 }
 
 /* NEW FEATURES STYLES */
