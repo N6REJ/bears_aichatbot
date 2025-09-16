@@ -68,7 +68,7 @@
                 <field name="no_data_message" type="textarea" label="MOD_BEARS_AICHATBOT_NO_DATA_MESSAGE_LABEL" description="MOD_BEARS_AICHATBOT_NO_DATA_MESSAGE_DESC" rows="2" cols="50" default="I'm sorry I don't know how to answer that" filter="raw" />
                 <field name="include_sitemap"
                        type="radio"
-                       default="1"
+                       default="0"
                        class="btn-group btn-group-yesno"
                        label="MOD_BEARS_AICHATBOT_INCLUDE_SITEMAP_LABEL"
                        description="MOD_BEARS_AICHATBOT_INCLUDE_SITEMAP_DESC">
