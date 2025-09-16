@@ -942,6 +942,38 @@
     return out.join('\n');
   }
 
+  // Function to get template button colors
+  function getTemplateButtonColors() {
+    // Try to find a button in the page to sample colors from
+    const testButtons = [
+      '.btn-primary',
+      '.btn.btn-primary',
+      'button.btn-primary',
+      '.uk-button-primary', // UIkit
+      '.button.primary',    // Other frameworks
+      'button[type="submit"]',
+      '.btn:not(.btn-secondary):not(.btn-danger):not(.btn-warning):not(.btn-info):not(.btn-light):not(.btn-dark)',
+      'button.btn'
+    ];
+    
+    for (const selector of testButtons) {
+      const btn = document.querySelector(selector);
+      if (btn) {
+        const styles = window.getComputedStyle(btn);
+        const bg = styles.backgroundColor;
+        const color = styles.color;
+        
+        // Make sure we got valid colors
+        if (bg && bg !== 'rgba(0, 0, 0, 0)' && bg !== 'transparent') {
+          return { background: bg, color: color || '#fff' };
+        }
+      }
+    }
+    
+    // Fallback to default
+    return null;
+  }
+
   function init(instance) {
     const ajaxUrl = instance.getAttribute('data-ajax-url');
     const moduleId = instance.getAttribute('data-module-id');
@@ -958,6 +990,20 @@
     const ttsRate = parseFloat(instance.getAttribute('data-tts-rate') || '0.9');
     const ttsPitch = parseFloat(instance.getAttribute('data-tts-pitch') || '1.0');
     const ttsVolume = parseFloat(instance.getAttribute('data-tts-volume') || '0.8');
+    
+    // Apply template button colors to header
+    const buttonColors = getTemplateButtonColors();
+    if (buttonColors) {
+      const header = instance.querySelector('.bears-aichatbot-header');
+      if (header) {
+        header.style.background = buttonColors.background;
+        header.style.color = buttonColors.color;
+        
+        // Also update toolbar buttons to match
+        header.style.setProperty('--bears-header-bg', buttonColors.background);
+        header.style.setProperty('--bears-header-color', buttonColors.color);
+      }
+    }
     
     // Initialize sound manager with module default setting
     SoundManager.init(soundNotifications);

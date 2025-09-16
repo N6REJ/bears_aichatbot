@@ -98,13 +98,21 @@
 }
 
 .bears-aichatbot-header {
-  /* Use template's primary color or fallback to a neutral blue */
-  background: var(--bs-primary, #4078C0);
-  color: var(--bs-primary-text, #fff);
+  /* Inherit from template's button styles */
+  /* First try to use button CSS variables, then primary button class colors, then fallback */
+  background: var(--bs-btn-bg, var(--btn-primary-bg, var(--button-primary-bg, var(--bs-primary, #4078C0))));
+  color: var(--bs-btn-color, var(--btn-primary-color, var(--button-primary-color, #fff)));
   padding: 10px 12px;
   position: relative;
   /* Prevent toolbar from affecting header height */
   min-height: 42px;
+}
+
+/* Alternative: Match .btn-primary if template uses it */
+.btn-primary + .bears-aichatbot .bears-aichatbot-header,
+.bears-aichatbot-header.use-btn-primary {
+  background: inherit;
+  color: inherit;
 }
 
 .bears-aichatbot-title {
