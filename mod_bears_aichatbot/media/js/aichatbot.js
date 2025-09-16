@@ -8,6 +8,585 @@
     return fallback || key;
   }
 
+  // Text-to-Speech Manager
+  const TTSManager = {
+    enabled: false,
+    defaultEnabled: false,
+    speaking: false,
+    supported: false,
+    initialized: false, // Flag to prevent multiple initializations
+    
+    init: function(defaultSetting = false) {
+      // Prevent multiple initializations
+      if (this.initialized) {
+        // Already initialized, don't re-initialize
+        // This prevents race conditions with multiple instances
+        return;
+      }
+      
+      this.initialized = true;
+      
+      // Check if TTS is supported
+      this.supported = 'speechSynthesis' in window;
+      
+      if (!this.supported) {
+        console.warn('[Bears AI Chatbot] Text-to-speech not supported in this browser');
+        return;
+      }
+      
+      this.defaultEnabled = defaultSetting;
+      const saved = localStorage.getItem('bears_chat_tts');
+      if (saved !== null) {
+        // User has a saved preference, use it
+        this.enabled = saved === '1';
+      } else {
+        // No saved preference, use the module default
+        this.enabled = this.defaultEnabled;
+      }
+    },
+    
+    speak: function(text) {
+      if (!this.enabled || !this.supported) return;
+      
+      // Stop any current speech
+      this.stop();
+      
+      // Clean the text for speech (remove HTML, markdown, etc.)
+      const cleanText = this.cleanTextForSpeech(text);
+      if (!cleanText) return;
+      
+      try {
+        const utterance = new SpeechSynthesisUtterance(cleanText);
+        utterance.rate = 1.0;  // Normal speed
+        utterance.pitch = 1.0; // Normal pitch
+        utterance.volume = 0.8; // 80% volume
+        
+        // Set language if available
+        utterance.lang = document.documentElement.lang || 'en-US';
+        
+        // Track speaking state
+        utterance.onstart = () => {
+          this.speaking = true;
+        };
+        
+        utterance.onend = () => {
+          this.speaking = false;
+        };
+        
+        utterance.onerror = () => {
+          this.speaking = false;
+        };
+        
+        // Speak the text
+        window.speechSynthesis.speak(utterance);
+      } catch (e) {
+        console.error('[Bears AI Chatbot] TTS error:', e);
+      }
+    },
+    
+    stop: function() {
+      if (this.supported && window.speechSynthesis.speaking) {
+        window.speechSynthesis.cancel();
+        this.speaking = false;
+      }
+    },
+    
+    toggle: function() {
+      if (!this.supported) {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_TTS_NOT_SUPPORTED', 'Text-to-speech is not supported in your browser'), 'error');
+        return false;
+      }
+      
+      this.enabled = !this.enabled;
+      localStorage.setItem('bears_chat_tts', this.enabled ? '1' : '0');
+      
+      // Stop speaking if disabling
+      if (!this.enabled) {
+        this.stop();
+      }
+      
+      return this.enabled;
+    },
+    
+    cleanTextForSpeech: function(text) {
+      if (!text) return '';
+      
+      // Create a temporary div to parse HTML
+      const temp = document.createElement('div');
+      temp.innerHTML = text;
+      
+      // Remove script and style elements
+      const scripts = temp.querySelectorAll('script, style');
+      scripts.forEach(el => el.remove());
+      
+      // Get text content
+      let cleanText = temp.textContent || temp.innerText || '';
+      
+      // Remove markdown-style formatting
+      cleanText = cleanText
+        .replace(/#{1,6}\s+/g, '') // Remove heading markers
+        .replace(/\*{1,2}([^*]+)\*{1,2}/g, '$1') // Remove bold/italic markers
+        .replace(/`([^`]+)`/g, '$1') // Remove code markers
+        .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Convert links to text
+        .replace(/^[-*+]\s+/gm, '') // Remove list markers
+        .replace(/^\d+\.\s+/gm, '') // Remove numbered list markers
+        .replace(/^>\s+/gm, '') // Remove blockquote markers
+        .replace(/\n{3,}/g, '\n\n') // Normalize multiple newlines
+        .trim();
+      
+      return cleanText;
+    }
+  };
+  
+  // Sound notification system
+  const SoundManager = {
+    enabled: true,
+    defaultEnabled: false,
+    initialized: false, // Flag to prevent multiple initializations
+    sounds: {
+      messageSent: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA=',
+      messageReceived: 'data:audio/wav;base64,UklGRjIAAABXQVZFZm10IBAAAAABAAEAQB8AAEAfAAABAAgAZGF0YQ4AAAB/f39/f39/f39/f39/f38=',
+      error: 'data:audio/wav;base64,UklGRiQAAABXQVZFZm10IBAAAAABAAEARKwAAIhYAQACABAAZGF0YQAAAAA='
+    },
+    
+    play: function(soundType) {
+      if (!this.enabled) return;
+      try {
+        const audio = new Audio(this.sounds[soundType] || this.sounds.messageSent);
+        audio.volume = 0.3;
+        audio.play().catch(() => {});
+      } catch (e) {}
+    },
+    
+    toggle: function() {
+      this.enabled = !this.enabled;
+      localStorage.setItem('bears_chat_sounds', this.enabled ? '1' : '0');
+      return this.enabled;
+    },
+    
+    init: function(defaultSetting = false) {
+      // Prevent multiple initializations
+      if (this.initialized) {
+        // If already initialized, just update the default if it's different
+        // This allows multiple instances to work with their own defaults
+        // but the user's saved preference still takes priority
+        return;
+      }
+      
+      this.initialized = true;
+      this.defaultEnabled = defaultSetting;
+      const saved = localStorage.getItem('bears_chat_sounds');
+      if (saved !== null) {
+        // User has a saved preference, use it
+        this.enabled = saved === '1';
+      } else {
+        // No saved preference, use the module default
+        this.enabled = this.defaultEnabled;
+      }
+    }
+  };
+
+  // Auto dark mode detection (only used when no user preference exists)
+  function detectSystemDarkMode() {
+    // Check system preference
+    if (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) {
+      return true;
+    }
+    return false;
+  }
+
+  // Apply dark mode based on system preference (only when no user preference exists)
+  function applyAutoDarkMode(instance) {
+    const shouldUseDark = detectSystemDarkMode();
+    if (shouldUseDark) {
+      instance.classList.add('bears-dark-mode');
+    }
+    
+    // Listen for system dark mode changes
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', (e) => {
+        // Only auto-switch if user hasn't manually set preference
+        if (localStorage.getItem('bears_chat_dark_mode') === null) {
+          if (e.matches) {
+            instance.classList.add('bears-dark-mode');
+          } else {
+            instance.classList.remove('bears-dark-mode');
+          }
+        }
+      });
+    }
+  }
+
+  // Connection status manager with improved performance and cleanup
+  const ConnectionStatus = {
+    online: true,
+    indicator: null,
+    intervalId: null,
+    onlineHandler: null,
+    offlineHandler: null,
+    checkInterval: 60000, // Default to 60 seconds, will be overridden by config
+    lastCheckTime: 0,
+    enabled: true,
+    
+    init: function(container, ajaxUrl, intervalSeconds) {
+      // Set check interval from config (convert seconds to milliseconds)
+      // If intervalSeconds is 0, disable connection checking
+      if (typeof intervalSeconds === 'number') {
+        if (intervalSeconds === 0) {
+          this.enabled = false;
+          return; // Don't initialize if disabled
+        }
+        this.checkInterval = intervalSeconds * 1000;
+      }
+      
+      // Create status indicator
+      const indicator = document.createElement('div');
+      indicator.className = 'bears-connection-status';
+      indicator.innerHTML = `
+        <span class="bears-status-dot"></span>
+        <span class="bears-status-text"></span>
+      `;
+      container.appendChild(indicator);
+      this.indicator = indicator;
+      this.ajaxUrl = ajaxUrl;
+      
+      // Initial status based on navigator.onLine
+      this.updateStatus(navigator.onLine);
+      
+      // Create bound handlers for cleanup
+      this.onlineHandler = () => this.handleOnline();
+      this.offlineHandler = () => this.handleOffline();
+      
+      // Listen for online/offline events
+      window.addEventListener('online', this.onlineHandler);
+      window.addEventListener('offline', this.offlineHandler);
+      
+      // Only start periodic check if we're online
+      if (navigator.onLine) {
+        this.startPeriodicCheck();
+      }
+    },
+    
+    handleOnline: function() {
+      this.updateStatus(true);
+      // Resume periodic checking when back online
+      this.startPeriodicCheck();
+    },
+    
+    handleOffline: function() {
+      this.updateStatus(false);
+      // Stop periodic checking when offline to save resources
+      this.stopPeriodicCheck();
+    },
+    
+    startPeriodicCheck: function() {
+      // Clear any existing interval
+      this.stopPeriodicCheck();
+      
+      // Start new interval with smart checking
+      this.intervalId = setInterval(() => {
+        // Only check if tab is visible and enough time has passed
+        if (!document.hidden && Date.now() - this.lastCheckTime > 30000) {
+          this.checkConnection();
+        }
+      }, this.checkInterval);
+    },
+    
+    stopPeriodicCheck: function() {
+      if (this.intervalId) {
+        clearInterval(this.intervalId);
+        this.intervalId = null;
+      }
+    },
+    
+    updateStatus: function(isOnline) {
+      this.online = isOnline;
+      if (this.indicator) {
+        const dot = this.indicator.querySelector('.bears-status-dot');
+        const text = this.indicator.querySelector('.bears-status-text');
+        
+        if (isOnline) {
+          dot.className = 'bears-status-dot online';
+          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_ONLINE', 'Connected');
+          this.indicator.classList.remove('offline');
+        } else {
+          dot.className = 'bears-status-dot offline';
+          text.textContent = getLanguageString('MOD_BEARS_AICHATBOT_STATUS_OFFLINE', 'Offline');
+          this.indicator.classList.add('offline');
+        }
+      }
+    },
+    
+    checkConnection: async function() {
+      // Prevent too frequent checks
+      const now = Date.now();
+      if (now - this.lastCheckTime < 30000) {
+        return;
+      }
+      this.lastCheckTime = now;
+      
+      try {
+        // Use a lightweight approach - try multiple methods
+        
+        // Method 1: If we have the AJAX URL, use it with a lightweight request
+        if (this.ajaxUrl) {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000); // 5 second timeout
+          
+          try {
+            const response = await fetch(this.ajaxUrl, {
+              method: 'HEAD',
+              mode: 'no-cors', // Avoid CORS issues
+              cache: 'no-store', // Prevent caching
+              signal: controller.signal
+            });
+            clearTimeout(timeoutId);
+            
+            // With no-cors, we can't read the response but no error means success
+            this.updateStatus(true);
+            return;
+          } catch (fetchError) {
+            clearTimeout(timeoutId);
+            // If aborted or network error, we're offline
+            if (fetchError.name === 'AbortError' || !navigator.onLine) {
+              this.updateStatus(false);
+              return;
+            }
+          }
+        }
+        
+        // Method 2: Fallback to a simple image load test
+        // This is less noisy than favicon and works with no-cors
+        const testUrl = window.location.origin + '/media/system/images/calendar.png';
+        const img = new Image();
+        
+        const promise = new Promise((resolve, reject) => {
+          img.onload = () => resolve(true);
+          img.onerror = () => reject(false);
+          setTimeout(() => reject(false), 5000); // 5 second timeout
+        });
+        
+        img.src = testUrl + '?t=' + now; // Cache bust
+        
+        const result = await promise.catch(() => false);
+        this.updateStatus(result);
+        
+      } catch (error) {
+        // If all methods fail, rely on navigator.onLine
+        this.updateStatus(navigator.onLine);
+      }
+    },
+    
+    // Cleanup method to be called when chat is destroyed
+    destroy: function() {
+      // Stop periodic checking
+      this.stopPeriodicCheck();
+      
+      // Remove event listeners
+      if (this.onlineHandler) {
+        window.removeEventListener('online', this.onlineHandler);
+      }
+      if (this.offlineHandler) {
+        window.removeEventListener('offline', this.offlineHandler);
+      }
+      
+      // Remove indicator from DOM
+      if (this.indicator && this.indicator.parentNode) {
+        this.indicator.parentNode.removeChild(this.indicator);
+      }
+      
+      // Clear references
+      this.indicator = null;
+      this.onlineHandler = null;
+      this.offlineHandler = null;
+      this.ajaxUrl = null;
+    }
+  };
+
+  // Copy conversation functionality with robust error handling
+  function copyConversation(messages) {
+    try {
+      // Validate messages container exists
+      if (!messages || !messages.querySelectorAll) {
+        console.warn('[Bears AI Chatbot] Invalid messages container for copy operation');
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_COPY_FAILED', 'Failed to copy conversation'), 'error');
+        return;
+      }
+      
+      // Try multiple selectors for better compatibility
+      let messageElements = messages.querySelectorAll('.message');
+      
+      // Fallback: if no .message elements, try looking for divs with role="article"
+      if (!messageElements || messageElements.length === 0) {
+        messageElements = messages.querySelectorAll('[role="article"]');
+      }
+      
+      // If still no messages found, check for any child divs that might be messages
+      if (!messageElements || messageElements.length === 0) {
+        const allDivs = messages.querySelectorAll('div');
+        const potentialMessages = [];
+        allDivs.forEach(div => {
+          // Look for divs that have a child with class bubble or contain message-like content
+          if (div.querySelector('.bubble') || div.classList.contains('user') || div.classList.contains('bot')) {
+            potentialMessages.push(div);
+          }
+        });
+        messageElements = potentialMessages;
+      }
+      
+      // If no messages found at all, notify user
+      if (!messageElements || messageElements.length === 0) {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_NO_MESSAGES', 'No messages to copy'), 'info');
+        return;
+      }
+      
+      // Generate a single timestamp for the entire conversation copy
+      const copyTimestamp = new Date().toLocaleString();
+      
+      let conversationText = getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_HEADER', 'Chat Conversation') + '\n';
+      conversationText += `Copied: ${copyTimestamp}\n`;
+      conversationText += '='.repeat(50) + '\n\n';
+      
+      let messageCount = 0;
+      
+      messageElements.forEach((msg, index) => {
+        try {
+          // Determine if it's a user or bot message
+          const isUser = msg.classList && (msg.classList.contains('user') || 
+                        msg.getAttribute('data-role') === 'user' ||
+                        (msg.getAttribute('aria-label') && msg.getAttribute('aria-label').includes('Your')));
+          
+          // Try multiple ways to get the message text
+          let text = '';
+          
+          // Method 1: Look for .bubble element
+          const bubble = msg.querySelector('.bubble');
+          if (bubble) {
+            text = bubble.textContent || bubble.innerText || '';
+          }
+          
+          // Method 2: If no bubble, try direct text content
+          if (!text && msg.textContent) {
+            text = msg.textContent;
+          }
+          
+          // Method 3: Look for any child element that might contain text
+          if (!text) {
+            const textElements = msg.querySelectorAll('p, span, div');
+            for (let elem of textElements) {
+              if (elem.textContent && elem.textContent.trim()) {
+                text = elem.textContent;
+                break;
+              }
+            }
+          }
+          
+          // Clean up the text
+          text = text.trim();
+          
+          // Skip empty messages or thinking indicators
+          if (text && !text.includes('Researching') && !text.includes('Processing')) {
+            const role = isUser ? 
+              getLanguageString('MOD_BEARS_AICHATBOT_YOU', 'You') : 
+              getLanguageString('MOD_BEARS_AICHATBOT_AI', 'AI');
+            // Use message number instead of misleading timestamp
+            conversationText += `[Message ${index + 1}] ${role}:\n${text}\n\n`;
+            messageCount++;
+          }
+        } catch (msgError) {
+          console.warn('[Bears AI Chatbot] Error processing message:', msgError);
+          // Continue with next message
+        }
+      });
+      
+      // Check if we actually captured any messages
+      if (messageCount === 0) {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_NO_MESSAGES', 'No messages to copy'), 'info');
+        return;
+      }
+      
+      // Add footer with message count
+      conversationText += '='.repeat(50) + '\n';
+      conversationText += `Total messages: ${messageCount}\n`;
+      
+      // Try modern clipboard API first
+      if (navigator.clipboard && navigator.clipboard.writeText) {
+        navigator.clipboard.writeText(conversationText).then(() => {
+          showNotification(
+            getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED', 'Conversation copied to clipboard!') + 
+            ` (${messageCount} messages)`, 
+            'success'
+          );
+        }).catch((err) => {
+          console.warn('[Bears AI Chatbot] Clipboard API failed:', err);
+          fallbackCopy(conversationText, messageCount);
+        });
+      } else {
+        fallbackCopy(conversationText, messageCount);
+      }
+    } catch (error) {
+      console.error('[Bears AI Chatbot] Error in copyConversation:', error);
+      showNotification(getLanguageString('MOD_BEARS_AICHATBOT_COPY_FAILED', 'Failed to copy conversation'), 'error');
+    }
+  }
+
+  function fallbackCopy(text, messageCount) {
+    try {
+      const textarea = document.createElement('textarea');
+      textarea.value = text;
+      textarea.style.position = 'fixed';
+      textarea.style.opacity = '0';
+      textarea.style.pointerEvents = 'none';
+      textarea.style.zIndex = '-1';
+      document.body.appendChild(textarea);
+      
+      // For iOS compatibility
+      if (navigator.userAgent.match(/ipad|iphone/i)) {
+        const range = document.createRange();
+        range.selectNodeContents(textarea);
+        const selection = window.getSelection();
+        selection.removeAllRanges();
+        selection.addRange(range);
+        textarea.setSelectionRange(0, 999999);
+      } else {
+        textarea.select();
+      }
+      
+      const successful = document.execCommand('copy');
+      document.body.removeChild(textarea);
+      
+      if (successful) {
+        const message = messageCount ? 
+          getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED', 'Conversation copied to clipboard!') + 
+          ` (${messageCount} messages)` :
+          getLanguageString('MOD_BEARS_AICHATBOT_CONVERSATION_COPIED', 'Conversation copied to clipboard!');
+        showNotification(message, 'success');
+      } else {
+        throw new Error('execCommand failed');
+      }
+    } catch (e) {
+      console.error('[Bears AI Chatbot] Fallback copy failed:', e);
+      showNotification(getLanguageString('MOD_BEARS_AICHATBOT_COPY_FAILED', 'Failed to copy conversation'), 'error');
+    }
+  }
+
+  function showNotification(message, type = 'info') {
+    const notification = document.createElement('div');
+    notification.className = `bears-notification ${type}`;
+    notification.textContent = message;
+    notification.setAttribute('role', 'alert');
+    document.body.appendChild(notification);
+    
+    // Animate in
+    setTimeout(() => notification.classList.add('show'), 10);
+    
+    // Remove after 3 seconds
+    setTimeout(() => {
+      notification.classList.remove('show');
+      setTimeout(() => notification.remove(), 300);
+    }, 3000);
+  }
+
   // Announce message to screen readers
   function announceToScreenReader(message, priority = 'polite') {
     const announcement = document.createElement('div');
@@ -325,14 +904,37 @@
     const openHeight = parseInt(instance.getAttribute('data-open-height') || '500', 10);
     const buttonLabel = instance.getAttribute('data-button-label') || 'Knowledgebase';
     const darkMode = instance.getAttribute('data-dark-mode') === '1';
+    const soundNotifications = instance.getAttribute('data-sound-notifications') === '1';
+    const connectionCheckInterval = parseInt(instance.getAttribute('data-connection-check-interval') || '60', 10);
+    const textToSpeech = instance.getAttribute('data-text-to-speech') === '1';
+    
+    // Initialize sound manager with module default setting
+    SoundManager.init(soundNotifications);
+    
+    // Initialize TTS manager with module default setting
+    TTSManager.init(textToSpeech);
     
     try {
       console.debug('[Bears AI Chatbot] init', { moduleId, ajaxUrl, position, offsetBottom, offsetSide, darkMode });
     } catch (e) {}
     
-    // Apply dark mode if enabled
-    if (darkMode) {
+    // Check for user's saved preference first (highest priority)
+    const savedDarkMode = localStorage.getItem('bears_chat_dark_mode');
+    
+    if (savedDarkMode !== null) {
+      // User has a saved preference - respect it above all else
+      if (savedDarkMode === '1') {
+        instance.classList.add('bears-dark-mode');
+      } else {
+        instance.classList.remove('bears-dark-mode');
+      }
+    } else if (darkMode) {
+      // No user preference, but admin enabled dark mode
       instance.classList.add('bears-dark-mode');
+      // Don't save to localStorage - let user decide if they want to change it
+    } else {
+      // No user preference and admin disabled dark mode - apply auto detection
+      applyAutoDarkMode(instance);
     }
 
     // Apply offsets via CSS variables
@@ -375,6 +977,104 @@
       closeBtn.type = 'button';
       closeBtn.textContent = '×';
       headerEl.appendChild(closeBtn);
+    }
+
+    // Add toolbar buttons (copy conversation, sound toggle)
+    if (headerEl) {
+      const toolbar = document.createElement('div');
+      toolbar.className = 'bears-chat-toolbar';
+      
+      // Copy conversation button
+      const copyBtn = document.createElement('button');
+      copyBtn.className = 'bears-toolbar-btn copy-btn';
+      copyBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation'));
+      copyBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation');
+      copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"></rect><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"></path></svg>';
+      
+      // Sound toggle button
+      const soundBtn = document.createElement('button');
+      soundBtn.className = 'bears-toolbar-btn sound-btn' + (SoundManager.enabled ? ' enabled' : '');
+      soundBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'));
+      soundBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications');
+      soundBtn.innerHTML = SoundManager.enabled ? 
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' :
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+      
+      // Dark mode toggle button
+      const darkBtn = document.createElement('button');
+      darkBtn.className = 'bears-toolbar-btn dark-btn';
+      darkBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode'));
+      darkBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode');
+      darkBtn.innerHTML = instance.classList.contains('bears-dark-mode') ?
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+      
+      // Text-to-speech toggle button
+      const ttsBtn = document.createElement('button');
+      ttsBtn.className = 'bears-toolbar-btn tts-btn' + (TTSManager.enabled ? ' enabled' : '');
+      ttsBtn.setAttribute('aria-label', getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_TTS', 'Toggle text-to-speech'));
+      ttsBtn.title = getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_TTS', 'Toggle text-to-speech');
+      // Speaker icon with wave for enabled, crossed out for disabled
+      ttsBtn.innerHTML = TTSManager.enabled ? 
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6L8 10H4v4h4l4 4V6z"/><path d="M16 8.5a4.5 4.5 0 0 1 0 7M19 5.5a8.5 8.5 0 0 1 0 13"/></svg>' :
+        '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6L8 10H4v4h4l4 4V6z"/><line x1="20" y1="9" x2="14" y2="15"/><line x1="14" y1="9" x2="20" y2="15"/></svg>';
+      
+      // Only show TTS button if supported
+      if (TTSManager.supported) {
+        toolbar.appendChild(ttsBtn);
+      }
+      
+      toolbar.appendChild(copyBtn);
+      toolbar.appendChild(soundBtn);
+      toolbar.appendChild(darkBtn);
+      headerEl.insertBefore(toolbar, closeBtn);
+      
+      // Event listeners for toolbar buttons
+      copyBtn.addEventListener('click', () => {
+        const messages = instance.querySelector('.bears-aichatbot-messages');
+        copyConversation(messages);
+      });
+      
+      soundBtn.addEventListener('click', () => {
+        const enabled = SoundManager.toggle();
+        soundBtn.classList.toggle('enabled', enabled);
+        soundBtn.innerHTML = enabled ? 
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><path d="M19.07 4.93a10 10 0 0 1 0 14.14M15.54 8.46a5 5 0 0 1 0 7.07"></path></svg>' :
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon><line x1="23" y1="9" x2="17" y2="15"></line><line x1="17" y1="9" x2="23" y2="15"></line></svg>';
+        showNotification(enabled ? 
+          getLanguageString('MOD_BEARS_AICHATBOT_SOUND_ON', 'Sound notifications enabled') : 
+          getLanguageString('MOD_BEARS_AICHATBOT_SOUND_OFF', 'Sound notifications disabled'), 'info');
+      });
+      
+      darkBtn.addEventListener('click', () => {
+        const isDark = instance.classList.toggle('bears-dark-mode');
+        localStorage.setItem('bears_chat_dark_mode', isDark ? '1' : '0');
+        darkBtn.innerHTML = isDark ?
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"></circle><line x1="12" y1="1" x2="12" y2="3"></line><line x1="12" y1="21" x2="12" y2="23"></line><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"></line><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"></line><line x1="1" y1="12" x2="3" y2="12"></line><line x1="21" y1="12" x2="23" y2="12"></line><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"></line><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"></line></svg>' :
+          '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"></path></svg>';
+      });
+      
+      // TTS button event listener
+      if (TTSManager.supported && ttsBtn) {
+        ttsBtn.addEventListener('click', () => {
+          const enabled = TTSManager.toggle();
+          ttsBtn.classList.toggle('enabled', enabled);
+          ttsBtn.innerHTML = enabled ? 
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6L8 10H4v4h4l4 4V6z"/><path d="M16 8.5a4.5 4.5 0 0 1 0 7M19 5.5a8.5 8.5 0 0 1 0 13"/></svg>' :
+            '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 6L8 10H4v4h4l4 4V6z"/><line x1="20" y1="9" x2="14" y2="15"/><line x1="14" y1="9" x2="20" y2="15"/></svg>';
+          showNotification(enabled ? 
+            getLanguageString('MOD_BEARS_AICHATBOT_TTS_ON', 'Text-to-speech enabled') : 
+            getLanguageString('MOD_BEARS_AICHATBOT_TTS_OFF', 'Text-to-speech disabled'), 'info');
+        });
+      }
+    }
+
+    // Initialize connection status indicator with ajax URL and interval from config
+    const windowEl = instance.querySelector('.bears-aichatbot-window');
+    if (windowEl && connectionCheckInterval > 0) {
+      ConnectionStatus.init(windowEl, ajaxUrl, connectionCheckInterval);
+      // Store connection status reference for cleanup only if enabled
+      instance._connectionStatus = ConnectionStatus.enabled ? ConnectionStatus : null;
     }
 
     function openChat() {
@@ -433,6 +1133,12 @@
         bubble.innerHTML = formatAnswer(String(text || ''));
         // Add copy buttons to code blocks
         addCopyButtons(bubble);
+        
+        // Speak bot messages if TTS is enabled and not an error
+        if (!isError && TTSManager.enabled) {
+          // Use the original text for TTS (before HTML formatting)
+          TTSManager.speak(text);
+        }
       } else {
         bubble.textContent = String(text || '');
       }
@@ -564,9 +1270,22 @@
     async function sendMessage() {
       const text = (input.value || '').trim();
       if (!text) return;
+      
+      // Check connection status only if enabled
+      if (ConnectionStatus.enabled && !ConnectionStatus.online) {
+        showNotification(getLanguageString('MOD_BEARS_AICHATBOT_OFFLINE_ERROR', 'You are offline. Please check your connection.'), 'error');
+        SoundManager.play('error');
+        return;
+      }
+      
       openChat();
       try { console.debug('[Bears AI Chatbot] sending message', { moduleId, text }); } catch (e) {}
+      
+      // Stop any ongoing TTS when user sends a new message
+      TTSManager.stop();
+      
       appendMessage('user', text);
+      SoundManager.play('messageSent');
       input.value = '';
       setLoading(true);
 
@@ -601,6 +1320,7 @@
             // Small delay to show "Processing" before displaying the answer
             await new Promise(resolve => setTimeout(resolve, 300));
             appendMessage('bot', payload.answer);
+            SoundManager.play('messageReceived');
           } else if (payload.error) {
             let err = 'Error: ' + payload.error;
             if (payload.status && !/status\s+\d+/.test(err)) {
@@ -612,19 +1332,25 @@
             }
             try { console.warn('[Bears AI Chatbot] error payload', payload); } catch (e) {}
             appendMessage('bot', err);
+            SoundManager.play('error');
           } else if ('message' in payload) {
             appendMessage('bot', String(payload.message));
+            SoundManager.play('messageReceived');
           } else {
             appendMessage('bot', 'No response.');
+            SoundManager.play('error');
           }
         } else if (typeof payload === 'string') {
           appendMessage('bot', payload);
+          SoundManager.play('messageReceived');
         } else {
           appendMessage('bot', 'Unexpected response.');
+          SoundManager.play('error');
         }
       } catch (e) {
         try { console.error('[Bears AI Chatbot] fetch error', e); } catch (ignored) {}
         appendMessage('bot', 'Error: ' + (e && e.message ? e.message : 'Network error'));
+        SoundManager.play('error');
       } finally {
         setLoading(false);
       }
@@ -663,9 +1389,43 @@
     });
   }
 
+  // Track all instances for cleanup
+  const instances = new WeakMap();
+  
   document.addEventListener('DOMContentLoaded', function () {
     const nodes = document.querySelectorAll('.bears-aichatbot');
     try { console.debug('[Bears AI Chatbot] found instances', nodes.length); } catch (e) {}
-    nodes.forEach(init);
+    nodes.forEach(node => {
+      init(node);
+      instances.set(node, true);
+    });
+  });
+  
+  // Cleanup on page unload
+  window.addEventListener('beforeunload', function() {
+    document.querySelectorAll('.bears-aichatbot').forEach(instance => {
+      if (instance._connectionStatus) {
+        instance._connectionStatus.destroy();
+      }
+    });
+  });
+  
+  // Also cleanup when visibility changes (tab switching)
+  document.addEventListener('visibilitychange', function() {
+    if (document.hidden) {
+      // Page is hidden, pause connection checks
+      document.querySelectorAll('.bears-aichatbot').forEach(instance => {
+        if (instance._connectionStatus) {
+          instance._connectionStatus.stopPeriodicCheck();
+        }
+      });
+    } else {
+      // Page is visible again, resume if online
+      document.querySelectorAll('.bears-aichatbot').forEach(instance => {
+        if (instance._connectionStatus && navigator.onLine) {
+          instance._connectionStatus.startPeriodicCheck();
+        }
+      });
+    }
   });
 })();

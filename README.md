@@ -26,6 +26,13 @@ Features
   - Multi-language accessibility strings with 15+ screen reader announcements
   - Enhanced focus indicators and semantic HTML structure
   - Real-time status announcements for AI processing states
+- **Enhanced User Experience Features**
+  - Auto dark mode detection (follows system preference)
+  - Copy conversation to clipboard with formatted text
+  - Real-time connection status indicator (configurable, can be disabled)
+  - Optional sound notifications for messages (configurable default)
+  - Text-to-speech for AI responses (browser-based, configurable default)
+  - Persistent user preferences via localStorage
 - Administrator analytics
   - Requests, errors, token usage, spend, and KPIs
   - Charts: tokens over time, requests/errors, spend (USD), latency, token histogram, outcomes (answered/refused/error), collection size history
@@ -85,7 +92,11 @@ Module configuration (frontend chat)
   - Include Sitemap: Yes/No
   - Sitemap URL (optional)
 - UI and positioning
-  - Position, width/height, offsets, label, dark mode
+  - Position, width/height, offsets, label
+  - Dark mode: Manual enable/disable (auto-detection when disabled)
+  - Sound notifications: Default on/off for new users
+  - Connection check interval: 0 to disable, 10-300 seconds (default: disabled)
+  - Text-to-speech: Default on/off for AI responses (browser-based)
 - System Limits (NEW)
   - Max Response Tokens: Controls response length (256-4096 tokens, default: 1024)
     - 256 tokens: Very short answers (~150 words)
@@ -231,7 +242,17 @@ Scheduler tasks
   - Type: aichatbot.queue (enable/schedule as desired)
 
 
-Accessibility Features (WCAG 2.1 AA Compliant)
+User Interface Features
+The Bears AI Chatbot provides a modern, user-friendly interface with several convenience features:
+
+**Chat Controls:**
+- **Copy Conversation**: Click the copy button in the toolbar to copy the entire chat history to clipboard in formatted text with timestamps
+- **Sound Notifications**: Toggle sound effects for sent/received messages and errors (user preference saved locally)
+- **Dark Mode Toggle**: Switch between light and dark themes manually, or let it auto-detect system preference
+- **Text-to-Speech**: Click the speaker icon to enable/disable AI response narration (uses browser's speech synthesis)
+- **Connection Status**: Optional real-time indicator showing online/offline status (disabled by default, configurable interval)
+
+**Accessibility Features (WCAG 2.1 AA Compliant):**
 The Bears AI Chatbot is fully accessible and provides an inclusive experience for all users:
 
 **Screen Reader Support:**
@@ -250,7 +271,7 @@ The Bears AI Chatbot is fully accessible and provides an inclusive experience fo
 
 **Visual Accessibility:**
 - High contrast mode support with enhanced borders and styling
-- Dark mode option with accessible color schemes
+- Auto dark mode detection (follows system preference when not manually set)
 - Reduced motion support for users with vestibular disorders
 - Enhanced focus indicators that meet WCAG contrast requirements
 - Responsive design that works at all zoom levels up to 200%
@@ -302,6 +323,11 @@ See CHANGELOG.md for the detailed list of changes. Notable recent additions:
 - Collection Info (metadata) and Collection Size history
 - Rebuild Document Collection tool with confirmation (in-place)
 - Logging of extended metrics and cost estimation
+- Auto dark mode detection and manual toggle
+- Copy conversation to clipboard functionality
+- Real-time connection status indicator (configurable, disabled by default)
+- Configurable sound notifications with user preferences
+- Text-to-speech support for AI responses (browser-based)
 
 
 License

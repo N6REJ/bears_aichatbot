@@ -25,7 +25,7 @@ $offsetSide   = (int) $params->get('chat_offset_side', 20);
 $moduleBase = rtrim(Uri::root(), '/') . '/modules/mod_bears_aichatbot';
 $doc->getWebAssetManager()
     ->registerAndUseStyle('mod_bears_aichatbot.css', $moduleBase . '/media/css/aichatbot.css')
-    ->registerAndUseScript('mod_bears_aichatbot.js', $moduleBase . '/media/js/aichatbot.js', [], ['defer' => true]);
+    ->registerAndUseScript('mod_bears_aichatbot.js', $moduleBase . '/media/js/aichatbot-loader.js', [], ['defer' => true]);
 
 require_once __DIR__ . '/helper.php';
 
