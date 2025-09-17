@@ -161,39 +161,44 @@ export class ChatBot {
     const toolbar = document.createElement('div');
     toolbar.className = 'bears-chat-toolbar';
     
-    // Connection status button (if enabled)
+    // Connection status button (only if connection checking is enabled)
     if (this.config.connectionCheckInterval > 0) {
       const connectionBtn = this.createToolbarButton('connection', 
         this.getLanguageString('MOD_BEARS_AICHATBOT_CONNECTION_STATUS', 'Connection status'));
       toolbar.appendChild(connectionBtn);
     }
     
-    // TTS button (if supported)
-    if (this.ttsManager.isSupported()) {
+    // TTS button (only if TTS is enabled in admin AND browser supports it)
+    if (this.config.textToSpeech && this.ttsManager.isSupported()) {
       const ttsBtn = this.createToolbarButton('tts', 
         this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_TTS', 'Toggle text-to-speech'),
         this.ttsManager.isEnabled());
       toolbar.appendChild(ttsBtn);
     }
     
-    // Copy button
+    // Copy button (always show - this is a basic feature)
     const copyBtn = this.createToolbarButton('copy', 
       this.getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation'));
     toolbar.appendChild(copyBtn);
     
-    // Sound button
-    const soundBtn = this.createToolbarButton('sound', 
-      this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'),
-      this.soundManager.isEnabled());
-    toolbar.appendChild(soundBtn);
+    // Sound button (only if sound notifications are enabled in admin)
+    if (this.config.soundNotifications) {
+      const soundBtn = this.createToolbarButton('sound', 
+        this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'),
+        this.soundManager.isEnabled());
+      toolbar.appendChild(soundBtn);
+    }
     
-    // Dark mode button
+    // Dark mode button (always show - users should be able to toggle this)
     const darkBtn = this.createToolbarButton('dark', 
       this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode'));
     toolbar.appendChild(darkBtn);
     
-    headerEl.insertBefore(toolbar, this.elements.closeBtn);
-    this.elements.toolbar = toolbar;
+    // Only add toolbar if it has buttons
+    if (toolbar.children.length > 0) {
+      headerEl.insertBefore(toolbar, this.elements.closeBtn);
+      this.elements.toolbar = toolbar;
+    }
   }
 
   createToolbarButton(type, label, enabled = false) {
