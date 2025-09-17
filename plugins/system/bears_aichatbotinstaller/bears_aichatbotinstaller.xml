@@ -3,7 +3,7 @@
   <name>plg_system_bears_aichatbotinstaller</name>
   <author>N6REJ</author>
   <creationDate>2025 September 17</creationDate>
-  <version>2025.09.17.1</version>
+  <version>2025.09.17</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Post-install system plugin that enables Bears AI Chatbot plugins and seeds scheduler tasks after complete package installation.</description>
 
