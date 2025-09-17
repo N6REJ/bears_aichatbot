@@ -38,6 +38,13 @@ export class ChatBot {
       buttonLabel: instance.getAttribute('data-button-label') || 'Knowledgebase',
       darkMode: instance.getAttribute('data-dark-mode') === '1',
       soundNotifications: instance.getAttribute('data-sound-notifications') === '1',
+      soundVolume: parseFloat(instance.getAttribute('data-sound-volume') || '0.1'),
+      soundSentFrequency: parseInt(instance.getAttribute('data-sound-sent-frequency') || '800', 10),
+      soundSentDuration: parseInt(instance.getAttribute('data-sound-sent-duration') || '100', 10),
+      soundReceivedFrequency: parseInt(instance.getAttribute('data-sound-received-frequency') || '600', 10),
+      soundReceivedDuration: parseInt(instance.getAttribute('data-sound-received-duration') || '150', 10),
+      soundErrorFrequency: parseInt(instance.getAttribute('data-sound-error-frequency') || '300', 10),
+      soundErrorDuration: parseInt(instance.getAttribute('data-sound-error-duration') || '200', 10),
       connectionCheckInterval: parseInt(instance.getAttribute('data-connection-check-interval') || '60', 10),
       textToSpeech: instance.getAttribute('data-text-to-speech') === '1',
       ttsRate: parseFloat(instance.getAttribute('data-tts-rate') || '0.9'),
@@ -52,7 +59,16 @@ export class ChatBot {
     } catch (e) {}
     
     // Initialize managers
-    this.soundManager.init(this.config.soundNotifications);
+    const soundConfig = {
+      volume: this.config.soundVolume,
+      sentFrequency: this.config.soundSentFrequency,
+      sentDuration: this.config.soundSentDuration,
+      receivedFrequency: this.config.soundReceivedFrequency,
+      receivedDuration: this.config.soundReceivedDuration,
+      errorFrequency: this.config.soundErrorFrequency,
+      errorDuration: this.config.soundErrorDuration
+    };
+    this.soundManager.init(this.config.soundNotifications, soundConfig);
     this.ttsManager.init(this.config.textToSpeech, this.config.ttsRate, this.config.ttsPitch, this.config.ttsVolume);
     this.darkModeManager.init(this.instance, this.config.darkMode);
     
