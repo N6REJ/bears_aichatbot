@@ -16,10 +16,10 @@
 <extension type="module" version="5.0" client="site" method="upgrade">
     <name>Bears AI Chatbot</name>
     <author>N6REJ</author>
-    <creationDate>2025 September 06</creationDate>
+    <creationDate>2025 September 17</creationDate>
     <copyright>Copyright (C) 2025 Troy Hall (N6REJ)</copyright>
     <license>GNU General Public License version 3 or later; see License.txt</license>
-    <version>2025.09.15.15</version>
+    <version>2025.09.17</version>
     <description>MOD_BEARS_AICHATBOT_XML_DESCRIPTION</description>
     
     <install>
