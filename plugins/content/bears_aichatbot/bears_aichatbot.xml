@@ -2,8 +2,8 @@
 <extension type="plugin" group="content" version="5.0" method="upgrade">
   <name>plg_content_bears_aichatbot</name>
   <author>N6REJ</author>
-  <creationDate>2025 September 17</creationDate>
-  <version>2025.09.17</version>
+  <creationDate>2025 September 19</creationDate>
+  <version>2025.09.19</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Content plugin to enqueue document collection updates on article changes.</description>
   <namespace>Joomla\Plugin\Content\BearsAichatbot</namespace>
