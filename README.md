@@ -1,6 +1,8 @@
 # Bears AI Chatbot for Joomla 5
 
-An AI knowledgebase chatbot solution for Joomla 5 with Retrieval-Augmented Generation (RAG) powered by IONOS AI Model Hub Document Collections, plus an Administrator Component for analytics, cost tracking, and collection operations.
+An AI knowledgebase chatbot solution for Joomla 5 with Retrieval-Augmented Generation (RAG) powered by **IONOS AI Model Hub** Document Collections, plus an Administrator Component for analytics, cost tracking, and collection operations.
+
+> **⚠️ Important:** This extension requires an active [IONOS AI Model Hub](https://cloud.ionos.com/managed/ai-model-hub) subscription. You'll need to obtain API credentials (Token) from your IONOS account to configure the chatbot.
 
 Package contents
 - Site module: mod_bears_aichatbot (frontend chat UI and chat flow)
@@ -30,7 +32,6 @@ Features
   - Auto dark mode detection (follows system preference)
   - Copy conversation to clipboard with formatted text
   - Real-time connection status indicator (configurable, can be disabled)
-  - Optional sound notifications for messages (configurable default)
   - Text-to-speech for AI responses (browser-based, configurable default)
   - Persistent user preferences via localStorage
 - Administrator analytics
@@ -51,7 +52,8 @@ Features
 Requirements
 - Joomla 5.x
 - PHP 8.1+
-- IONOS AI Model Hub account and API token
+- **IONOS AI Model Hub account** with active subscription ([Sign up here](https://cloud.ionos.com/managed/ai-model-hub))
+- IONOS API token (obtained from your IONOS account dashboard)
 - Optional: Kunena forum if you want forum posts included
 
 
@@ -94,7 +96,6 @@ Module configuration (frontend chat)
 - UI and positioning
   - Position, width/height, offsets, label
   - Dark mode: Manual enable/disable (auto-detection when disabled)
-  - Sound notifications: Default on/off for new users
   - Connection check interval: 0 to disable, 10-300 seconds (default: disabled)
   - Text-to-speech: Default on/off for AI responses (browser-based)
 - System Limits (NEW)
@@ -247,7 +248,6 @@ The Bears AI Chatbot provides a modern, user-friendly interface with several con
 
 **Chat Controls:**
 - **Copy Conversation**: Click the copy button in the toolbar to copy the entire chat history to clipboard in formatted text with timestamps
-- **Sound Notifications**: Toggle sound effects for sent/received messages and errors (user preference saved locally)
 - **Dark Mode Toggle**: Switch between light and dark themes manually, or let it auto-detect system preference
 - **Text-to-Speech**: Click the speaker icon to enable/disable AI response narration (uses browser's speech synthesis)
 - **Connection Status**: Optional real-time indicator showing online/offline status (disabled by default, configurable interval)
@@ -326,7 +326,6 @@ See CHANGELOG.md for the detailed list of changes. Notable recent additions:
 - Auto dark mode detection and manual toggle
 - Copy conversation to clipboard functionality
 - Real-time connection status indicator (configurable, disabled by default)
-- Configurable sound notifications with user preferences
 - Text-to-speech support for AI responses (browser-based)
 
 

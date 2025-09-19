@@ -126,7 +126,7 @@
             </div>
             <div class="bears-feature-card">
                 <h4>🎨 Customizable UI <span class="bears-badge">ENHANCED</span></h4>
-                <p>Flexible positioning, auto dark mode detection, sound notifications, copy conversation, and responsive design.</p>
+                <p>Flexible positioning, auto dark mode detection, copy conversation, text-to-speech, and responsive design.</p>
             </div>
             <div class="bears-feature-card">
                 <h4>⚙️ Automated Management</h4>
@@ -278,7 +278,6 @@
             <li><strong>Dimensions:</strong> Width (default: 400px), Height (default: 500px)</li>
             <li><strong>Offsets:</strong> Distance from edges in pixels</li>
             <li><strong>Dark Mode:</strong> Manual enable or auto-detection based on system preference</li>
-            <li><strong>Sound Notifications:</strong> Default on/off for message sounds (users can toggle)</li>
             <li><strong>Button Label:</strong> Custom text for side position buttons</li>
         </ul>
 
@@ -287,7 +286,6 @@
             <li><strong>Auto Dark Mode:</strong> Automatically detects and follows system dark mode preference</li>
             <li><strong>Copy Conversation:</strong> One-click copy of entire chat history with timestamps</li>
             <li><strong>Connection Status:</strong> Optional online/offline indicator (configurable interval, disabled by default)</li>
-            <li><strong>Sound Notifications:</strong> Optional sounds for sent/received messages and errors</li>
             <li><strong>Text-to-Speech:</strong> Browser-based narration of AI responses (configurable default)</li>
             <li><strong>Persistent Preferences:</strong> User settings saved in browser localStorage</li>
         </ul>
@@ -658,10 +656,6 @@
                 <p>Click the copy button to copy the entire chat history to clipboard. The conversation is formatted with timestamps and role labels (You/AI) for easy sharing or documentation.</p>
             </div>
             <div class="bears-feature-card">
-                <h4>🔊 Sound Notifications</h4>
-                <p>Toggle sound effects on/off for messages. Includes distinct sounds for sent messages, received responses, and errors. User preference is saved locally.</p>
-            </div>
-            <div class="bears-feature-card">
                 <h4>🌙 Dark Mode Toggle</h4>
                 <p>Switch between light and dark themes manually. When not manually set, the chatbot automatically detects and follows your system's dark mode preference.</p>
             </div>
@@ -693,12 +687,6 @@
                     <td>Saved in localStorage</td>
                 </tr>
                 <tr>
-                    <td><strong>Sound Notifications</strong></td>
-                    <td>Default on/off in module</td>
-                    <td>Toggle button in chat</td>
-                    <td>Saved in localStorage</td>
-                </tr>
-                <tr>
                     <td><strong>Auto Dark Mode</strong></td>
                     <td>Active when dark mode disabled</td>
                     <td>Follows system preference</td>
@@ -726,15 +714,6 @@
             <li><strong>Module Default:</strong> If no user preference exists, module settings are used</li>
             <li><strong>System Detection:</strong> For dark mode, system preference is detected when not manually set</li>
         </ol>
-
-        <h3>Sound Notification Details</h3>
-        <ul>
-            <li><strong>Message Sent:</strong> Brief confirmation sound when user sends a message</li>
-            <li><strong>Message Received:</strong> Notification sound when AI responds</li>
-            <li><strong>Error Sound:</strong> Alert sound for errors or connection issues</li>
-            <li><strong>Volume:</strong> Set at 30% for non-intrusive notifications</li>
-            <li><strong>Format:</strong> Uses embedded base64 WAV files (no external dependencies)</li>
-        </ul>
 
         <h3>Text-to-Speech Details</h3>
         <ul>

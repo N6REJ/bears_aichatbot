@@ -842,13 +842,6 @@
   opacity: 0.7;
 }
 
-/* Sound wave animation for sound notifications - REMOVED to prevent box jumping */
-/* Visual indication now handled by background color change only */
-.bears-toolbar-btn.sound-btn.enabled {
-  background: rgba(40, 167, 69, 0.4);
-  border-color: rgba(40, 167, 69, 0.6);
-}
-
 .bears-toolbar-btn.tts-btn.enabled {
   background: rgba(40, 167, 69, 0.4);
   border-color: rgba(40, 167, 69, 0.6);

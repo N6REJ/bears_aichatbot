@@ -2,7 +2,6 @@
  * ChatBot Main Class
  * Orchestrates all chatbot functionality using modular components
  */
-import { soundManager } from './SoundManager.js';
 import { ttsManager } from './TTSManager.js';
 import { connectionStatus } from './ConnectionStatus.js';
 import { darkModeManager } from './DarkModeManager.js';
@@ -18,7 +17,6 @@ export class ChatBot {
     this.isOpen = false;
     
     // Initialize managers
-    this.soundManager = soundManager;
     this.ttsManager = ttsManager;
     this.connectionStatus = connectionStatus;
     this.darkModeManager = darkModeManager;
@@ -37,14 +35,6 @@ export class ChatBot {
       openHeight: parseInt(instance.getAttribute('data-open-height') || '500', 10),
       buttonLabel: instance.getAttribute('data-button-label') || 'Knowledgebase',
       darkMode: instance.getAttribute('data-dark-mode') === '1',
-      soundNotifications: instance.getAttribute('data-sound-notifications') === '1',
-      soundVolume: parseFloat(instance.getAttribute('data-sound-volume') || '0.1'),
-      soundSentFrequency: parseInt(instance.getAttribute('data-sound-sent-frequency') || '800', 10),
-      soundSentDuration: parseInt(instance.getAttribute('data-sound-sent-duration') || '100', 10),
-      soundReceivedFrequency: parseInt(instance.getAttribute('data-sound-received-frequency') || '600', 10),
-      soundReceivedDuration: parseInt(instance.getAttribute('data-sound-received-duration') || '150', 10),
-      soundErrorFrequency: parseInt(instance.getAttribute('data-sound-error-frequency') || '300', 10),
-      soundErrorDuration: parseInt(instance.getAttribute('data-sound-error-duration') || '200', 10),
       connectionCheckInterval: parseInt(instance.getAttribute('data-connection-check-interval') || '60', 10),
       textToSpeech: instance.getAttribute('data-text-to-speech') === '1',
       ttsRate: parseFloat(instance.getAttribute('data-tts-rate') || '0.9'),
@@ -59,16 +49,6 @@ export class ChatBot {
     } catch (e) {}
     
     // Initialize managers
-    const soundConfig = {
-      volume: this.config.soundVolume,
-      sentFrequency: this.config.soundSentFrequency,
-      sentDuration: this.config.soundSentDuration,
-      receivedFrequency: this.config.soundReceivedFrequency,
-      receivedDuration: this.config.soundReceivedDuration,
-      errorFrequency: this.config.soundErrorFrequency,
-      errorDuration: this.config.soundErrorDuration
-    };
-    this.soundManager.init(this.config.soundNotifications, soundConfig);
     this.ttsManager.init(this.config.textToSpeech, this.config.ttsRate, this.config.ttsPitch, this.config.ttsVolume);
     this.darkModeManager.init(this.instance, this.config.darkMode);
     
@@ -181,14 +161,6 @@ export class ChatBot {
       this.getLanguageString('MOD_BEARS_AICHATBOT_COPY_CONVERSATION', 'Copy conversation'));
     toolbar.appendChild(copyBtn);
     
-    // Sound button (only if sound notifications are enabled in admin)
-    if (this.config.soundNotifications) {
-      const soundBtn = this.createToolbarButton('sound', 
-        this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_SOUND', 'Toggle sound notifications'),
-        this.soundManager.isEnabled());
-      toolbar.appendChild(soundBtn);
-    }
-    
     // Dark mode button (always show - users should be able to toggle this)
     const darkBtn = this.createToolbarButton('dark', 
       this.getLanguageString('MOD_BEARS_AICHATBOT_TOGGLE_DARK', 'Toggle dark mode'));
@@ -216,9 +188,6 @@ export class ChatBot {
         '<i class="fas fa-wifi"></i>' :
         '<i class="fas fa-exclamation-triangle"></i>',
       copy: '<i class="fas fa-copy"></i>',
-      sound: enabled ? 
-        '<i class="fas fa-bell"></i>' :
-        '<i class="fas fa-bell-slash"></i>',
       dark: this.darkModeManager.isEnabled() ?
         '<i class="fas fa-sun"></i>' :
         '<i class="fas fa-moon"></i>',
@@ -245,19 +214,6 @@ export class ChatBot {
       if (copyBtn) {
         copyBtn.addEventListener('click', () => {
           this.uiManager.copyConversation(this.elements.messages);
-        });
-      }
-      
-      // Sound button
-      const soundBtn = this.elements.toolbar.querySelector('.sound-btn');
-      if (soundBtn) {
-        soundBtn.addEventListener('click', () => {
-          const enabled = this.soundManager.toggle();
-          soundBtn.classList.toggle('enabled', enabled);
-          soundBtn.innerHTML = this.getButtonIcon('sound', enabled);
-          this.uiManager.showNotification(enabled ? 
-            this.getLanguageString('MOD_BEARS_AICHATBOT_SOUND_ON', 'Sound notifications enabled') : 
-            this.getLanguageString('MOD_BEARS_AICHATBOT_SOUND_OFF', 'Sound notifications disabled'), 'info');
         });
       }
       
@@ -487,7 +443,6 @@ export class ChatBot {
         this.getLanguageString('MOD_BEARS_AICHATBOT_OFFLINE_ERROR', 'You are offline. Please check your connection.'), 
         'error'
       );
-      this.soundManager.play('error');
       return;
     }
     
@@ -501,7 +456,6 @@ export class ChatBot {
     this.ttsManager.stop();
     
     this.appendMessage('user', text);
-    this.soundManager.play('messageSent');
     this.elements.input.value = '';
     this.setLoading(true);
 
@@ -530,7 +484,6 @@ export class ChatBot {
           // Small delay to show "Processing" before displaying the answer
           await new Promise(resolve => setTimeout(resolve, 300));
           this.appendMessage('bot', payload.answer);
-          this.soundManager.play('messageReceived');
         } else if (payload.error) {
           let err = 'Error: ' + payload.error;
           if (payload.status && !/status\s+\d+/.test(err)) {
@@ -541,27 +494,21 @@ export class ChatBot {
             err += '\nDetails: ' + bodyTxt.substring(0, 2000);
           }
           this.appendMessage('bot', err, true);
-          this.soundManager.play('error');
         } else if ('message' in payload) {
           this.appendMessage('bot', String(payload.message));
-          this.soundManager.play('messageReceived');
         } else {
           this.appendMessage('bot', 'No response.');
-          this.soundManager.play('error');
         }
       } else if (typeof payload === 'string') {
         this.appendMessage('bot', payload);
-        this.soundManager.play('messageReceived');
       } else {
         this.appendMessage('bot', 'Unexpected response.');
-        this.soundManager.play('error');
       }
     } catch (e) {
       try { 
         console.error('[ChatBot] fetch error', e); 
       } catch (ignored) {}
       this.appendMessage('bot', 'Error: ' + (e && e.message ? e.message : 'Network error'), true);
-      this.soundManager.play('error');
     } finally {
       this.setLoading(false);
     }
