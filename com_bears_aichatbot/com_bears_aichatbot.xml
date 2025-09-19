@@ -2,8 +2,8 @@
 <extension type="component" method="upgrade" version="5.0">
   <name>com_bears_aichatbot</name>
   <author>N6REJ</author>
-  <creationDate>2025 September 17</creationDate>
-  <version>2025.09.17</version>
+  <creationDate>2025 September 19</creationDate>
+  <version>2025.09.19</version>
   <license>GNU General Public License version 3 or later; see LICENSE</license>
   <description>Bears AI Chatbot administrator component with analytics and management tools.</description>
 
