@@ -2,8 +2,8 @@
 <extension type="plugin" group="system" version="5.0" method="upgrade">
   <name>plg_system_bears_aichatbotinstaller</name>
   <author>N6REJ</author>
-  <creationDate>2025 September 19</creationDate>
-  <version>2025.09.19</version>
+  <creationDate>2025 October 02</creationDate>
+  <version>2025.10.02</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Post-install system plugin that enables Bears AI Chatbot plugins and seeds scheduler tasks after complete package installation.</description>
 
