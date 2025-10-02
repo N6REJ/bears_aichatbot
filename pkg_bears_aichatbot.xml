@@ -10,16 +10,15 @@
   <version>2025.10.02.2</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Package containing the Bears AI Chatbot site module and associated plugins (task scheduler and optional content event plugin).</description>
-  <element>pkg_bears_aichatbot</element>
 
   <scriptfile>script.php</scriptfile>
   
   <files>
-    <folder type="component" id="com_bears_aichatbot" client="administrator">com_bears_aichatbot</folder>
-    <folder type="module" client="site" id="mod_bears_aichatbot">mod_bears_aichatbot</folder>
-    <folder type="plugin" group="task" id="plg_task_bears_aichatbot">plugins/task/bears_aichatbot</folder>
-    <folder type="plugin" group="content" id="plg_content_bears_aichatbot">plugins/content/bears_aichatbot</folder>
-    <folder type="plugin" group="system" id="plg_system_bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</folder>
+    <file type="component" id="com_bears_aichatbot" client="administrator">com_bears_aichatbot</file>
+    <file type="module" client="site" id="mod_bears_aichatbot">mod_bears_aichatbot</file>
+    <file type="plugin" group="task" id="plg_task_bears_aichatbot">plugins/task/bears_aichatbot</file>
+    <file type="plugin" group="content" id="plg_content_bears_aichatbot">plugins/content/bears_aichatbot</file>
+    <file type="plugin" group="system" id="plg_system_bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</file>
   </files>
   
   <updateservers>
