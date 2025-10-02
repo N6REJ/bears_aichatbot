@@ -20,4 +20,8 @@
     <file type="plugin" group="content" id="plg_content_bears_aichatbot">plugins/content/bears_aichatbot</file>
     <file type="plugin" group="system" id="plg_system_bears_aichatbotinstaller">plugins/system/bears_aichatbotinstaller</file>
   </files>
+  
+  <updateservers>
+    <server type="extension" priority="1" name="Bears AI Chatbot Package Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
+  </updateservers>
 </extension>

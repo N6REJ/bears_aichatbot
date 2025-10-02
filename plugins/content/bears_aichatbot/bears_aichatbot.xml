@@ -14,7 +14,6 @@
     <filename plugin="bears_aichatbot">bears_aichatbot.php</filename>
     <folder>services</folder>
     <folder>src</folder>
-    <folder>forms</folder>
     <folder>language</folder>
   </files>
   <languages>
@@ -22,7 +21,23 @@
     <language tag="en-GB">language/en-GB/en-GB.plg_content_bears_aichatbot.sys.ini</language>
   </languages>
 
-  <config>forms/config.xml</config>
+  <config>
+    <fields name="params">
+      <fieldset name="basic" label="PLG_CONTENT_BEARS_AICHATBOT_FIELDSET_BASIC">
+        <field
+          name="enabled_queue"
+          type="radio"
+          default="1"
+          class="btn-group btn-group-yesno"
+          label="PLG_CONTENT_BEARS_AICHATBOT_ENABLE_QUEUE"
+          description="PLG_CONTENT_BEARS_AICHATBOT_ENABLE_QUEUE_DESC"
+        >
+          <option value="1">JYES</option>
+          <option value="0">JNO</option>
+        </field>
+      </fieldset>
+    </fields>
+  </config>
   
   <updateservers>
     <server type="extension" priority="1" name="Bears AI Chatbot Content Plugin Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
