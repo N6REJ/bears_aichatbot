@@ -45,4 +45,8 @@
       <language tag="en-GB">en-GB/en-GB.com_bears_aichatbot.sys.ini</language>
     </languages>
   </administration>
+  
+  <updateservers>
+    <server type="extension" priority="1" name="Bears AI Chatbot Component Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
+  </updateservers>
 </extension>

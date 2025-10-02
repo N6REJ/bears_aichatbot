@@ -20,4 +20,8 @@
   </languages>
 
   <config>forms/config.xml</config>
+  
+  <updateservers>
+    <server type="extension" priority="1" name="Bears AI Chatbot Content Plugin Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
+  </updateservers>
 </extension>

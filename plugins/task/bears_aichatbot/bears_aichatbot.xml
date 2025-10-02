@@ -33,4 +33,8 @@
       <file driver="mysql" charset="utf8">sql/uninstall.mysql.utf8.sql</file>
     </sql>
   </uninstall>
+  
+  <updateservers>
+    <server type="extension" priority="1" name="Bears AI Chatbot Task Plugin Updates">https://raw.githubusercontent.com/N6REJ/bears_aichatbot/main/updates.xml</server>
+  </updateservers>
 </extension>

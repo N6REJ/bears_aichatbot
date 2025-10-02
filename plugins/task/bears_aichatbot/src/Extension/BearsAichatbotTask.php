@@ -1,8 +1,15 @@
 <?php
 /**
- * Joomla 5 Task plugin: processes AI Chatbot document collection sync.
+ * Bears AI Chatbot
+ *
+ * @version 2025.09.19
+ * @package Bears AI Chatbot
+ * @author N6REJ
+ * @email troy@hallhome.us
+ * @website https://www.hallhome.us
+ * @copyright Copyright (C) 2025 Troy Hall (N6REJ)
+ * @license GNU General Public License version 3 or later; see LICENSE.txt
  */
-
 namespace Joomla\Plugin\Task\BearsAichatbot\Extension;
 
 use Joomla\CMS\Application\CMSApplicationInterface;

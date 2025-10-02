@@ -1,10 +1,14 @@
 <?php
 /**
- * Package installer script for pkg_bears_aichatbot (safe minimal version)
- * - Enables plugins after install/update
- * - Performs light cleanup before/after uninstall
- * - NO database normalization
- * - NO manual child uninstallation to avoid recursion/stack overflow
+ * Bears AI Chatbot
+ *
+ * @version 2025.09.19
+ * @package Bears AI Chatbot
+ * @author N6REJ
+ * @email troy@hallhome.us
+ * @website https://www.hallhome.us
+ * @copyright Copyright (C) 2025 Troy Hall (N6REJ)
+ * @license GNU General Public License version 3 or later; see LICENSE.txt
  */
 \defined('_JEXEC') or die;
 

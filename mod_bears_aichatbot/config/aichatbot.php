@@ -1,15 +1,15 @@
 <?php
 /**
- * Configuration file for Bears AI Chatbot
- * 
- * This file contains configuration values that may need to be updated over time
- * without modifying the core extension code.
- * 
- * @package     mod_bears_aichatbot
- * @copyright   2025 BearLeeAble (N6REJ)
- * @license     GNU General Public License version 3 or later
+ * Bears AI Chatbot
+ *
+ * @version 2025.09.19
+ * @package Bears AI Chatbot
+ * @author N6REJ
+ * @email troy@hallhome.us
+ * @website https://www.hallhome.us
+ * @copyright Copyright (C) 2025 Troy Hall (N6REJ)
+ * @license GNU General Public License version 3 or later; see LICENSE.txt
  */
-
 defined('_JEXEC') or die;
 
 /**
