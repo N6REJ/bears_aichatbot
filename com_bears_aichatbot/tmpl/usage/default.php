@@ -2,7 +2,7 @@
 /**
  * Bears AI Chatbot - Token Usage Analytics View
  *
- * @version 2025.10.02
+ * @version 2025.10.02.1
  * @package Bears AI Chatbot
  * @author N6REJ
  * @email troy@hallhome.us

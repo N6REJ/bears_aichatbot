@@ -4,9 +4,9 @@
   <author>N6REJ</author>
   <authorEmail>programming@hallhome.us</authorEmail>
   <authorUrl>https://hallhome.us/joomla-extensions/bears-ai-chatbot</authorUrl>
-  <copyright>Copyright (C)2025 N6REJ</copyright>
-  <creationDate>2025 September 19</creationDate>
-  <version>2025.09.19</version>
+  <copyright>Copyright (C) 2025 Troy Hall (N6REJ)</copyright>
+  <creationDate>2025 October 02</creationDate>
+  <version>2025.10.02.1</version>
   <license>GNU General Public License version 3 or later; see License.txt</license>
   <description>Post-install system plugin that enables Bears AI Chatbot plugins and seeds scheduler tasks after complete package installation.</description>
 
