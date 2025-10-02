@@ -516,7 +516,9 @@ class BearsAIChatbotConfig
             
             // Clean up model name
             $modelName = str_replace(['-', '_'], ' ', $model);
-            $modelName = preg_replace('/\b(\w)/e', 'strtoupper("$1")', $modelName);
+            $modelName = preg_replace_callback('/\b(\w)/', function($matches) {
+                return strtoupper($matches[1]);
+            }, $modelName);
             
             return $providerName . ' - ' . $modelName;
         }
