@@ -2,7 +2,7 @@
 /**
  * Bears AI Chatbot - API Helper Functions
  *
- * @version 2025.10.02.1
+ * @version 2025.10.02.2
  * @package Bears AI Chatbot
  * @author N6REJ
  * @email troy@hallhome.us
