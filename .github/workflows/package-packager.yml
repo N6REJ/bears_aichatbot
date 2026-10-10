@@ -1,4 +1,4 @@
-name: Package and Release Package
+name: package-packager
 
 on:
   pull_request:
